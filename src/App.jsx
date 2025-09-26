@@ -1,25 +1,14 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import PageLayout from "./layout/pageLayout";
+import StartingPage from "./pages/startingPage"; // Capitalized
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
-    <>
-      {/* <Route path="/" element={<PageLayout />}>
-        <Route
-          path="/home/carousel"
-          element={
-            <PrivateRoute permission="home_page">
-              <ImgCarousel />
-            </PrivateRoute>
-          }
-        />
-      </Route> */}
-      <PageLayout />
-    </>
+    <Routes>
+      <Route path="/" element={<PageLayout />}>
+        <Route index element={<StartingPage />} />
+      </Route>
+    </Routes>
   );
 }
 

@@ -7,11 +7,11 @@ const PageLayout = () => {
   return (
     <>
       <NavBar />
-      <div className="flex flex-row pr-5">
-        <div className="mr-4">
+      <div className="flex flex-row">
+        <div className="mr-20">
           <SideBar />
         </div>
-        <div className="mt-20 mb-5">
+        <div className="mt-16 mb-5 mr-8">
           <Outlet />
         </div>
       </div>
