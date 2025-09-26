@@ -2,6 +2,7 @@ import React from "react";
 import SideBar from "../components/sideBar";
 import NavBar from "../components/navBar";
 import { Outlet } from "react-router-dom";
+import StatusBar from "../components/statusBar";
 
 const PageLayout = () => {
   return (
@@ -15,6 +16,7 @@ const PageLayout = () => {
           <Outlet />
         </div>
       </div>
+      <StatusBar />
     </>
   );
 };
