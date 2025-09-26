@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const DetailsPage = () => {
   return (
@@ -60,17 +61,21 @@ const DetailsPage = () => {
 
         {/* Buttons */}
         <div className="flex justify-end gap-4 mt-8">
-          <div className="w-32 h-8 bg-[#D9D9D9] flex items-center justify-center">
-            <span className="text-[#5F5F5F] text-base font-semibold font-inter">
-              Back
-            </span>
-          </div>
+          <Link to="/">
+            <div className="w-32 h-8 bg-[#D9D9D9] flex items-center justify-center">
+              <span className="text-[#5F5F5F] text-base font-semibold font-inter">
+                Back
+              </span>
+            </div>
+          </Link>
 
-          <div className="w-32 h-8 border-2 border-[#5F5F5F] flex items-center justify-center">
-            <span className="text-[#5F5F5F] text-base font-semibold font-inter">
-              Next
-            </span>
-          </div>
+          <Link to="/canvas">
+            <div className="w-32 h-8 border-2 border-[#5F5F5F] flex items-center justify-center">
+              <span className="text-[#5F5F5F] text-base font-semibold font-inter">
+                Next
+              </span>
+            </div>
+          </Link>
         </div>
 
         {/* Footer Tip */}
