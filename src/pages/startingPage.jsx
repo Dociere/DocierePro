@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import TemplateCards from "../components/templateCards";
 
 function startingPage() {
@@ -25,8 +26,10 @@ function startingPage() {
             </select>
           </div>
         </div>
-        <div className="flex flex-row flex-wrap gap-20 mt-10">
-          <TemplateCards title="Blank Document" />
+        <div className="flex flex-row flex-wrap mt-10 gap-20">
+          <Link to="/detailPage">
+            <TemplateCards title="Blank Document" />
+          </Link>
           <TemplateCards title="IEEE Format" />
           <TemplateCards title="MLA Format" />
           <TemplateCards title="APA Format" />
