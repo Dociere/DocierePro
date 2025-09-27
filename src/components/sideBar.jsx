@@ -1,27 +1,40 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { TbMathIntegralX } from "react-icons/tb";
+import EasyMathInput from "./easyMathInput";
 
 const DynamicSideBar = () => {
+  const [isMathModalOpen, setIsMathModalOpen] = useState(false);
+
+  const handleIconClick = (e) => {
+    e.preventDefault();
+    setIsMathModalOpen(true);
+  };
+
   return (
-    <div className="bg-[#F9F9F9] mt-11 min-h-screen max-h-auto w-14 text-white fixed top-0 z-0 border-[#CFCFCF] border-r-[1px]">
-      <div className="flex flex-col pt-9 pl-8 space-y-9 text-base font-light font-inter">
-        {/* <Link to="/">
-          <p className="flex text-[#585858] justify-between pr-8">icon 1</p>
-        </Link>
-
-        <Link to="/">
-          <p className="flex text-[#585858] justify-between pr-8">icon 2</p>
-        </Link>
-
-        <Link to="/">
-          <p className="flex text-[#585858] justify-between pr-8">icon 3</p>
-        </Link>
-
-        <Link to="/">
-          <p className="flex text-[#585858] justify-between pr-8">icon 4</p>
-        </Link> */}
+    <>
+      <div className="bg-[#F9F9F9] h-[calc(100vh-44px)] w-14 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
+        <div className="flex flex-col items-center pt-4 space-y-6">
+          {/* Easy Math Input */}
+          <Link to="/canvas" onClick={handleIconClick}>
+            <span
+              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              title="Easy Math Input"
+            >
+              <TbMathIntegralX size="1.8em" color="#000000" />
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                Easy Math Input
+              </span>
+            </span>
+          </Link>
+        </div>
       </div>
-    </div>
+
+      {/* Easy Math Input Modal */}
+      {isMathModalOpen && (
+        <EasyMathInput onClose={() => setIsMathModalOpen(false)} />
+      )}
+    </>
   );
 };
 

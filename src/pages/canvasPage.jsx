@@ -3,7 +3,13 @@ import React from "react";
 const CanvasPage = () => {
   return (
     <>
-      <p>This is where the Magic of Dociere is to take place :))</p>
+    <div>
+      <textarea
+        className="border rounded p-2 w-full mt-4"
+        rows={6}
+        placeholder="Type here..."
+      />
+      </div>
     </>
   );
 };
