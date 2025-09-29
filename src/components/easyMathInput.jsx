@@ -20,6 +20,20 @@ const EasyMathInput = ({ onClose }) => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveFileName, setSaveFileName] = useState("");
   const [showSavedDropdown, setShowSavedDropdown] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState(new Set());
+
+  const toggleCategoryExpansion = (category) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
 
 
   // Load saved equations on component mount
@@ -634,35 +648,68 @@ const handleCompile = async () => {
                   )}
                 </div>
 
-                <div className="overflow-y-auto flex-1">
-                  {categories.map((category) => {
-                    const categorySymbols = mathSymbols.filter((symbol) => symbol.category === category);
-                    return (
-                      <div key={category} className="mb-4">
-                        <h4 className="font-semibold text-gray-700 mb-2 sticky top-0 bg-white py-1 border-b border-gray-200">
-                          {category} ({categorySymbols.length})
-                        </h4>
-                        <div className="grid grid-cols-4 gap-1">
-                          {categorySymbols.slice(0, 12).map((symbol, index) => (
-                            <button
-                              key={index}
-                              onClick={() => insertSymbol(symbol.latex)}
-                              className="p-2 border border-gray-200 rounded hover:bg-gray-100 text-center transition-colors"
-                              title={`${symbol.name}: ${symbol.latex}`}
-                            >
-                              <span className="text-lg">{symbol.symbol}</span>
-                            </button>
-                          ))}
-                          {categorySymbols.length > 12 && (
-                            <div className="p-2 text-xs text-gray-500 text-center">
-                              +{categorySymbols.length - 12} more
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+{/* Add this before the categories list */}
+<div className="mb-3 flex gap-2">
+  <button
+    onClick={() => setExpandedCategories(new Set(categories))}
+    className="flex-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+  >
+    Expand All
+  </button>
+  <button
+    onClick={() => setExpandedCategories(new Set())}
+    className="flex-1 px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+  >
+    Collapse All
+  </button>
+</div>
+
+
+<div className="overflow-y-auto flex-1">
+  {categories.map(category => {
+    const categorySymbols = mathSymbols.filter(symbol => symbol.category === category);
+    const isExpanded = expandedCategories.has(category);
+    const showExpansionButton = categorySymbols.length > 12;
+    const symbolsToShow = isExpanded ? categorySymbols : categorySymbols.slice(0, 12);
+    
+    return (
+      <div key={category} className="mb-4">
+        <h4 className="font-semibold text-gray-700 mb-2 sticky top-0 bg-white py-1 border-b border-gray-200">
+          {category} ({categorySymbols.length})
+        </h4>
+        
+        <div className="grid grid-cols-4 gap-1">
+          {symbolsToShow.map((symbol, index) => (
+            <button
+              key={index}
+              onClick={() => insertSymbol(symbol.latex)}
+              className="p-2 border border-gray-200 rounded hover:bg-gray-100 text-center transition-colors"
+              title={`${symbol.name}: ${symbol.latex}`}
+            >
+              <span className="text-lg">{symbol.symbol}</span>
+            </button>
+          ))}
+        </div>
+        
+        {/* Expandable "See more/See less" button */}
+        {showExpansionButton && (
+          <div className="mt-2">
+            <button
+              onClick={() => toggleCategoryExpansion(category)}
+              className="w-full p-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors border border-blue-200 hover:border-blue-300"
+            >
+              {isExpanded 
+                ? `▲ See less (showing all ${categorySymbols.length})` 
+                : `▼ See more (+${categorySymbols.length - 12} more)`
+              }
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
+
               </div>
             </div>
           </>
