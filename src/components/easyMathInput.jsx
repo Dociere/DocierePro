@@ -19,6 +19,8 @@ const EasyMathInput = ({ onClose }) => {
   const [selectedSavedEquation, setSelectedSavedEquation] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveFileName, setSaveFileName] = useState("");
+  const [showSavedDropdown, setShowSavedDropdown] = useState(false);
+
 
   // Load saved equations on component mount
   useEffect(() => {
@@ -80,17 +82,31 @@ const compileLatex = async (latex, isTemp = true, fileName = 'temp') => {
     }
 };
 
-  const handleCompile = async () => {
-    if (!latexCode.trim()) {
-      alert('Please enter some LaTeX code first');
-      return;
-    }
+useEffect(() => {
+  if (activeTab !== "editor") {
+    setPreviewUrl("");
+  }
+}, [activeTab]);
 
-    const pdfUrl = await compileLatex(latexCode);
-    if (pdfUrl) {
-      setPreviewUrl(pdfUrl);
-    }
-  };
+// Add compilation counter
+const [compilationKey, setCompilationKey] = useState(0);
+
+// Modified handleCompile with cache busting and key update
+const handleCompile = async () => {
+  if (!latexCode.trim()) {
+    alert('Please enter some LaTeX code first');
+    return;
+  }
+
+  setPreviewUrl(""); // Clear first
+  
+  const pdfUrl = await compileLatex(latexCode);
+  if (pdfUrl) {
+    const cacheBustedUrl = `${pdfUrl}?t=${Date.now()}`;
+    setPreviewUrl(cacheBustedUrl);
+    setCompilationKey(prev => prev + 1);
+  }
+};
 
   const handleSaveEquation = async () => {
     if (!saveFileName.trim()) {
@@ -412,9 +428,39 @@ const compileLatex = async (latex, isTemp = true, fileName = 'temp') => {
     symbol.latex.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredSavedEquations = savedEquations.filter((equation) =>
-    selectedSavedEquation === "" || equation.fileName === selectedSavedEquation
-  );
+  
+ 
+  useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (!event.target.closest('.relative')) {
+      setShowSavedDropdown(false);
+    }
+  };
+
+  if (showSavedDropdown) {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }
+}, [showSavedDropdown]);
+
+
+  const filteredSavedEquations = savedEquations.filter(equation => {
+  // If no search term and no specific equation selected, show all
+  if (!savedEquationSearch && !selectedSavedEquation) {
+    return true;
+  }
+  
+  // If specific equation selected, show only that one
+  if (selectedSavedEquation && selectedSavedEquation !== "") {
+    return equation.fileName === selectedSavedEquation;
+  }
+  
+  // Filter based on search term
+  return savedEquationSearch === "" || 
+         equation.fileName.toLowerCase().includes(savedEquationSearch.toLowerCase()) ||
+         equation.latex.toLowerCase().includes(savedEquationSearch.toLowerCase());
+});
+
 
   const categories = [...new Set(mathSymbols.map((symbol) => symbol.category))];
 
@@ -625,23 +671,78 @@ const compileLatex = async (latex, isTemp = true, fileName = 'temp') => {
         {activeTab === "saved" && (
           <div className="flex-1 flex flex-col p-4">
             {/* Search for saved equations */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Saved Equations
-              </label>
-              <select
-                value={selectedSavedEquation}
-                onChange={(e) => setSelectedSavedEquation(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All equations</option>
-                {savedEquations.map((equation) => (
-                  <option key={equation.fileName} value={equation.fileName}>
-                    {equation.fileName}
-                  </option>
-                ))}
-              </select>
-            </div>
+{/* Replace the existing select element with this searchable input */}
+<div className="mb-4">
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Search Saved Equations
+  </label>
+  <div className="relative">
+    <div className="flex items-center border border-gray-300 rounded">
+      <TbSearch className="absolute left-2 text-gray-400" size={20} />
+      <input
+        type="text"
+        value={savedEquationSearch}
+        onChange={(e) => setSavedEquationSearch(e.target.value)}
+        onFocus={() => setShowSavedDropdown(true)}
+        placeholder="Type to search equations or select from dropdown..."
+        className="w-full pl-9 pr-10 py-2 outline-none"
+      />
+      <button
+        onClick={() => setShowSavedDropdown(!showSavedDropdown)}
+        className="absolute right-2 text-gray-400 hover:text-gray-600"
+      >
+        <TbSearch size={16} />
+      </button>
+    </div>
+    
+    {/* Dropdown for suggestions */}
+    {showSavedDropdown && (
+      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto z-10">
+        <button
+          onClick={() => {
+            setSavedEquationSearch("");
+            setSelectedSavedEquation("");
+            setShowSavedDropdown(false);
+          }}
+          className="w-full p-2 text-left hover:bg-gray-100 border-b border-gray-100"
+        >
+          <span className="text-gray-600">All equations</span>
+        </button>
+        {savedEquations
+          .filter(equation => 
+            equation.fileName.toLowerCase().includes(savedEquationSearch.toLowerCase()) ||
+            equation.latex.toLowerCase().includes(savedEquationSearch.toLowerCase())
+          )
+          .map(equation => (
+            <button
+              key={equation.fileName}
+              onClick={() => {
+                setSavedEquationSearch(equation.fileName);
+                setSelectedSavedEquation(equation.fileName);
+                setShowSavedDropdown(false);
+              }}
+              className="w-full p-2 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+            >
+              <div className="flex flex-col">
+                <span className="font-medium">{equation.fileName}</span>
+                <span className="text-sm text-gray-500 truncate font-mono">
+                  {equation.latex.substring(0, 50)}...
+                </span>
+              </div>
+            </button>
+          ))
+        }
+        {savedEquations.filter(equation => 
+          equation.fileName.toLowerCase().includes(savedEquationSearch.toLowerCase()) ||
+          equation.latex.toLowerCase().includes(savedEquationSearch.toLowerCase())
+        ).length === 0 && savedEquationSearch && (
+          <div className="p-3 text-center text-gray-500">No equations found</div>
+        )}
+      </div>
+    )}
+  </div>
+</div>
+
 
             {/* Saved equations table */}
             <div className="flex-1 overflow-auto">
