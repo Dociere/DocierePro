@@ -1,0 +1,14 @@
+{
+  "authors": "A.Ali",
+  "title": "My First Paper",
+  "journal": "Applied Sciences",
+  "volume": "12",
+  "issue": "3",
+  "pages": "101-115",
+  "year": "2022",
+  "doi": "10.1234/example.doi",
+  "format": "APA",
+  "latexCode": "A.Ali et al. (2022). My First Paper. \\textit{Applied Sciences}, \\textit{12}(3), 101-115. https://doi.org/10.1234/example.doi",
+  "createdAt": "2025-10-07T10:17:09.485Z",
+  "fileName": "test-citation"
+}
