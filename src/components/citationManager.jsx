@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { TbX, TbCopy, TbDeviceFloppy, TbFolder } from "react-icons/tb";
+import { TbX, TbCopy, TbDeviceFloppy, TbEdit } from "react-icons/tb";
 
 const API_BASE_URL = "http://localhost:3001";
 
@@ -18,6 +18,7 @@ const CitationManager = ({ onClose }) => {
   });
   const [previewUrl, setPreviewUrl] = useState("");
   const [latexCode, setLatexCode] = useState("");
+  const [isLatexEditable, setIsLatexEditable] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [savedCitations, setSavedCitations] = useState([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -71,6 +72,7 @@ const CitationManager = ({ onClose }) => {
         }?t=${Date.now()}`;
         setPreviewUrl(cacheBustedUrl);
         setLatexCode(data.latexCode);
+        setIsLatexEditable(false);
       } else {
         alert("Compilation failed: " + (data.error || "Unknown error"));
       }
@@ -82,11 +84,45 @@ const CitationManager = ({ onClose }) => {
     }
   };
 
+  const recompileEditedLatex = async () => {
+    setIsCompiling(true);
+    setPreviewUrl("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/latex/compile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latex: latexCode,
+          format: "image",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const cacheBustedUrl = `${API_BASE_URL}${data.pdfUrl}?t=${Date.now()}`;
+        setPreviewUrl(cacheBustedUrl);
+        setIsLatexEditable(false);
+      } else {
+        alert("Recompilation failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Recompilation error:", error);
+      alert("Failed to recompile citation");
+    } finally {
+      setIsCompiling(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!saveFileName.trim()) {
       alert("Please enter a file name");
       return;
     }
+
+    // Get next citation number
+    const citationNumber = savedCitations.length + 1;
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/citation/save`, {
@@ -96,13 +132,14 @@ const CitationManager = ({ onClose }) => {
           fileName: saveFileName,
           citationData: formData,
           latexCode,
+          citationNumber,
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        alert("Citation saved successfully!");
+        alert(`Citation saved as [${citationNumber}]`);
         setShowSaveDialog(false);
         setSaveFileName("");
       } else {
@@ -114,11 +151,30 @@ const CitationManager = ({ onClose }) => {
     }
   };
 
+  const copyToClipboard = (text, message = "Copied to clipboard!") => {
+    navigator.clipboard.writeText(text);
+    alert(message);
+  };
+
   const copyLatexToClipboard = () => {
     if (latexCode) {
-      navigator.clipboard.writeText(latexCode);
-      alert("LaTeX code copied to clipboard!");
+      copyToClipboard(latexCode, "LaTeX code copied to clipboard!");
     }
+  };
+
+  const copyCitationNumber = (number) => {
+    copyToClipboard(`[${number}]`, `Citation number [${number}] copied!`);
+  };
+
+  const copyCitationSuperscript = (number) => {
+    copyToClipboard(
+      `^{[${number}]}`,
+      `Superscript citation ^{[${number}]} copied!`
+    );
+  };
+
+  const copyFullReference = (citation) => {
+    copyToClipboard(citation.latexCode, "Full reference copied!");
   };
 
   const handleDeleteCitation = async (fileName) => {
@@ -152,6 +208,7 @@ const CitationManager = ({ onClose }) => {
       doi: citation.doi || "",
       format: citation.format || "IEEE",
     });
+    setLatexCode(citation.latexCode || "");
     setActiveTab("create");
   };
 
@@ -381,7 +438,7 @@ const CitationManager = ({ onClose }) => {
                     <img
                       src={previewUrl}
                       alt="Citation Preview"
-                      className="max-w-full max-h-full object-contain"
+                      className="max-w-full max-h-full object-contain p-4"
                     />
                   ) : (
                     <p className="text-gray-400">
@@ -391,47 +448,121 @@ const CitationManager = ({ onClose }) => {
                   )}
                 </div>
 
-                {/* LaTeX Code Display */}
+                {/* Editable LaTeX Code Display */}
                 {latexCode && (
-                  <div className="mt-4 p-3 bg-gray-100 rounded border border-gray-300">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                      LaTeX Code:
-                    </h4>
-                    <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono">
-                      {latexCode}
-                    </pre>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-gray-700">
+                        LaTeX Code:
+                      </h4>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setIsLatexEditable(!isLatexEditable)}
+                          className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors flex items-center gap-1"
+                        >
+                          <TbEdit size={14} />
+                          {isLatexEditable ? "View" : "Edit"}
+                        </button>
+                        {isLatexEditable && (
+                          <button
+                            onClick={recompileEditedLatex}
+                            disabled={isCompiling}
+                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                          >
+                            {isCompiling ? "Compiling..." : "Recompile"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {isLatexEditable ? (
+                      <textarea
+                        value={latexCode}
+                        onChange={(e) => setLatexCode(e.target.value)}
+                        className="w-full h-32 p-3 bg-white border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <div className="p-3 bg-gray-100 rounded border border-gray-300 max-h-32 overflow-auto">
+                        <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono">
+                          {latexCode}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </>
           ) : (
             // Saved Citations Tab
-            <div className="w-full p-6 overflow-y-auto">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Saved Citations ({savedCitations.length})
-              </h3>
-              <div className="space-y-4">
-                {savedCitations.map((citation, index) => (
-                  <div
-                    key={index}
-                    className="border border-gray-300 rounded p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-800">
-                          {citation.title}
-                        </h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {citation.authors}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Format: {citation.format} | Year: {citation.year}
-                        </p>
+            <div className="w-full h-full flex flex-col overflow-hidden">
+              <div className="p-6 pb-2">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Saved Citations ({savedCitations.length})
+                </h3>
+              </div>
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                <div className="space-y-4">
+                  {savedCitations.map((citation, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-300 rounded p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-blue-600 text-lg">
+                              [{citation.citationNumber || index + 1}]
+                            </span>
+                            <h4 className="font-semibold text-gray-800">
+                              {citation.title}
+                            </h4>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {citation.authors}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Format: {citation.format} | Year: {citation.year}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
+
+                      {/* Copy Options */}
+                      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() =>
+                            copyCitationNumber(
+                              citation.citationNumber || index + 1
+                            )
+                          }
+                          className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-xs flex items-center gap-1"
+                          title="Copy citation number"
+                        >
+                          <TbCopy size={14} />
+                          Copy [{citation.citationNumber || index + 1}]
+                        </button>
+                        <button
+                          onClick={() =>
+                            copyCitationSuperscript(
+                              citation.citationNumber || index + 1
+                            )
+                          }
+                          className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-xs flex items-center gap-1"
+                          title="Copy superscript citation"
+                        >
+                          <TbCopy size={14} />
+                          Copy ^
+                          {"{[" + (citation.citationNumber || index + 1) + "]"}
+                        </button>
+                        <button
+                          onClick={() => copyFullReference(citation)}
+                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs flex items-center gap-1"
+                          title="Copy full reference"
+                        >
+                          <TbCopy size={14} />
+                          Copy Full Reference
+                        </button>
                         <button
                           onClick={() => loadCitation(citation)}
-                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
                         >
                           Load
                         </button>
@@ -439,19 +570,19 @@ const CitationManager = ({ onClose }) => {
                           onClick={() =>
                             handleDeleteCitation(citation.fileName)
                           }
-                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-xs"
                         >
                           Delete
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
-                {savedCitations.length === 0 && (
-                  <p className="text-gray-400 text-center py-8">
-                    No saved citations yet
-                  </p>
-                )}
+                  ))}
+                  {savedCitations.length === 0 && (
+                    <p className="text-gray-400 text-center py-8">
+                      No saved citations yet
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -464,6 +595,10 @@ const CitationManager = ({ onClose }) => {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 Save Citation
               </h3>
+              <p className="text-sm text-gray-600 mb-3">
+                This will be saved as citation{" "}
+                <strong>[{savedCitations.length + 1}]</strong>
+              </p>
               <input
                 type="text"
                 value={saveFileName}
