@@ -1,0 +1,496 @@
+import React, { useState, useEffect } from "react";
+import { TbX, TbCopy, TbDeviceFloppy, TbFolder } from "react-icons/tb";
+
+const API_BASE_URL = "http://localhost:3001";
+
+const CitationManager = ({ onClose }) => {
+  const [activeTab, setActiveTab] = useState("create");
+  const [formData, setFormData] = useState({
+    authors: "",
+    title: "",
+    journal: "",
+    volume: "",
+    issue: "",
+    pages: "",
+    year: "",
+    doi: "",
+    format: "IEEE",
+  });
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [latexCode, setLatexCode] = useState("");
+  const [isCompiling, setIsCompiling] = useState(false);
+  const [savedCitations, setSavedCitations] = useState([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveFileName, setSaveFileName] = useState("");
+
+  const citationFormats = ["IEEE", "APA", "MLA", "Chicago", "Harvard"];
+
+  // Load saved citations on component mount
+  useEffect(() => {
+    if (activeTab === "saved") {
+      loadSavedCitations();
+    }
+  }, [activeTab]);
+
+  const loadSavedCitations = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/citation/list`);
+      const data = await response.json();
+      setSavedCitations(data);
+    } catch (error) {
+      console.error("Failed to load citations:", error);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const compileCitation = async () => {
+    if (!formData.authors || !formData.title || !formData.year) {
+      alert("Please fill in at least Authors, Title, and Year");
+      return;
+    }
+
+    setIsCompiling(true);
+    setPreviewUrl("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/citation/compile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const cacheBustedUrl = `${API_BASE_URL}${
+          data.previewUrl
+        }?t=${Date.now()}`;
+        setPreviewUrl(cacheBustedUrl);
+        setLatexCode(data.latexCode);
+      } else {
+        alert("Compilation failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Compilation error:", error);
+      alert("Failed to compile citation");
+    } finally {
+      setIsCompiling(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!saveFileName.trim()) {
+      alert("Please enter a file name");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/citation/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: saveFileName,
+          citationData: formData,
+          latexCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert("Citation saved successfully!");
+        setShowSaveDialog(false);
+        setSaveFileName("");
+      } else {
+        alert("Save failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      alert("Failed to save citation");
+    }
+  };
+
+  const copyLatexToClipboard = () => {
+    if (latexCode) {
+      navigator.clipboard.writeText(latexCode);
+      alert("LaTeX code copied to clipboard!");
+    }
+  };
+
+  const handleDeleteCitation = async (fileName) => {
+    if (!window.confirm(`Delete citation "${fileName}"?`)) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/citation/${fileName}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        loadSavedCitations();
+      } else {
+        alert("Failed to delete citation");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Failed to delete citation");
+    }
+  };
+
+  const loadCitation = (citation) => {
+    setFormData({
+      authors: citation.authors || "",
+      title: citation.title || "",
+      journal: citation.journal || "",
+      volume: citation.volume || "",
+      issue: citation.issue || "",
+      pages: citation.pages || "",
+      year: citation.year || "",
+      doi: citation.doi || "",
+      format: citation.format || "IEEE",
+    });
+    setActiveTab("create");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-[95%] h-[90%] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-800">Citation Manager</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <TbX size={24} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab("create")}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === "create"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Create Citation
+          </button>
+          <button
+            onClick={() => setActiveTab("saved")}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === "saved"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Saved Citations
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex">
+          {activeTab === "create" ? (
+            <>
+              {/* Form Section */}
+              <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-200">
+                <div className="space-y-4">
+                  {/* Citation Format */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Citation Format *
+                    </label>
+                    <select
+                      name="format"
+                      value={formData.format}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {citationFormats.map((format) => (
+                        <option key={format} value={format}>
+                          {format}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Authors */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Authors *
+                    </label>
+                    <textarea
+                      name="authors"
+                      value={formData.authors}
+                      onChange={handleInputChange}
+                      placeholder="A. Ali, S. A. Razak, S. H. Othman..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows="2"
+                    />
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Paper Title *
+                    </label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      placeholder="Financial Fraud Detection Based on Machine Learning..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Journal */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Journal Name
+                    </label>
+                    <input
+                      type="text"
+                      name="journal"
+                      value={formData.journal}
+                      onChange={handleInputChange}
+                      placeholder="Applied Sciences"
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Volume, Issue, Pages - Row */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Volume
+                      </label>
+                      <input
+                        type="text"
+                        name="volume"
+                        value={formData.volume}
+                        onChange={handleInputChange}
+                        placeholder="12"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Issue
+                      </label>
+                      <input
+                        type="text"
+                        name="issue"
+                        value={formData.issue}
+                        onChange={handleInputChange}
+                        placeholder="3"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pages
+                      </label>
+                      <input
+                        type="text"
+                        name="pages"
+                        value={formData.pages}
+                        onChange={handleInputChange}
+                        placeholder="101-115"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Year */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Year *
+                    </label>
+                    <input
+                      type="text"
+                      name="year"
+                      value={formData.year}
+                      onChange={handleInputChange}
+                      placeholder="2022"
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* DOI */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      DOI (optional)
+                    </label>
+                    <input
+                      type="text"
+                      name="doi"
+                      value={formData.doi}
+                      onChange={handleInputChange}
+                      placeholder="10.1234/example.doi"
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Generate Button */}
+                  <button
+                    onClick={compileCitation}
+                    disabled={isCompiling}
+                    className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                  >
+                    {isCompiling ? "Generating..." : "Generate Citation"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              <div className="w-1/2 p-6 flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Preview
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={copyLatexToClipboard}
+                      disabled={!latexCode}
+                      className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                      title="Copy LaTeX"
+                    >
+                      <TbCopy size={18} />
+                      Copy LaTeX
+                    </button>
+                    <button
+                      onClick={() => setShowSaveDialog(true)}
+                      disabled={!latexCode}
+                      className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                      title="Save Citation"
+                    >
+                      <TbDeviceFloppy size={18} />
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 border border-gray-300 rounded bg-gray-50 flex items-center justify-center overflow-auto">
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt="Citation Preview"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <p className="text-gray-400">
+                      Fill in the form and click "Generate Citation" to see
+                      preview
+                    </p>
+                  )}
+                </div>
+
+                {/* LaTeX Code Display */}
+                {latexCode && (
+                  <div className="mt-4 p-3 bg-gray-100 rounded border border-gray-300">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                      LaTeX Code:
+                    </h4>
+                    <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono">
+                      {latexCode}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            // Saved Citations Tab
+            <div className="w-full p-6 overflow-y-auto">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Saved Citations ({savedCitations.length})
+              </h3>
+              <div className="space-y-4">
+                {savedCitations.map((citation, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-300 rounded p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-800">
+                          {citation.title}
+                        </h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {citation.authors}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Format: {citation.format} | Year: {citation.year}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => loadCitation(citation)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                        >
+                          Load
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDeleteCitation(citation.fileName)
+                          }
+                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {savedCitations.length === 0 && (
+                  <p className="text-gray-400 text-center py-8">
+                    No saved citations yet
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Save Dialog */}
+        {showSaveDialog && (
+          <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Save Citation
+              </h3>
+              <input
+                type="text"
+                value={saveFileName}
+                onChange={(e) => setSaveFileName(e.target.value)}
+                placeholder="Enter file name"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowSaveDialog(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default CitationManager;
