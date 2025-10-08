@@ -1,0 +1,14 @@
+{
+  "id": "fb84bbc4-5fc6-4ab0-a552-61e73b49e552",
+  "name": "clint",
+  "created": "2025-10-07T11:09:45.818Z",
+  "modified": "2025-10-08T08:01:25.567Z",
+  "files": {
+    "main.tex": {
+      "name": "main.tex",
+      "content": "\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath}\n\\usepackage{amsfonts}\n\\usepackage{amssymb}\n\\usepackage{graphicx}\n\n\\title{clint}\n\\author{Author Name}\n\\date{\\today}\n\n\\begin{document}\n\n\\maketitle\n\nHi, This is Clint. To do or not to do, that is the question.\n\nHi, This is Clint. To do or not to do, that is the question.\n\nHi, This is Clint. To do or not to do, that is the question.\n\nHi, This is Clint. To do or not to do, that is the question.\n\nHi, This is Clint. To do or not to do, that is the question.\n\nHi, This is Clint. To do or not to do, that is the question.\n\nHi, This is Clint. To do or not to do, that is the question.\n\n\\end{document}",
+      "type": "tex"
+    }
+  },
+  "activeFile": "main.tex"
+}
