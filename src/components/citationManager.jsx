@@ -48,41 +48,46 @@ const CitationManager = ({ onClose }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const compileCitation = async () => {
-    if (!formData.authors || !formData.title || !formData.year) {
-      alert("Please fill in at least Authors, Title, and Year");
-      return;
+  // In your CitationManager React component, update the compileCitation function:
+const compileCitation = async () => {
+  if (!formData.authors || !formData.title || !formData.year) {
+    alert("Please fill in at least Authors, Title, and Year");
+    return;
+  }
+
+  setIsCompiling(true);
+  setPreviewUrl("");
+
+  try {
+    // Get the next citation number
+    const citationNumber = savedCitations.length + 1;
+
+    const response = await fetch(`${API_BASE_URL}/api/citation/compile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...formData,
+        citationNumber: citationNumber
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      const cacheBustedUrl = `${API_BASE_URL}${data.previewUrl}?t=${Date.now()}`;
+      setPreviewUrl(cacheBustedUrl);
+      setLatexCode(data.latexCode);
+      setIsLatexEditable(false);
+    } else {
+      alert("Compilation failed: " + (data.error || "Unknown error"));
     }
-
-    setIsCompiling(true);
-    setPreviewUrl("");
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/citation/compile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        const cacheBustedUrl = `${API_BASE_URL}${
-          data.previewUrl
-        }?t=${Date.now()}`;
-        setPreviewUrl(cacheBustedUrl);
-        setLatexCode(data.latexCode);
-        setIsLatexEditable(false);
-      } else {
-        alert("Compilation failed: " + (data.error || "Unknown error"));
-      }
-    } catch (error) {
-      console.error("Compilation error:", error);
-      alert("Failed to compile citation");
-    } finally {
-      setIsCompiling(false);
-    }
-  };
+  } catch (error) {
+    console.error("Compilation error:", error);
+    alert("Failed to compile citation");
+  } finally {
+    setIsCompiling(false);
+  }
+};
 
   const recompileEditedLatex = async () => {
     setIsCompiling(true);
@@ -406,90 +411,94 @@ const CitationManager = ({ onClose }) => {
               </div>
 
               {/* Preview Section */}
-              <div className="w-1/2 p-6 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Preview
-                  </h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={copyLatexToClipboard}
-                      disabled={!latexCode}
-                      className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
-                      title="Copy LaTeX"
-                    >
-                      <TbCopy size={18} />
-                      Copy LaTeX
-                    </button>
-                    <button
-                      onClick={() => setShowSaveDialog(true)}
-                      disabled={!latexCode}
-                      className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
-                      title="Save Citation"
-                    >
-                      <TbDeviceFloppy size={18} />
-                      Save
-                    </button>
-                  </div>
-                </div>
+<div className="flex-1 flex flex-col">
+  <div className="flex items-center justify-between mb-4">
+    <h3 className="text-lg font-semibold text-gray-800">
+      Reference Preview
+    </h3>
+    <div className="flex gap-2">
+      <button
+        onClick={copyLatexToClipboard}
+        disabled={!latexCode}
+        className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+        title="Copy LaTeX"
+      >
+        <TbCopy size={18} />
+        Copy LaTeX
+      </button>
+      <button
+        onClick={() => setShowSaveDialog(true)}
+        disabled={!latexCode}
+        className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+        title="Save Citation"
+      >
+        <TbDeviceFloppy size={18} />
+        Save
+      </button>
+    </div>
+  </div>
 
-                <div className="flex-1 border border-gray-300 rounded bg-gray-50 flex items-center justify-center overflow-auto">
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt="Citation Preview"
-                      className="max-w-full max-h-full object-contain p-4"
-                    />
-                  ) : (
-                    <p className="text-gray-400">
-                      Fill in the form and click "Generate Citation" to see
-                      preview
-                    </p>
-                  )}
-                </div>
+  {/* Preview container - will show full reference with proper formatting */}
+  <div className="flex-1 border border-gray-300 rounded bg-gray-50 overflow-auto">
+    {previewUrl ? (
+      <div className="w-full h-full p-4">
+        <img
+          src={previewUrl}
+          alt="Reference Preview"
+          className="w-full h-auto"
+        />
+      </div>
+    ) : (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-400">
+          Fill in the form and click "Generate Citation" to see reference
+        </p>
+      </div>
+    )}
+  </div>
 
-                {/* Editable LaTeX Code Display */}
-                {latexCode && (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold text-gray-700">
-                        LaTeX Code:
-                      </h4>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setIsLatexEditable(!isLatexEditable)}
-                          className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors flex items-center gap-1"
-                        >
-                          <TbEdit size={14} />
-                          {isLatexEditable ? "View" : "Edit"}
-                        </button>
-                        {isLatexEditable && (
-                          <button
-                            onClick={recompileEditedLatex}
-                            disabled={isCompiling}
-                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                          >
-                            {isCompiling ? "Compiling..." : "Recompile"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {isLatexEditable ? (
-                      <textarea
-                        value={latexCode}
-                        onChange={(e) => setLatexCode(e.target.value)}
-                        className="w-full h-32 p-3 bg-white border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    ) : (
-                      <div className="p-3 bg-gray-100 rounded border border-gray-300 max-h-32 overflow-auto">
-                        <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono">
-                          {latexCode}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+  {/* Rest of your LaTeX code section remains the same */}
+  {latexCode && (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-semibold text-gray-700">
+          LaTeX Code (Citation Only):
+        </h4>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsLatexEditable(!isLatexEditable)}
+            className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors flex items-center gap-1"
+          >
+            <TbEdit size={14} />
+            {isLatexEditable ? "View" : "Edit"}
+          </button>
+          {isLatexEditable && (
+            <button
+              onClick={recompileEditedLatex}
+              disabled={isCompiling}
+              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+            >
+              {isCompiling ? "Compiling..." : "Recompile"}
+            </button>
+          )}
+        </div>
+      </div>
+      {isLatexEditable ? (
+        <textarea
+          value={latexCode}
+          onChange={(e) => setLatexCode(e.target.value)}
+          className="w-full h-32 p-3 bg-white border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      ) : (
+        <div className="p-3 bg-gray-100 rounded border border-gray-300 max-h-32 overflow-auto">
+          <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono">
+            {latexCode}
+          </pre>
+        </div>
+      )}
+    </div>
+  )}
+</div>
             </>
           ) : (
             // Saved Citations Tab
