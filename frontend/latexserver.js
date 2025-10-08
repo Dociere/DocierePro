@@ -509,7 +509,7 @@ app.post("/api/citation/compile", async (req, res) => {
   console.log("📚 Received citation compilation request");
 
   try {
-    const { authors, title, journal, volume, issue, pages, year, doi, format } =
+    const { authors, title, journal, volume, issue, pages, year, doi, format, citationNumber } =
       req.body;
 
     if (!authors || !title || !year) {
@@ -605,16 +605,25 @@ app.post("/api/citation/compile", async (req, res) => {
     const pdfFilePath = path.join(outputDir, pdfFileName);
     const imgFilePath = path.join(outputDir, imgFileName);
 
-    // Create LaTeX document for citation
-    const latexDocument = `\\documentclass[11pt]{article}
-\\usepackage[margin=1in]{geometry}
+    // Use a proper reference list format with hanging indent
+    const latexDocument = `\\documentclass[12pt]{article}
+\\usepackage[letterpaper, margin=1in]{geometry}
 \\usepackage{times}
 \\usepackage{url}
 \\usepackage{hyperref}
+\\usepackage{parskip}
+\\setlength{\\parindent}{-0.2in}
+\\setlength{\\leftskip}{0.2in}
+\\setlength{\\parskip}{6pt}
 \\pagestyle{empty}
 \\begin{document}
 \\noindent
-${citationLatex}
+\\textbf{References}
+
+\\vspace{10pt}
+
+\\noindent
+[${citationNumber || 1}] ${citationLatex}
 \\end{document}`;
 
     // Write LaTeX file
@@ -626,18 +635,22 @@ ${citationLatex}
     // Check if PDF was created
     await fs.access(pdfFilePath);
 
-    // Convert to image
+    // Convert to image - NO CROPPING, just convert as-is
     try {
       const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
-      const croppedImagePath = path.join(outputDir, `cropped_${imgFileName}`);
-      await cropImageToContent(rawImagePath, croppedImagePath);
+      
+      // Just use the converted image as-is, no cropping
+      const finalImagePath = path.join(outputDir, `final_${imgFileName}`);
+      await sharp(rawImagePath)
+        .png({ quality: 100 })
+        .toFile(finalImagePath);
 
       // Cleanup auxiliary files
       await cleanupAuxFiles(outputDir, baseFileName);
 
       res.json({
         success: true,
-        previewUrl: `/output/cropped_${imgFileName}`,
+        previewUrl: `/output/final_${imgFileName}`,
         latexCode: citationLatex,
         format: format,
         message: "Citation compiled successfully",
