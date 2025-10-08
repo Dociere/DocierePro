@@ -24,5 +24,4 @@ dist-ssr
 *.sw?
 output
 temp
-equations
-citations
+projects
