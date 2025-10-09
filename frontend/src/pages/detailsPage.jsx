@@ -4,21 +4,29 @@ import { Link } from "react-router-dom";
 const DetailsPage = () => {
   // State to track input values
   const [title, setTitle] = useState("");
-  const [type, setType] = useState("");
+  const [authorName, setAuthorName] = useState("");
+  const [authorEmail, setAuthorEmail] = useState("");
+  const [authorInstitute, setAuthorInstitute] = useState("");
+  const [authorDegree, setAuthorDegree] = useState("");
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isGenChecked, setIsGenChecked] = useState(false);
 
   // Effect to check if all required fields are filled
   useEffect(() => {
-    if (title) {
+    if (title && authorName && authorEmail && authorInstitute && authorDegree) {
       setIsFormValid(true);
     } else {
       setIsFormValid(false);
     }
-  }, [title]);
+  }, [title, authorName, authorEmail, authorInstitute, authorDegree]);
+
+  const handleGenCheck = () => {
+    setIsGenChecked(!isGenChecked);
+  };
 
   return (
-    <div className="flex justify-center items-center w-[91vw] h-[90vh]">
-      <div className="w-[90vw] max-w-[830px] h-[545px] bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
+    <div className="flex justify-center items-center w-[91vw] min-h-screen">
+      <div className="w-[90vw] max-w-[830px] h-auto bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
         {/* Heading */}
         <h1 className="font-playfair text-4xl md:text-5xl font-bold mb-3">
           Document Details
@@ -36,7 +44,6 @@ const DetailsPage = () => {
         >
           <span className="text-red-400 text-sm mr-1">*</span>Title:
         </label>
-
         <input
           id="title"
           type="text"
@@ -45,38 +52,113 @@ const DetailsPage = () => {
           className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
         />
 
-        {/* Type Selection */}
-        <label className="text-[#343434] text-base md:text-lg font-semibold font-inter block mb-3">
-          Type:
-        </label>
+        {/* Author Details */}
+        <div className="my-6">
+          <h2 className="text-[#343434] text-lg font-semibold font-inter mb-3">
+            Author Details
+          </h2>
 
-        <div className="flex gap-12 mb-24">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="type"
-              value="code-based"
-              onChange={(e) => setType(e.target.value)}
-              className="w-4 h-4 text-blue-600 bg-white border border-gray-400 rounded-full focus:ring-blue-500"
-            />
-            <span className="text-[#343434] text-sm md:text-base font-inter">
-              Code-based
-            </span>
+          {/* Author Name */}
+          <label
+            htmlFor="authorName"
+            className="text-[#343434] text-sm font-medium font-inter block"
+          >
+            <span className="text-red-400 text-xs mr-1">*</span>Name:
           </label>
+          <input
+            id="authorName"
+            type="text"
+            value={authorName}
+            onChange={(e) => setAuthorName(e.target.value)}
+            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+          />
 
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="type"
-              value="research-based"
-              onChange={(e) => setType(e.target.value)}
-              className="w-4 h-4 text-blue-600 bg-white border border-gray-400 rounded-full focus:ring-blue-500"
-            />
-            <span className="text-[#343434] text-sm md:text-base font-inter">
-              Research-based
-            </span>
+          {/* Author Email */}
+          <label
+            htmlFor="authorEmail"
+            className="text-[#343434] text-sm font-medium font-inter block"
+          >
+            <span className="text-red-400 text-xs mr-1">*</span>Email:
           </label>
+          <input
+            id="authorEmail"
+            type="email"
+            value={authorEmail}
+            onChange={(e) => setAuthorEmail(e.target.value)}
+            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+          />
+
+          {/* Author Institute/Organization */}
+          <label
+            htmlFor="authorInstitute"
+            className="text-[#343434] text-sm font-medium font-inter block"
+          >
+            <span className="text-red-400 text-xs mr-1">*</span>
+            Institute/Organization:
+          </label>
+          <input
+            id="authorInstitute"
+            type="text"
+            value={authorInstitute}
+            onChange={(e) => setAuthorInstitute(e.target.value)}
+            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+          />
+
+          {/* Author Designation/Degree */}
+          <label
+            htmlFor="authorDegree"
+            className="text-[#343434] text-sm font-medium font-inter block"
+          >
+            <span className="text-red-400 text-xs mr-1">*</span>
+            Designation/Degree:
+          </label>
+          <input
+            id="authorDegree"
+            type="text"
+            value={authorDegree}
+            onChange={(e) => setAuthorDegree(e.target.value)}
+            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+          />
         </div>
+
+        <div className="flex items-center gap-3 mt-5">
+          <p className="text-[#343434] text-base font-medium font-inter">
+            Generate a boilerplate or a paraphrased document?
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="boilerplate"
+              checked={isGenChecked}
+              onChange={handleGenCheck}
+              className="h-4 w-4 border-gray-300 rounded text-blue-500 focus:ring-blue-500"
+            />
+            <label
+              htmlFor="boilerplate"
+              className="text-sm font-inter text-[#343434]"
+            >
+              Yes
+            </label>
+          </div>
+        </div>
+
+        {isGenChecked && (
+          <>
+            <label
+              htmlFor="title"
+              className="text-[#343434] text-base font-medium font-inter block"
+            >
+              <span className="text-red-400 text-xs mr-1">*</span>Ideas abstract
+              / Research details:
+            </label>
+
+            <textarea
+              name="paper_details"
+              className="mt-3 w-full h-56 font-inter placeholder:text-gray-600 p-5 resize-none"
+              placeholder="Enter your Idea here ..."
+            ></textarea>
+          </>
+        )}
 
         {/* Buttons */}
         <div className="flex justify-end gap-4 mt-8">
