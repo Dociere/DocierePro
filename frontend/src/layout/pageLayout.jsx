@@ -12,7 +12,7 @@ const PageLayout = () => {
         <div className="mr-20">
           <SideBar />
         </div>
-        <div className="mt-16 mb-5 mr-8">
+        <div className="w-full h-auto mt-16 mb-5 mr-8">
           <Outlet />
         </div>
       </div>

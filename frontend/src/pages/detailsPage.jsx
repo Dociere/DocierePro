@@ -1,7 +1,21 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const DetailsPage = () => {
+  // State to track input values
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState("");
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  // Effect to check if all required fields are filled
+  useEffect(() => {
+    if (title) {
+      setIsFormValid(true);
+    } else {
+      setIsFormValid(false);
+    }
+  }, [title]);
+
   return (
     <div className="flex justify-center items-center w-[91vw] h-[90vh]">
       <div className="w-[90vw] max-w-[830px] h-[545px] bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
@@ -20,11 +34,14 @@ const DetailsPage = () => {
           htmlFor="title"
           className="text-[#343434] text-base md:text-lg font-semibold font-inter block"
         >
-          Title:
+          <span className="text-red-400 text-sm mr-1">*</span>Title:
         </label>
+
         <input
           id="title"
           type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
         />
 
@@ -39,6 +56,7 @@ const DetailsPage = () => {
               type="radio"
               name="type"
               value="code-based"
+              onChange={(e) => setType(e.target.value)}
               className="w-4 h-4 text-blue-600 bg-white border border-gray-400 rounded-full focus:ring-blue-500"
             />
             <span className="text-[#343434] text-sm md:text-base font-inter">
@@ -51,6 +69,7 @@ const DetailsPage = () => {
               type="radio"
               name="type"
               value="research-based"
+              onChange={(e) => setType(e.target.value)}
               className="w-4 h-4 text-blue-600 bg-white border border-gray-400 rounded-full focus:ring-blue-500"
             />
             <span className="text-[#343434] text-sm md:text-base font-inter">
@@ -70,8 +89,16 @@ const DetailsPage = () => {
           </Link>
 
           <Link to="/canvas">
-            <div className="w-32 h-8 border-2 border-[#5F5F5F] flex items-center justify-center">
-              <span className="text-[#5F5F5F] text-base font-semibold font-inter">
+            <div
+              className={`w-32 h-8 border-2 flex items-center justify-center ${
+                isFormValid ? "border-[#5F5F5F]" : "border-[#D9D9D9]"
+              }`}
+            >
+              <span
+                className={`text-base font-semibold font-inter ${
+                  isFormValid ? "text-[#5F5F5F]" : "text-[#D9D9D9]"
+                }`}
+              >
                 Next
               </span>
             </div>

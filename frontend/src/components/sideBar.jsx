@@ -21,7 +21,7 @@ const DynamicSideBar = () => {
 
   return (
     <>
-      <div className="bg-[#F9F9F9] h-[calc(100vh-44px)] w-14 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
+      <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-14 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
         <div className="flex flex-col items-center pt-4 space-y-6">
           {/* Easy Math Input */}
           <Link to="/canvas" onClick={handleMathIconClick}>
