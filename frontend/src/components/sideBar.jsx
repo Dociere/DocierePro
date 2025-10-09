@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { TbMathIntegralX } from "react-icons/tb";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
-import CitationIcon from "../assets/icons/citation-manager.svg";
+import sectionIcon from "../assets/icons/sectionIcon.svg?react";
+import CitationIcon from "../assets/icons/citation-manager.svg?react";
+import shareIcon from "../assets/icons/shareIcon.svg?react";
+import draftIcon from "../assets/icons/draftIcon.svg?react";
+import MathIcon from "../assets/icons/mathIcon.svg?react";
+import extensionIcon from "../assets/icons/extensionIcon.svg?react";
+import compileIcon from "../assets/icons/compileIcon.svg?react";
 
 const DynamicSideBar = () => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
@@ -22,29 +27,94 @@ const DynamicSideBar = () => {
   return (
     <>
       <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-14 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
-        <div className="flex flex-col items-center pt-4 space-y-6">
-          {/* Easy Math Input */}
+        <div className="flex flex-col items-center pt-4 space-y-3">
+          {/* Section Space */}
           <Link to="/canvas" onClick={handleMathIconClick}>
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
-              title="Easy Math Input"
+              title="Section Space"
             >
-              <TbMathIntegralX size="1.8em" color="#000000" />
+              <sectionIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+
               <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Easy Math Input
+                Section Space
               </span>
             </span>
           </Link>
-
           {/* Citation Manager */}
           <Link to="/canvas" onClick={handleCitationIconClick}>
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Citation Manager"
             >
-              <img src={CitationIcon} alt="Citation" className="w-7 h-7" />
+              <CitationIcon style={{ fill: "#585858" }} className="w-5 h-5" />
               <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Citation Manager
+              </span>
+            </span>
+          </Link>
+          {/* Share / Collaborate */}
+          <Link to="/canvas" onClick={handleMathIconClick}>
+            <span
+              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              title="Share"
+            >
+              <shareIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                Share
+              </span>
+            </span>
+          </Link>
+          {/* Easy Math Input */}
+          <Link to="/canvas" onClick={handleMathIconClick}>
+            <span
+              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              title="Easy Math Input"
+            >
+              <MathIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                Easy Math Input
+              </span>
+            </span>
+          </Link>
+          {/* Draft Versioning */}
+          <Link to="/canvas" onClick={handleMathIconClick}>
+            <span
+              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              title="Draft Versioning"
+            >
+              <draftIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                Draft Versioning
+              </span>
+            </span>
+          </Link>
+          {/* Extensions */}
+          <Link to="/canvas" onClick={handleMathIconClick}>
+            <span
+              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              title="Extensions"
+            >
+              <extensionIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                Extensions
+              </span>
+            </span>
+          </Link>
+          {/* Compile */}
+          <Link to="/canvas" onClick={handleMathIconClick}>
+            <span
+              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              title="Compile"
+            >
+              <compileIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                Compile
               </span>
             </span>
           </Link>

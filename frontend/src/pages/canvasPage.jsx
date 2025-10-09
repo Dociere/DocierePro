@@ -1,5 +1,5 @@
 import React from "react";
-import OverleafEditor from "./editorPage";
+import EditorPage from "./editorPage";
 
 const CanvasPage = () => {
   return (
@@ -10,7 +10,7 @@ const CanvasPage = () => {
         rows={6}
         placeholder="Type here..."
       /> */}
-        <OverleafEditor />
+        <EditorPage />
       </div>
     </>
   );
