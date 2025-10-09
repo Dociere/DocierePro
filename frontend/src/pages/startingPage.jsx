@@ -4,6 +4,20 @@ import TemplateCards from "../components/templateCards";
 
 function startingPage() {
   const [selected, setSelected] = useState("");
+
+  const templates = [
+    "Blank Document",
+    "IEEE Format",
+    "MLA Format",
+    "APA Format",
+    "Chicago Format",
+    "Harvard Format",
+    "ACM Format",
+    "XYZ Format",
+    "ABC Format",
+    "LMNO Format",
+  ];
+
   return (
     <>
       <div className="mt-6 ml-28 w-[72vw]">
@@ -27,14 +41,16 @@ function startingPage() {
           </div>
         </div>
         <div className="flex flex-row flex-wrap mt-10 gap-20">
-          <Link to="/detailPage">
-            <TemplateCards title="Blank Document" />
-          </Link>
-          <TemplateCards title="IEEE Format" />
+          {templates.map((templateTitle) => (
+            <Link key={templateTitle} to={`/detailPage/${templateTitle}`}>
+              <TemplateCards title={templateTitle} />
+            </Link>
+          ))}
+          {/* <TemplateCards title="IEEE Format" />
           <TemplateCards title="MLA Format" />
           <TemplateCards title="APA Format" />
           <TemplateCards title="XYZ Format" />
-          <TemplateCards title="ABC Format" />
+          <TemplateCards title="ABC Format" /> */}
         </div>
       </div>
     </>
