@@ -9,7 +9,7 @@ function App() {
     <Routes>
       <Route path="/" element={<PageLayout />}>
         <Route path="/" element={<StartingPage />} />
-        <Route path="/detailPage" element={<DetailsPage />} />
+        <Route path="/detailPage/:templateTitle" element={<DetailsPage />} />
         <Route path="/canvas" element={<CanvasPage />} />
       </Route>
     </Routes>

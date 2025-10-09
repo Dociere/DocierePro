@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 const DetailsPage = () => {
-  // State to track input values
   const [title, setTitle] = useState("");
   const [authorName, setAuthorName] = useState("");
   const [authorEmail, setAuthorEmail] = useState("");
@@ -11,14 +10,34 @@ const DetailsPage = () => {
   const [isFormValid, setIsFormValid] = useState(false);
   const [isGenChecked, setIsGenChecked] = useState(false);
 
+  const { templateTitle } = useParams(); // Get the template title from the URL
+
   // Effect to check if all required fields are filled
   useEffect(() => {
-    if (title && authorName && authorEmail && authorInstitute && authorDegree) {
-      setIsFormValid(true);
+    let isValid = false;
+
+    if (templateTitle === "Blank Document") {
+      // Only title is required for Blank Document
+      isValid = title.trim() !== "";
     } else {
-      setIsFormValid(false);
+      // All fields are required for other templates
+      isValid =
+        title.trim() !== "" &&
+        authorName.trim() !== "" &&
+        authorEmail.trim() !== "" &&
+        authorInstitute.trim() !== "" &&
+        authorDegree.trim() !== "";
     }
-  }, [title, authorName, authorEmail, authorInstitute, authorDegree]);
+
+    setIsFormValid(isValid);
+  }, [
+    title,
+    authorName,
+    authorEmail,
+    authorInstitute,
+    authorDegree,
+    templateTitle,
+  ]);
 
   const handleGenCheck = () => {
     setIsGenChecked(!isGenChecked);
@@ -53,73 +72,75 @@ const DetailsPage = () => {
         />
 
         {/* Author Details */}
-        <div className="my-6">
-          <h2 className="text-[#343434] text-lg font-semibold font-inter mb-3">
-            Author Details
-          </h2>
+        {templateTitle !== "Blank Document" && (
+          <div className="my-6">
+            <h2 className="text-[#343434] text-lg font-semibold font-inter mb-3">
+              Author Details
+            </h2>
 
-          {/* Author Name */}
-          <label
-            htmlFor="authorName"
-            className="text-[#343434] text-sm font-medium font-inter block"
-          >
-            <span className="text-red-400 text-xs mr-1">*</span>Name:
-          </label>
-          <input
-            id="authorName"
-            type="text"
-            value={authorName}
-            onChange={(e) => setAuthorName(e.target.value)}
-            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-          />
+            {/* Author Name */}
+            <label
+              htmlFor="authorName"
+              className="text-[#343434] text-sm font-medium font-inter block"
+            >
+              <span className="text-red-400 text-xs mr-1">*</span>Name:
+            </label>
+            <input
+              id="authorName"
+              type="text"
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
+              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+            />
 
-          {/* Author Email */}
-          <label
-            htmlFor="authorEmail"
-            className="text-[#343434] text-sm font-medium font-inter block"
-          >
-            <span className="text-red-400 text-xs mr-1">*</span>Email:
-          </label>
-          <input
-            id="authorEmail"
-            type="email"
-            value={authorEmail}
-            onChange={(e) => setAuthorEmail(e.target.value)}
-            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-          />
+            {/* Author Email */}
+            <label
+              htmlFor="authorEmail"
+              className="text-[#343434] text-sm font-medium font-inter block"
+            >
+              <span className="text-red-400 text-xs mr-1">*</span>Email:
+            </label>
+            <input
+              id="authorEmail"
+              type="email"
+              value={authorEmail}
+              onChange={(e) => setAuthorEmail(e.target.value)}
+              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+            />
 
-          {/* Author Institute/Organization */}
-          <label
-            htmlFor="authorInstitute"
-            className="text-[#343434] text-sm font-medium font-inter block"
-          >
-            <span className="text-red-400 text-xs mr-1">*</span>
-            Institute/Organization:
-          </label>
-          <input
-            id="authorInstitute"
-            type="text"
-            value={authorInstitute}
-            onChange={(e) => setAuthorInstitute(e.target.value)}
-            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-          />
+            {/* Author Institute/Organization */}
+            <label
+              htmlFor="authorInstitute"
+              className="text-[#343434] text-sm font-medium font-inter block"
+            >
+              <span className="text-red-400 text-xs mr-1">*</span>
+              Institute/Organization:
+            </label>
+            <input
+              id="authorInstitute"
+              type="text"
+              value={authorInstitute}
+              onChange={(e) => setAuthorInstitute(e.target.value)}
+              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+            />
 
-          {/* Author Designation/Degree */}
-          <label
-            htmlFor="authorDegree"
-            className="text-[#343434] text-sm font-medium font-inter block"
-          >
-            <span className="text-red-400 text-xs mr-1">*</span>
-            Designation/Degree:
-          </label>
-          <input
-            id="authorDegree"
-            type="text"
-            value={authorDegree}
-            onChange={(e) => setAuthorDegree(e.target.value)}
-            className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-          />
-        </div>
+            {/* Author Designation/Degree */}
+            <label
+              htmlFor="authorDegree"
+              className="text-[#343434] text-sm font-medium font-inter block"
+            >
+              <span className="text-red-400 text-xs mr-1">*</span>
+              Designation/Degree:
+            </label>
+            <input
+              id="authorDegree"
+              type="text"
+              value={authorDegree}
+              onChange={(e) => setAuthorDegree(e.target.value)}
+              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+            />
+          </div>
+        )}
 
         <div className="flex items-center gap-3 mt-5">
           <p className="text-[#343434] text-base font-medium font-inter">
