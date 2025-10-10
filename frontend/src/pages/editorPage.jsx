@@ -381,8 +381,8 @@ const EditorPage = () => {
         /> */}
 
         {/* Editor Area */}
-        <div className="h-[calc(100vh-4rem)] w-full">
-          <div className="flex h-full">
+        <div className="h-[calc(100vh-4rem)] w-full ">
+          <div className="flex flex-row h-full">
             {/* LaTeX Code Editor Panel */}
             <MonacoEditorPanel
               value={latexContent}

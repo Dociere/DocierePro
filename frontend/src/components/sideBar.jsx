@@ -31,10 +31,7 @@ const DynamicSideBar = () => {
       <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-14 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
         <div className="flex flex-col items-center pt-4 space-y-5">
           {/* Section Space */}
-          <Link
-            to="/canvas"
-            onClick={() => setIsSectionSpaceOpen(!isSectionSpaceOpen)}
-          >
+          <div onClick={() => setIsSectionSpaceOpen(!isSectionSpaceOpen)}>
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Section Space"
@@ -45,12 +42,8 @@ const DynamicSideBar = () => {
                 Section Space
               </span>
             </span>
-          </Link>
-          {isSectionSpaceOpen && (
-            <>
-              <SectionSpace />
-            </>
-          )}
+          </div>
+
           {/* Citation Manager */}
           <Link to="/canvas" onClick={handleCitationIconClick}>
             <span
@@ -140,6 +133,8 @@ const DynamicSideBar = () => {
       {isCitationModalOpen && (
         <CitationManager onClose={() => setIsCitationModalOpen(false)} />
       )}
+
+      {isSectionSpaceOpen && <SectionSpace />}
     </>
   );
 };
