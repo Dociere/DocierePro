@@ -54,7 +54,7 @@ const DetailsPage = () => {
   };
 
   return (
-    <div className="flex justify-center items-center w-[91vw] min-h-screen">
+    <div className="flex justify-center items-center w-full min-h-screen">
       <div className="w-[90vw] max-w-[830px] h-auto bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
         {/* Heading */}
         <h1 className="font-playfair text-4xl md:text-5xl font-bold mb-3">
@@ -188,6 +188,21 @@ const DetailsPage = () => {
               className="mt-3 w-full h-56 font-inter placeholder:text-gray-600 p-5 resize-none"
               placeholder="Enter your Idea here ..."
             ></textarea>
+
+            <label
+              htmlFor="githubUrl"
+              className="text-[#343434] text-base font-medium font-inter block mt-5"
+            >
+              Github URL
+            </label>
+            <input
+              id="githubUrl"
+              type="text"
+              value={title}
+              // placeholder="Github URL"
+              // onChange={(e) => setTitle(e.target.value)}
+              className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+            />
           </>
         )}
 
