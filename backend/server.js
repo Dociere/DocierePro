@@ -115,7 +115,7 @@ app.get("/api/health", (req, res) => {
 // API: Create new project
 app.post("/api/projects/create", async (req, res) => {
   try {
-    const { name } = req.body;
+    const { title } = req.body;
     const projectId = uuidv4();
     const projectDir = path.join(PROJECTS_DIR, projectId);
 
@@ -128,7 +128,7 @@ app.post("/api/projects/create", async (req, res) => {
 \\usepackage{amssymb}
 \\usepackage{graphicx}
 
-\\title{${name || "New Document"}}
+\\title{${title || "New Document"}}
 \\author{Author Name}
 \\date{\\today}
 
@@ -159,7 +159,7 @@ Your document content goes here.
 
     const projectData = {
       id: projectId,
-      name: name || "Untitled Project",
+      title: title || "Untitled Project",
       created: new Date().toISOString(),
       modified: new Date().toISOString(),
       files: {
@@ -177,7 +177,7 @@ Your document content goes here.
     });
     await fs.writeFile(path.join(projectDir, "main.tex"), defaultContent);
 
-    console.log(`✅ Created project: ${name} (${projectId})`);
+    console.log(`✅ Created project: ${title} (${projectId})`);
     res.json({
       success: true,
       project: projectData,

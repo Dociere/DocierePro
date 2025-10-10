@@ -9,10 +9,12 @@ import DraftIcon from "../assets/icons/draftIcon.svg?react";
 import MathIcon from "../assets/icons/mathIcon.svg?react";
 import ExtensionIcon from "../assets/icons/extensionIcon.svg?react";
 import CompileIcon from "../assets/icons/compileIcon.svg?react";
+import SectionSpace from "./sectionSpace";
 
 const DynamicSideBar = () => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
+  const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
 
   const handleMathIconClick = (e) => {
     e.preventDefault();
@@ -29,7 +31,10 @@ const DynamicSideBar = () => {
       <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-14 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
         <div className="flex flex-col items-center pt-4 space-y-5">
           {/* Section Space */}
-          <Link to="/canvas">
+          <Link
+            to="/canvas"
+            onClick={() => setIsSectionSpaceOpen(!isSectionSpaceOpen)}
+          >
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Section Space"
@@ -41,6 +46,11 @@ const DynamicSideBar = () => {
               </span>
             </span>
           </Link>
+          {isSectionSpaceOpen && (
+            <>
+              <SectionSpace />
+            </>
+          )}
           {/* Citation Manager */}
           <Link to="/canvas" onClick={handleCitationIconClick}>
             <span
