@@ -12,6 +12,7 @@ import {
   latexToRichText,
   richTextToLatex,
 } from "../utils/latexUtility.jsx";
+import SectionSpace from "../components/sectionSpace.jsx";
 
 // const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -121,23 +122,23 @@ const EditorPage = () => {
     }
   };
 
-  const createProject = async () => {
-    const name = prompt("Enter project name:");
-    if (!name) return;
+  // const createProject = async () => {
+  //   const name = prompt("Enter project name:");
+  //   if (!name) return;
 
-    try {
-      setIsLoading(true);
-      const response = await axios.post(`${API_URL}/api/projects/create`, {
-        name,
-      });
-      await loadProjects();
-      loadProject(response.data.project.id);
-    } catch (error) {
-      setError("Failed to create project: " + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //   try {
+  //     setIsLoading(true);
+  //     const response = await axios.post(`${API_URL}/api/projects/create`, {
+  //       name,
+  //     });
+  //     await loadProjects();
+  //     loadProject(response.data.project.id);
+  //   } catch (error) {
+  //     setError("Failed to create project: " + error.message);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const saveProject = async () => {
     if (!currentProject) return;
@@ -349,16 +350,16 @@ const EditorPage = () => {
           {currentProject ? currentProject.name : "No Project Selected"}
         </div>
         <div className="overleaf-actions">
-          <button className="btn-header" onClick={createProject}>
+          {/* <button className="btn-header" onClick={createProject}>
             📁 New Project
-          </button>
-          <button
+          </button> */}
+          {/* <button
             className="btn-header"
             onClick={saveProject}
             disabled={!currentProject}
           >
             💾 Save
-          </button>
+          </button> */}
           <button
             className="btn-header primary"
             onClick={compileDocument}
@@ -371,43 +372,14 @@ const EditorPage = () => {
 
       <div className="overleaf-main">
         {/* Sidebar */}
-        <div className="overleaf-sidebar">
-          <div className="sidebar-section">
-            <div className="sidebar-title">Projects</div>
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className={`file-item ${
-                  currentProject && currentProject.id === project.id
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() => loadProject(project.id)}
-              >
-                <span className="file-icon">📁</span>
-                <span>{project.name}</span>
-              </div>
-            ))}
-          </div>
+        <SectionSpace
+          projects={projects}
+          currentProject={currentProject}
+          activeFile={activeFile}
+          loadProject={loadProject}
+          setActiveFile={setActiveFile}
+        />
 
-          {currentProject && (
-            <div className="sidebar-section">
-              <div className="sidebar-title">Files</div>
-              {Object.keys(currentProject.files).map((fileName) => (
-                <div
-                  key={fileName}
-                  className={`file-item ${
-                    fileName === activeFile ? "active" : ""
-                  }`}
-                  onClick={() => setActiveFile(fileName)}
-                >
-                  <span className="file-icon">📄</span>
-                  <span>{fileName}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* Editor Area */}
         <div className="overleaf-editor-area">

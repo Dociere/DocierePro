@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
+import { createProject } from "../api/projectHandling";
 
 const DetailsPage = () => {
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [authorName, setAuthorName] = useState("");
   const [authorEmail, setAuthorEmail] = useState("");
@@ -41,6 +45,12 @@ const DetailsPage = () => {
 
   const handleGenCheck = () => {
     setIsGenChecked(!isGenChecked);
+  };
+
+  const handleNextClick = async (e) => {
+    e.preventDefault(); // Prevent default form submission
+    await createProject(title, e); // Perform your project creation logic
+    navigate("/canvas"); // Manually redirect after project creation
   };
 
   return (
@@ -191,21 +201,25 @@ const DetailsPage = () => {
             </div>
           </Link>
 
-          <Link to="/canvas">
-            <div
-              className={`w-32 h-8 border-2 flex items-center justify-center ${
-                isFormValid ? "border-[#5F5F5F]" : "border-[#D9D9D9]"
-              }`}
-            >
-              <span
-                className={`text-base font-semibold font-inter ${
-                  isFormValid ? "text-[#5F5F5F]" : "text-[#D9D9D9]"
-                }`}
-              >
-                Next
-              </span>
-            </div>
-          </Link>
+          {isFormValid ? (
+            <>
+              <Link to="#" onClick={handleNextClick}>
+                <div className="w-32 h-8 border-2 flex items-center justify-center border-[#5F5F5F]">
+                  <span className="text-base font-semibold font-inter text-[#5F5F5F]">
+                    Next
+                  </span>
+                </div>
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="w-32 h-8 border-2 flex items-center justify-center border-[#D9D9D9]">
+                <span className="text-base font-semibold font-inter text-[#D9D9D9]">
+                  Next
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer Tip */}
