@@ -344,12 +344,12 @@ const EditorPage = () => {
   return (
     <div className="overleaf-container">
       {/* Header */}
-      <div className="overleaf-header">
+      {/* <div className="overleaf-header">
         <div className="overleaf-logo">Dociere</div>
         <div className="overleaf-project-name">
           {currentProject ? currentProject.name : "No Project Selected"}
         </div>
-        <div className="overleaf-actions">
+        <div className="overleaf-actions"> */}
           {/* <button className="btn-header" onClick={createProject}>
             📁 New Project
           </button> */}
@@ -360,25 +360,25 @@ const EditorPage = () => {
           >
             💾 Save
           </button> */}
-          <button
+          {/* <button
             className="btn-header primary"
             onClick={compileDocument}
             disabled={!currentProject || isCompiling}
           >
             {isCompiling ? "🔄 Compiling..." : "🚀 Compile PDF"}
-          </button>
-        </div>
-      </div>
+          </button> */}
+        {/* </div> */}
+      {/* </div> */}
 
       <div className="overleaf-main">
         {/* Sidebar */}
-        <SectionSpace
+        {/* <SectionSpace
           projects={projects}
           currentProject={currentProject}
           activeFile={activeFile}
           loadProject={loadProject}
           setActiveFile={setActiveFile}
-        />
+        /> */}
 
 
         {/* Editor Area */}

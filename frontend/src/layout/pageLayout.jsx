@@ -9,10 +9,10 @@ const PageLayout = () => {
     <>
       <NavBar />
       <div className="flex flex-row">
-        <div className="mr-20">
+        <div className="mr-10">
           <SideBar />
         </div>
-        <div className="w-full h-auto mt-16 mb-7 mr-8">
+        <div className="w-full h-auto mt-10">
           <Outlet />
         </div>
       </div>
