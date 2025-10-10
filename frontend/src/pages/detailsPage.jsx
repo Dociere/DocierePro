@@ -220,7 +220,7 @@ const DetailsPage = () => {
             <input
               id="githubUrl"
               type="text"
-              value={title}
+              // value={title}
               // placeholder="Github URL"
               // onChange={(e) => setTitle(e.target.value)}
               className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
