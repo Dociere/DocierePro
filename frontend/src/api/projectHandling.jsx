@@ -3,24 +3,32 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000";
 
-export const createProject = async (title, e) => {
-  // const [error, setError] = useState("");
-  //   const name = prompt("Enter project name:");
+export const createProject = async (
+  title,
+  authorDetails,
+  userIdea,
+  isGenChecked,
+  e
+) => {
   e.preventDefault();
   if (!title) return;
 
   try {
-    //     setIsLoading(true);
-    const response = await axios.post(`${API_URL}/api/projects/create`, {
+    const payload = {
       title,
-    });
+      authorDetails,
+      generateBoilerplate: isGenChecked,
+      userIdea: isGenChecked ? userIdea : null,
+    };
+
+    const response = await axios.post(
+      `${API_URL}/api/projects/create`,
+      payload
+    );
     console.log(`Project Successfully Created - ${title}`);
-    // await loadProjects();
-    // loadProject(response.data.project.id);
+    return response.data.project.id; // Return project ID for navigation
   } catch (error) {
     console.log("Failed to create project: " + error.message);
+    throw error;
   }
-  // finally {
-  //   setIsLoading(false);
-  // }
 };

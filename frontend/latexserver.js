@@ -509,90 +509,99 @@ app.post("/api/citation/compile", async (req, res) => {
   console.log("📚 Received citation compilation request");
 
   try {
-    const { authors, title, journal, volume, issue, pages, year, doi, format, citationNumber } =
+    const { authors, title, journal, volume, issue, pages, year, doi, format, citationNumber, customLatex } =
       req.body;
-
-    if (!authors || !title || !year) {
-      return res
-        .status(400)
-        .json({ error: "Authors, title, and year are required" });
-    }
 
     let citationLatex = "";
 
-    // Generate citation based on format
-    switch (format) {
-      case "IEEE":
-        citationLatex = generateIEEECitation({
-          authors,
-          title,
-          journal,
-          volume,
-          issue,
-          pages,
-          year,
-          doi,
-        });
-        break;
-      case "APA":
-        citationLatex = generateAPACitation({
-          authors,
-          title,
-          journal,
-          volume,
-          issue,
-          pages,
-          year,
-          doi,
-        });
-        break;
-      case "MLA":
-        citationLatex = generateMLACitation({
-          authors,
-          title,
-          journal,
-          volume,
-          issue,
-          pages,
-          year,
-          doi,
-        });
-        break;
-      case "Chicago":
-        citationLatex = generateChicagoCitation({
-          authors,
-          title,
-          journal,
-          volume,
-          issue,
-          pages,
-          year,
-          doi,
-        });
-        break;
-      case "Harvard":
-        citationLatex = generateHarvardCitation({
-          authors,
-          title,
-          journal,
-          volume,
-          issue,
-          pages,
-          year,
-          doi,
-        });
-        break;
-      default:
-        citationLatex = generateIEEECitation({
-          authors,
-          title,
-          journal,
-          volume,
-          issue,
-          pages,
-          year,
-          doi,
-        });
+    // CASE 1: Request from Recompile (has customLatex)
+    if (customLatex) {
+      console.log("🔄 Recompiling with custom LaTeX");
+      citationLatex = customLatex;
+    } 
+    // CASE 2: Request from Generate Citation (has form data)
+    else {
+      console.log("🆕 Generating new citation from form data");
+      if (!authors || !title || !year) {
+        return res
+          .status(400)
+          .json({ error: "Authors, title, and year are required" });
+      }
+
+      // Generate citation based on format
+      switch (format) {
+        case "IEEE":
+          citationLatex = generateIEEECitation({
+            authors,
+            title,
+            journal,
+            volume,
+            issue,
+            pages,
+            year,
+            doi,
+          });
+          break;
+        case "APA":
+          citationLatex = generateAPACitation({
+            authors,
+            title,
+            journal,
+            volume,
+            issue,
+            pages,
+            year,
+            doi,
+          });
+          break;
+        case "MLA":
+          citationLatex = generateMLACitation({
+            authors,
+            title,
+            journal,
+            volume,
+            issue,
+            pages,
+            year,
+            doi,
+          });
+          break;
+        case "Chicago":
+          citationLatex = generateChicagoCitation({
+            authors,
+            title,
+            journal,
+            volume,
+            issue,
+            pages,
+            year,
+            doi,
+          });
+          break;
+        case "Harvard":
+          citationLatex = generateHarvardCitation({
+            authors,
+            title,
+            journal,
+            volume,
+            issue,
+            pages,
+            year,
+            doi,
+          });
+          break;
+        default:
+          citationLatex = generateIEEECitation({
+            authors,
+            title,
+            journal,
+            volume,
+            issue,
+            pages,
+            year,
+            doi,
+          });
+      }
     }
 
     const timestamp = Date.now();
@@ -651,9 +660,9 @@ app.post("/api/citation/compile", async (req, res) => {
       res.json({
         success: true,
         previewUrl: `/output/final_${imgFileName}`,
-        latexCode: citationLatex,
+        latexCode: citationLatex, // Return just the citation content
         format: format,
-        message: "Citation compiled successfully",
+        message: customLatex ? "Citation recompiled successfully" : "Citation generated successfully",
       });
     } catch (imageError) {
       console.error("⚠️ Image conversion failed:", imageError.message);

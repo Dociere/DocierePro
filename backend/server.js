@@ -5,9 +5,13 @@ const path = require("path");
 const { exec } = require("child_process");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
+const axios = require("axios");
+const dotenv = require("dotenv");
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const AI_SERVICE_URL = "http://localhost:5025";
 
 // Middleware
 app.use(
@@ -24,6 +28,27 @@ const PROJECTS_DIR = path.join(__dirname, "projects");
 const TEMP_DIR = path.join(__dirname, "temp");
 const OUTPUT_DIR = path.join(__dirname, "output");
 
+// Helper function for default template
+function getDefaultTemplate(title, authorDetails) {
+  return `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{amsmath}
+\\usepackage{amsfonts}
+\\usepackage{amssymb}
+\\usepackage{graphicx}
+
+\\title{${title || "New Document"}}
+\\author{${authorDetails?.name || "Author Name"}}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+\\section{Introduction}
+Welcome to your new LaTeX document! Start writing your content here.
+
+\\end{document}`;
+}
 // Initialize directories
 async function initDirectories() {
   await fs.ensureDir(PROJECTS_DIR);
@@ -115,47 +140,44 @@ app.get("/api/health", (req, res) => {
 // API: Create new project
 app.post("/api/projects/create", async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, authorDetails, generateBoilerplate, userIdea } = req.body;
     const projectId = uuidv4();
     const projectDir = path.join(PROJECTS_DIR, projectId);
-
     await fs.ensureDir(projectDir);
 
-    const defaultContent = `\\documentclass{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage{amsmath}
-\\usepackage{amsfonts}
-\\usepackage{amssymb}
-\\usepackage{graphicx}
+    let defaultContent;
+    console.log("🆕 Creating new project:", title);
+    console.log(authorDetails);
+    console.log(`Generate Boilerplate: ${generateBoilerplate}`);
+    console.log(`User Idea: ${userIdea}`);
+    if (generateBoilerplate && userIdea) {
+      // Call Python AI service
+      try {
+        console.log("🤖 Generating LaTeX content via AI...");
+        const aiResponse = await axios.post(
+          `${AI_SERVICE_URL}/api/generate-latex`,
+          {
+            userIdea,
+            title,
+            templateType: req.body.templateType || "Blank Document",
+            authorDetails,
+          }
+        );
 
-\\title{${title || "New Document"}}
-\\author{Author Name}
-\\date{\\today}
-
-\\begin{document}
-
-\\maketitle
-
-\\section{Introduction}
-Welcome to your news LaTeX document! Start writing your content here.
-
-\\section{Mathematics}
-Here's an example of a mathematical equation:
-\\[E = mc^2\\]
-
-And some inline math: $\\alpha + \\beta = \\gamma$
-
-\\section{Lists}
-\\begin{itemize}
-    \\item First item
-    \\item Second item
-    \\item Third item
-\\end{itemize}
-
-\\section{Conclusion}
-Your document content goes here.
-
-\\end{document}`;
+        if (aiResponse.data.success) {
+          defaultContent = aiResponse.data.latexContent;
+          console.log("✅ AI-generated LaTeX content received");
+        } else {
+          throw new Error("AI generation failed");
+        }
+      } catch (aiError) {
+        console.error("AI generation error:", aiError);
+        // Fallback to default template
+        defaultContent = getDefaultTemplate(title, authorDetails);
+      }
+    } else {
+      defaultContent = getDefaultTemplate(title, authorDetails);
+    }
 
     const projectData = {
       id: projectId,
@@ -191,7 +213,6 @@ Your document content goes here.
     });
   }
 });
-
 // API: List all projects
 app.get("/api/projects", async (req, res) => {
   try {
