@@ -350,24 +350,24 @@ const EditorPage = () => {
           {currentProject ? currentProject.name : "No Project Selected"}
         </div>
         <div className="overleaf-actions"> */}
-          {/* <button className="btn-header" onClick={createProject}>
+      {/* <button className="btn-header" onClick={createProject}>
             📁 New Project
           </button> */}
-          {/* <button
+      {/* <button
             className="btn-header"
             onClick={saveProject}
             disabled={!currentProject}
           >
             💾 Save
           </button> */}
-          {/* <button
+      {/* <button
             className="btn-header primary"
             onClick={compileDocument}
             disabled={!currentProject || isCompiling}
           >
             {isCompiling ? "🔄 Compiling..." : "🚀 Compile PDF"}
           </button> */}
-        {/* </div> */}
+      {/* </div> */}
       {/* </div> */}
 
       <div className="overleaf-main">
@@ -380,10 +380,9 @@ const EditorPage = () => {
           setActiveFile={setActiveFile}
         /> */}
 
-
         {/* Editor Area */}
-        <div className="overleaf-editor-area">
-          <div className="editor-content">
+        <div className="h-[calc(100vh-4rem)] w-full">
+          <div className="flex h-full">
             {/* LaTeX Code Editor Panel */}
             <MonacoEditorPanel
               value={latexContent}
