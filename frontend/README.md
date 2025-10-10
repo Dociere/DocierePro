@@ -11,8 +11,6 @@ Currently, two official plugins are available:
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-
-
 ## MATH EQUATION FEATURE
 
 npm i react-icons
@@ -22,6 +20,7 @@ sudo apt update
 sudo apt install texlive-latex-base texlive-latex-extra texlive-fonts-recommended
 sudo apt-get install poppler-utils
 
-npm run dev
-node latexserver.js
-
+frontend: npm run dev |
+frontend: node latexserver.js |
+backend: npm run dev |
+online-backend: npm run dev |
