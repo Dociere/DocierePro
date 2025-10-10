@@ -13,6 +13,8 @@ const DetailsPage = () => {
   const [authorDegree, setAuthorDegree] = useState("");
   const [isFormValid, setIsFormValid] = useState(false);
   const [isGenChecked, setIsGenChecked] = useState(false);
+  const [userIdea, setUserIdea] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { templateTitle } = useParams(); // Get the template title from the URL
 
@@ -48,9 +50,32 @@ const DetailsPage = () => {
   };
 
   const handleNextClick = async (e) => {
-    e.preventDefault(); // Prevent default form submission
-    await createProject(title, e); // Perform your project creation logic
-    navigate("/canvas"); // Manually redirect after project creation
+    e.preventDefault();
+    setIsGenerating(true);
+
+    try {
+      const authorDetails = {
+        name: authorName,
+        email: authorEmail,
+        institute: authorInstitute,
+        degree: authorDegree,
+      };
+
+      const projectId = await createProject(
+        title,
+        authorDetails,
+        userIdea,
+        isGenChecked,
+        e
+      );
+
+      navigate("/canvas");
+    } catch (error) {
+      console.error("Project creation failed:", error);
+      // Show error to user
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -175,19 +200,17 @@ const DetailsPage = () => {
 
         {isGenChecked && (
           <>
-            <label
-              htmlFor="title"
-              className="text-[#343434] text-base font-medium font-inter block"
-            >
-              <span className="text-red-400 text-xs mr-1">*</span>Ideas abstract
-              / Research details:
-            </label>
-
-            <textarea
-              name="paper_details"
-              className="mt-3 w-full h-56 font-inter placeholder:text-gray-600 p-5 resize-none"
-              placeholder="Enter your Idea here ..."
-            ></textarea>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Describe your document idea
+              </label>
+              <textarea
+                value={userIdea}
+                onChange={(e) => setUserIdea(e.target.value)}
+                placeholder="E.g., A research paper on machine learning applications in healthcare..."
+                className="w-full max-w-md h-32 border border-[#CFCFCF] bg-[#F9F9F9] px-2 py-2 resize-none"
+              />
+            </div>
           </>
         )}
 
