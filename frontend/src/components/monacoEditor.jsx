@@ -9,7 +9,7 @@ const MonacoEditorPanel = ({
 }) => {
   return (
     <div className="code-panel">
-      <div className="bg-gray-100 pt-2 pb-1 mb-5 border-b-2 border-gray-200">
+      <div className="bg-gray-100 pt-2 pb-1 border-b-2 border-gray-200">
         <div className="font-inter text-center text-gray-700 font-medium text-xs">
           Full code view
         </div>

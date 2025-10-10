@@ -20,7 +20,7 @@ function startingPage() {
 
   return (
     <>
-      <div className="mt-6 ml-28 w-[72vw]">
+      <div className="mt-6 ml-28 w-[72vw] mb-10">
         <p className="font-playfair text-5xl font-bold">Templates</p>
         <div className=" flex flex-row mt-2 justify-between w-full">
           <div>
