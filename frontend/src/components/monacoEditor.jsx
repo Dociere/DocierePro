@@ -8,7 +8,7 @@ const MonacoEditorPanel = ({
   handleLatexChange,
 }) => {
   return (
-    <div className="code-panel">
+    <div className="code-panel ml-14">
       <div className="bg-gray-100 pt-2 pb-1 border-b-2 border-gray-200">
         <div className="font-inter text-center text-gray-700 font-medium text-xs">
           Full code view

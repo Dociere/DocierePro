@@ -8,9 +8,8 @@
   /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
     sans-serif;
   background: #f5f5f5; */
-  /* overflow: hidden; */
+/* overflow: hidden; */
 /* }  */
-
 
 /* .App {
   height: 100vh;
@@ -80,21 +79,21 @@
 }
 
 /* Main Content */
-.overleaf-main {
+/* .overleaf-main {
   flex: 1;
   display: flex;
   overflow: hidden;
-}
+} */
 
 /* Sidebar */
-.overleaf-sidebar {
+/* .overleaf-sidebar {
   width: 260px;
   background: #f8f9fa;
   border-right: 1px solid #dee2e6;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-}
+} */
 
 .sidebar-section {
   padding: 16px 20px;
@@ -153,11 +152,11 @@
 }
 
 /* Editor Area */
-.overleaf-editor-area {
+/* .overleaf-editor-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-}
+} */
 
 .editor-tabs {
   background: white;
