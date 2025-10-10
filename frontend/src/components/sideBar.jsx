@@ -109,7 +109,7 @@ const DynamicSideBar = () => {
             </span>
           </Link>
           {/* Compile */}
-          <Link to="/canvas">
+          <div>
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Compile"
@@ -120,7 +120,7 @@ const DynamicSideBar = () => {
                 Compile
               </span>
             </span>
-          </Link>
+          </div>
         </div>
       </div>
 

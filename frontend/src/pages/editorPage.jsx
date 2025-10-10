@@ -361,12 +361,12 @@ const EditorPage = () => {
             💾 Save
           </button> */}
       {/* <button
-            className="btn-header primary"
-            onClick={compileDocument}
-            disabled={!currentProject || isCompiling}
-          >
-            {isCompiling ? "🔄 Compiling..." : "🚀 Compile PDF"}
-          </button> */}
+        className="btn-header primary"
+        onClick={compileDocument}
+        disabled={!currentProject || isCompiling}
+      >
+        {isCompiling ? "🔄 Compiling..." : "🚀 Compile PDF"}
+      </button> */}
       {/* </div> */}
       {/* </div> */}
 
