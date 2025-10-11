@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
@@ -10,15 +10,39 @@ import MathIcon from "../assets/icons/mathIcon.svg?react";
 import ExtensionIcon from "../assets/icons/extensionIcon.svg?react";
 import CompileIcon from "../assets/icons/compileIcon.svg?react";
 import SectionSpace from "./sectionSpace";
+import { projectContext } from "../context/useProject";
+import { compileDocument } from "../api/projectHandling";
 
 const DynamicSideBar = () => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
   const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
+  const { projectDetails } = useContext(projectContext);
+  const {
+    currentProject,
+    activeFile,
+    isCompiling,
+    compilationStatus,
+    compilationMessage,
+    pdfUrl,
+    latexContent,
+  } = projectDetails;
 
   const handleMathIconClick = (e) => {
     e.preventDefault();
     setIsMathModalOpen(true);
+  };
+
+  const handleCompile = () => {
+    compileDocument(
+      currentProject,
+      activeFile,
+      isCompiling,
+      compilationStatus,
+      compilationMessage,
+      pdfUrl,
+      latexContent
+    );
   };
 
   const handleCitationIconClick = (e) => {
@@ -109,7 +133,7 @@ const DynamicSideBar = () => {
             </span>
           </Link>
           {/* Compile */}
-          <div>
+          <div onClick={handleCompile}>
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Compile"
