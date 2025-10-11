@@ -12,6 +12,7 @@ import {
   latexToRichText,
   richTextToLatex,
 } from "../utils/latexUtility.jsx";
+import { loadProjects } from "../api/projectHandling.jsx";
 import SectionSpace from "../components/sectionSpace.jsx";
 
 // const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -40,9 +41,19 @@ const EditorPage = () => {
   const updateTimeout = useRef(null);
 
   useEffect(() => {
-    loadProjects();
+    fetchData();
     checkServerHealth();
   }, []);
+
+  const fetchData = async () => {
+    const { Projects, Loading, CurrentProject, ActiveFile } =
+      await loadProjects();
+    setProjects(Projects);
+    setIsLoading(Loading);
+    setCurrentProject(CurrentProject);
+    setActiveFile(ActiveFile);
+    checkServerHealth();
+  };
 
   // Update Rich Text when LaTeX changes (WITH VALIDATION)
   useEffect(() => {
@@ -92,35 +103,35 @@ const EditorPage = () => {
     }
   };
 
-  const loadProjects = async () => {
-    try {
-      setIsLoading(true);
-      const response = await axios.get(`${API_URL}/api/projects`);
-      setProjects(response.data);
+  // const loadProjects = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     const response = await axios.get(`${API_URL}/api/projects`);
+  //     setProjects(response.data);
 
-      if (response.data.length > 0) {
-        loadProject(response.data[0].id);
-      }
-    } catch (error) {
-      setError("Failed to load projects: " + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     if (response.data.length > 0) {
+  //       loadProject(response.data[0].id);
+  //     }
+  //   } catch (error) {
+  //     setError("Failed to load projects: " + error.message);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
-  const loadProject = async (projectId) => {
-    try {
-      setIsLoading(true);
-      const response = await axios.get(`${API_URL}/api/projects/${projectId}`);
-      setCurrentProject(response.data.project);
-      setActiveFile(response.data.project.activeFile || "main.tex");
-      setError("");
-    } catch (error) {
-      setError("Failed to load project: " + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // const loadProject = async (projectId) => {
+  //   try {
+  //     setIsLoading(true);
+  //     const response = await axios.get(`${API_URL}/api/projects/${projectId}`);
+  //     setCurrentProject(response.data.project);
+  //     setActiveFile(response.data.project.activeFile || "main.tex");
+  //     setError("");
+  //   } catch (error) {
+  //     setError("Failed to load project: " + error.message);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   // const createProject = async () => {
   //   const name = prompt("Enter project name:");
