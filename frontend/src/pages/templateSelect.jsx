@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import GoBack from "../assets/icons/goBack.svg?react";
 import TemplateCards from "../components/templateCards";
 
 function TemplateSelect() {
@@ -20,8 +21,14 @@ function TemplateSelect() {
 
   return (
     <>
+      <Link to="/">
+        <div className="font-inter ml-24 mt-10 text-sm flex ">
+          <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5" />
+          <p className="ml-2">Go Back</p>
+        </div>
+      </Link>
       <div className="flex justify-center">
-        <div className="mt-6 ml-28 w-[72vw] mb-10">
+        <div className="mt-0 ml-28 w-[72vw] mb-10">
           <p className="font-playfair text-5xl font-bold">Templates</p>
           <div className=" flex flex-row mt-2 justify-between w-full">
             <div>

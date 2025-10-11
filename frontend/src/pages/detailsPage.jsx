@@ -211,7 +211,7 @@ const DetailsPage = () => {
                 className="w-full max-w-md h-32 border border-[#CFCFCF] bg-[#F9F9F9] px-2 py-2 resize-none"
               />
             </div>
-<label
+            <label
               htmlFor="githubUrl"
               className="text-[#343434] text-base font-medium font-inter block mt-5"
             >
@@ -230,7 +230,7 @@ const DetailsPage = () => {
 
         {/* Buttons */}
         <div className="flex justify-end gap-4 mt-8">
-          <Link to="/">
+          <Link to="/template">
             <div className="w-32 h-8 bg-[#D9D9D9] flex items-center justify-center">
               <span className="text-[#5F5F5F] text-base font-semibold font-inter">
                 Back
