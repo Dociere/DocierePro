@@ -1,12 +1,7 @@
 import React from "react";
 import MonacoEditor from "@monaco-editor/react";
 
-const MonacoEditorPanel = ({
-  value,
-  onChange,
-  monacoEditorRef,
-  handleLatexChange,
-}) => {
+const MonacoEditorPanel = ({ value, handleLatexChange, monacoEditorRef }) => {
   return (
     <div className="code-panel ml-14">
       <div className="bg-gray-100 pt-2 pb-1 border-b-2 border-gray-200">
@@ -18,7 +13,7 @@ const MonacoEditorPanel = ({
         <MonacoEditor
           height="100%"
           defaultLanguage="latex"
-          value={value} // Use local state, not project state
+          value={value}
           onChange={handleLatexChange}
           theme="vs-light"
           onMount={(editor, monaco) => {
@@ -36,7 +31,6 @@ const MonacoEditorPanel = ({
             roundedSelection: false,
             readOnly: false,
             cursorStyle: "line",
-            automaticLayout: true,
           }}
         />
       </div>

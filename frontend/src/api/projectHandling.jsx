@@ -1,12 +1,11 @@
 /*Functions in this file:
 - createProject()
-- loadProjects(): setIsLoading, setProjects, loadProject(), setError
+- loadProjects()
 - loadProject()
 - saveProject()
-- compileDocument()
+- compileDocument(): setIsCompiling, setCompilationStatus, setCompilationMessage, currentProject, activeFile, latexContent, setPdfUrl, saveProject()
 */
 
-// const [isLoading, setIsLoading] = useState(false);
 import axios from "axios";
 
 const API_URL = "http://localhost:5000";
@@ -82,86 +81,104 @@ export const loadProject = async (projectId) => {
   }
 };
 
-// export const saveProject = async () => {
-//   if (!currentProject) return;
+export const saveProject = async (
+  currentProject,
+  activeFile,
+  compilationStatus,
+  compilationMessage
+) => {
+  if (!currentProject) return;
 
-//   try {
-//     await axios.put(`${API_URL}/api/projects/${currentProject.id}`, {
-//       files: currentProject.files,
-//       activeFile: activeFile,
-//     });
+  try {
+    await axios.put(`${API_URL}/api/projects/${currentProject.id}`, {
+      files: currentProject.files,
+      activeFile: activeFile,
+    });
 
-//     setCompilationStatus("success");
-//     setCompilationMessage("Project saved successfully");
-//     setTimeout(() => {
-//       setCompilationStatus("");
-//       setCompilationMessage("");
-//     }, 3000);
-//   } catch (error) {
-//     setError("Failed to save project: " + error.message);
-//   }
-// };
+    compilationStatus = "success";
+    compilationMessage = "Project saved successfully";
+    setTimeout(() => {
+      compilationStatus = "";
+      compilationMessage = "";
+    }, 3000);
+  } catch (error) {
+    console.log("Failed to save project: " + error.message);
+  }
+};
 
-// export const compileDocument = async () => {
-//   if (!currentProject || !activeFile) return;
+export const compileDocument = async (
+  currentProject,
+  activeFile,
+  isCompiling,
+  compilationStatus,
+  compilationMessage,
+  pdfUrl,
+  latexContent
+) => {
+  if (!currentProject || !activeFile) return;
 
-//   setIsCompiling(true);
-//   setCompilationStatus("compiling");
-//   setCompilationMessage("Compiling document...");
+  isCompiling = true;
+  compilationStatus = "compiling";
+  compilationMessage = "Compiling document...";
 
-//   try {
-//     // Use the current LaTeX content for compilation
-//     const contentToCompile = latexContent;
+  try {
+    // Use the current LaTeX content for compilation
+    const contentToCompile = latexContent;
 
-//     // Validate document before compilation
-//     if (
-//       !contentToCompile.includes("\\begin{document}") ||
-//       !contentToCompile.includes("\\end{document}")
-//     ) {
-//       throw new Error("Invalid LaTeX document structure");
-//     }
+    // Validate document before compilation
+    if (
+      !contentToCompile.includes("\\begin{document}") ||
+      !contentToCompile.includes("\\end{document}")
+    ) {
+      throw new Error("Invalid LaTeX document structure");
+    }
 
-//     console.log(
-//       "Compiling LaTeX document:",
-//       contentToCompile.substring(0, 200) + "..."
-//     );
+    console.log(
+      "Compiling LaTeX document:",
+      contentToCompile.substring(0, 200) + "..."
+    );
 
-//     const response = await axios.post(`${API_URL}/api/compile`, {
-//       content: contentToCompile,
-//       projectId: currentProject.id,
-//     });
+    const response = await axios.post(`${API_URL}/api/compile`, {
+      content: contentToCompile,
+      projectId: currentProject.id,
+    });
 
-//     if (response.data.success) {
-//       const pdfBlob = new Blob(
-//         [Uint8Array.from(atob(response.data.pdf), (c) => c.charCodeAt(0))],
-//         { type: "application/pdf" }
-//       );
-//       const newPdfUrl = URL.createObjectURL(pdfBlob);
+    if (response.data.success) {
+      const pdfBlob = new Blob(
+        [Uint8Array.from(atob(response.data.pdf), (c) => c.charCodeAt(0))],
+        { type: "application/pdf" }
+      );
+      const newPdfUrl = URL.createObjectURL(pdfBlob);
 
-//       if (pdfUrl) {
-//         URL.revokeObjectURL(pdfUrl);
-//       }
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
 
-//       setPdfUrl(newPdfUrl);
-//       setCompilationStatus("success");
-//       setCompilationMessage("PDF compiled successfully!");
+      pdfUrl = newPdfUrl;
+      compilationStatus = "success";
+      compilationMessage = "PDF compiled successfully!";
 
-//       // Auto-save after successful compilation
-//       await saveProject();
-//     } else {
-//       setCompilationStatus("error");
-//       setCompilationMessage(`Compilation failed: ${response.data.error}`);
-//       console.log("Compilation details:", response.data);
-//     }
-//   } catch (error) {
-//     setCompilationStatus("error");
-//     setCompilationMessage("Compilation failed: " + error.message);
-//     console.error("Compilation error:", error);
-//   } finally {
-//     setIsCompiling(false);
-//     setTimeout(() => {
-//       setCompilationStatus("");
-//       setCompilationMessage("");
-//     }, 8000);
-//   }
-// };
+      // Auto-save after successful compilation
+      await saveProject(
+        currentProject,
+        activeFile,
+        compilationStatus,
+        compilationMessage
+      );
+    } else {
+      compilationStatus = "error";
+      compilationMessage = `Compilation failed: ${response.data.error}`;
+      console.log("Compilation details:", response.data);
+    }
+  } catch (error) {
+    compilationStatus = "error";
+    compilationMessage = "Compilation failed: " + error.message;
+    console.error("Compilation error:", error);
+  } finally {
+    isCompiling = false;
+    setTimeout(() => {
+      compilationStatus = "";
+      compilationMessage = "";
+    }, 8000);
+  }
+};

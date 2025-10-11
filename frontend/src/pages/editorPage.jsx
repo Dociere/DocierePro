@@ -1,6 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-// import MonacoEditor from "@monaco-editor/react";
-// import ReactQuill from "react-quill-new";
+import React, { useEffect, useContext, useRef } from "react";
 import MonacoEditorPanel from "../components/monacoEditor";
 import RichTextEditorPanel from "../components/textEditor";
 import "react-quill-new/dist/quill.snow.css";
@@ -13,32 +11,19 @@ import {
   richTextToLatex,
 } from "../utils/latexUtility.jsx";
 import { loadProjects } from "../api/projectHandling.jsx";
-import SectionSpace from "../components/sectionSpace.jsx";
+import { projectContext } from "../context/useProject.jsx";
 
 // const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 const API_URL = "http://localhost:5000";
 
 const EditorPage = () => {
-  const [currentProject, setCurrentProject] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [activeFile, setActiveFile] = useState("main.tex");
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [compilationStatus, setCompilationStatus] = useState("");
-  const [compilationMessage, setCompilationMessage] = useState("");
-  const [pdfUrl, setPdfUrl] = useState("");
-  const [richTextContent, setRichTextContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  // Monaco Editor reference and cursor position
-  const monacoEditorRef = useRef(null);
-  const [latexContent, setLatexContent] = useState(""); // Local LaTeX state
+  const { projectDetails, updateProjectDetails } = useContext(projectContext);
 
   // Sync control
   const isUpdatingFromLatex = useRef(false);
   const isUpdatingFromRichText = useRef(false);
   const updateTimeout = useRef(null);
+  const monacoEditorRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -48,24 +33,27 @@ const EditorPage = () => {
   const fetchData = async () => {
     const { Projects, Loading, CurrentProject, ActiveFile } =
       await loadProjects();
-    setProjects(Projects);
-    setIsLoading(Loading);
-    setCurrentProject(CurrentProject);
-    setActiveFile(ActiveFile);
+    updateProjectDetails({
+      project: Projects,
+      currentProject: CurrentProject,
+      activeFile: ActiveFile,
+      isLoading: Loading,
+    });
     checkServerHealth();
   };
 
   // Update Rich Text when LaTeX changes (WITH VALIDATION)
   useEffect(() => {
     if (
-      currentProject &&
-      activeFile &&
-      currentProject.files[activeFile] &&
+      projectDetails.currentProject &&
+      projectDetails.activeFile &&
+      projectDetails.currentProject.files[projectDetails.activeFile] &&
       !isUpdatingFromRichText.current
     ) {
       isUpdatingFromLatex.current = true;
 
-      const latexDoc = currentProject.files[activeFile].content;
+      const latexDoc =
+        projectDetails.currentProject.files[projectDetails.activeFile].content;
 
       // Validate LaTeX document structure
       if (
@@ -74,7 +62,7 @@ const EditorPage = () => {
       ) {
         const bodyContent = extractLatexBody(latexDoc);
         const richTextHtml = latexToRichText(bodyContent);
-        setRichTextContent(richTextHtml);
+        updateProjectDetails({ richTextContent: richTextHtml });
       } else {
         console.warn("Invalid LaTeX document structure detected");
       }
@@ -83,106 +71,77 @@ const EditorPage = () => {
         isUpdatingFromLatex.current = false;
       }, 100);
     }
-  }, [currentProject, activeFile, extractLatexBody, latexToRichText]);
+  }, [projectDetails.currentProject, projectDetails.activeFile]);
 
   // Update local LaTeX content when project changes
   useEffect(() => {
-    if (currentProject && activeFile && currentProject.files[activeFile]) {
-      setLatexContent(currentProject.files[activeFile].content);
+    if (
+      projectDetails.currentProject &&
+      projectDetails.activeFile &&
+      projectDetails.currentProject.files[projectDetails.activeFile]
+    ) {
+      updateProjectDetails({
+        latexContent:
+          projectDetails.currentProject.files[projectDetails.activeFile]
+            .content,
+      });
     }
-  }, [currentProject, activeFile]);
+  }, [projectDetails.currentProject, projectDetails.activeFile]);
 
   // API functions
   const checkServerHealth = async () => {
     try {
       await axios.get(`${API_URL}/api/health`);
     } catch (error) {
-      setError(
-        "Cannot connect to server. Please make sure the backend is running."
-      );
+      updateProjectDetails({
+        error:
+          "Cannot connect to server. Please make sure the backend is running.",
+      });
     }
   };
 
-  // const loadProjects = async () => {
-  //   try {
-  //     setIsLoading(true);
-  //     const response = await axios.get(`${API_URL}/api/projects`);
-  //     setProjects(response.data);
-
-  //     if (response.data.length > 0) {
-  //       loadProject(response.data[0].id);
-  //     }
-  //   } catch (error) {
-  //     setError("Failed to load projects: " + error.message);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-  // const loadProject = async (projectId) => {
-  //   try {
-  //     setIsLoading(true);
-  //     const response = await axios.get(`${API_URL}/api/projects/${projectId}`);
-  //     setCurrentProject(response.data.project);
-  //     setActiveFile(response.data.project.activeFile || "main.tex");
-  //     setError("");
-  //   } catch (error) {
-  //     setError("Failed to load project: " + error.message);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-  // const createProject = async () => {
-  //   const name = prompt("Enter project name:");
-  //   if (!name) return;
-
-  //   try {
-  //     setIsLoading(true);
-  //     const response = await axios.post(`${API_URL}/api/projects/create`, {
-  //       name,
-  //     });
-  //     await loadProjects();
-  //     loadProject(response.data.project.id);
-  //   } catch (error) {
-  //     setError("Failed to create project: " + error.message);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const saveProject = async () => {
-    if (!currentProject) return;
+    if (!projectDetails.currentProject) return;
 
     try {
-      await axios.put(`${API_URL}/api/projects/${currentProject.id}`, {
-        files: currentProject.files,
-        activeFile: activeFile,
+      await axios.put(
+        `${API_URL}/api/projects/${projectDetails.currentProject.id}`,
+        {
+          files: projectDetails.currentProject.files,
+          activeFile: projectDetails.activeFile,
+        }
+      );
+
+      updateProjectDetails({
+        compilationStatus: "success",
+        compilationMessage: "Project saved successfully",
       });
 
-      setCompilationStatus("success");
-      setCompilationMessage("Project saved successfully");
       setTimeout(() => {
-        setCompilationStatus("");
-        setCompilationMessage("");
+        updateProjectDetails({
+          compilationStatus: "",
+          compilationMessage: "",
+        });
       }, 3000);
     } catch (error) {
-      setError("Failed to save project: " + error.message);
+      updateProjectDetails({
+        error: "Failed to save project: " + error.message,
+      });
     }
   };
 
   const compileDocument = async () => {
-    if (!currentProject || !activeFile) return;
+    if (!projectDetails.currentProject || !projectDetails.activeFile) return;
 
-    setIsCompiling(true);
-    setCompilationStatus("compiling");
-    setCompilationMessage("Compiling document...");
+    updateProjectDetails({
+      isCompiling: true,
+      compilationStatus: "compiling",
+      compilationMessage: "Compiling document...",
+    });
 
     try {
-      // Use the current LaTeX content for compilation
-      const contentToCompile = latexContent;
+      const contentToCompile = projectDetails.latexContent;
 
-      // Validate document before compilation
       if (
         !contentToCompile.includes("\\begin{document}") ||
         !contentToCompile.includes("\\end{document}")
@@ -197,7 +156,7 @@ const EditorPage = () => {
 
       const response = await axios.post(`${API_URL}/api/compile`, {
         content: contentToCompile,
-        projectId: currentProject.id,
+        projectId: projectDetails.currentProject.id,
       });
 
       if (response.data.success) {
@@ -207,104 +166,122 @@ const EditorPage = () => {
         );
         const newPdfUrl = URL.createObjectURL(pdfBlob);
 
-        if (pdfUrl) {
-          URL.revokeObjectURL(pdfUrl);
+        if (projectDetails.pdfUrl) {
+          URL.revokeObjectURL(projectDetails.pdfUrl);
         }
 
-        setPdfUrl(newPdfUrl);
-        setCompilationStatus("success");
-        setCompilationMessage("PDF compiled successfully!");
+        updateProjectDetails({
+          pdfUrl: newPdfUrl,
+          compilationStatus: "success",
+          compilationMessage: "PDF compiled successfully!",
+        });
 
-        // Auto-save after successful compilation
         await saveProject();
       } else {
-        setCompilationStatus("error");
-        setCompilationMessage(`Compilation failed: ${response.data.error}`);
-        console.log("Compilation details:", response.data);
+        updateProjectDetails({
+          compilationStatus: "error",
+          compilationMessage: `Compilation failed: ${response.data.error}`,
+        });
       }
     } catch (error) {
-      setCompilationStatus("error");
-      setCompilationMessage("Compilation failed: " + error.message);
+      updateProjectDetails({
+        compilationStatus: "error",
+        compilationMessage: "Compilation failed: " + error.message,
+      });
       console.error("Compilation error:", error);
     } finally {
-      setIsCompiling(false);
+      updateProjectDetails({ isCompiling: false });
       setTimeout(() => {
-        setCompilationStatus("");
-        setCompilationMessage("");
+        updateProjectDetails({
+          compilationStatus: "",
+          compilationMessage: "",
+        });
       }, 8000);
     }
   };
 
   // Handle Monaco Editor changes (FIXED - No cursor jumping)
   const handleLatexChange = (value) => {
-    if (currentProject && activeFile && !isUpdatingFromLatex.current) {
-      // Update local state immediately (no re-render of Monaco)
-      setLatexContent(value);
+    if (
+      projectDetails.currentProject &&
+      projectDetails.activeFile &&
+      !isUpdatingFromLatex.current
+    ) {
+      updateProjectDetails({
+        latexContent: value,
+      });
 
-      // Debounced update to project state
       if (updateTimeout.current) {
         clearTimeout(updateTimeout.current);
       }
 
       updateTimeout.current = setTimeout(() => {
-        setCurrentProject((prev) => ({
-          ...prev,
-          files: {
-            ...prev.files,
-            [activeFile]: {
-              ...prev.files[activeFile],
-              content: value,
+        updateProjectDetails({
+          currentProject: {
+            ...projectDetails.currentProject,
+            files: {
+              ...projectDetails.currentProject.files,
+              [projectDetails.activeFile]: {
+                ...projectDetails.currentProject.files[
+                  projectDetails.activeFile
+                ],
+                content: value,
+              },
             },
           },
-        }));
+        });
       }, 300);
     }
   };
 
   // Handle Rich Text Editor changes (FIXED)
   const handleRichTextChange = (value) => {
-    if (currentProject && activeFile && !isUpdatingFromLatex.current) {
-      // Immediately update rich text
-      setRichTextContent(value);
+    if (
+      projectDetails.currentProject &&
+      projectDetails.activeFile &&
+      !isUpdatingFromLatex.current
+    ) {
+      updateProjectDetails({ richTextContent: value });
 
-      // Clear timeout
       if (updateTimeout.current) {
         clearTimeout(updateTimeout.current);
       }
 
-      // Debounced LaTeX update
       updateTimeout.current = setTimeout(() => {
         isUpdatingFromRichText.current = true;
 
         const newBodyContent = richTextToLatex(value);
-        const originalLatex = latexContent;
+        const originalLatex = projectDetails.latexContent;
         const newLatexDocument = reconstructLatexDocument(
           originalLatex,
           newBodyContent
         );
 
-        // Validate the reconstructed document
         if (
           newLatexDocument.includes("\\begin{document}") &&
           newLatexDocument.includes("\\end{document}")
         ) {
-          setLatexContent(newLatexDocument);
-          setCurrentProject((prev) => ({
-            ...prev,
-            files: {
-              ...prev.files,
-              [activeFile]: {
-                ...prev.files[activeFile],
-                content: newLatexDocument,
+          updateProjectDetails({
+            latexContent: newLatexDocument,
+            currentProject: {
+              ...projectDetails.currentProject,
+              files: {
+                ...projectDetails.currentProject.files,
+                [projectDetails.activeFile]: {
+                  ...projectDetails.currentProject.files[
+                    projectDetails.activeFile
+                  ],
+                  content: newLatexDocument,
+                },
               },
             },
-          }));
+          });
         }
 
         setTimeout(() => {
           isUpdatingFromRichText.current = false;
         }, 100);
-      }, 1000); // Reduced from 1500 to 1000ms for better responsiveness
+      }, 1000);
     }
   };
 
@@ -323,7 +300,6 @@ const EditorPage = () => {
         "custom-list-ordered": function () {
           const selection = this.quill.getSelection();
           if (selection) {
-            // Insert a simple numbered list format
             this.quill.insertText(selection.index, "\n1. ", "user");
             this.quill.setSelection(selection.index + 4);
           }
@@ -331,7 +307,6 @@ const EditorPage = () => {
         "custom-list-bullet": function () {
           const selection = this.quill.getSelection();
           if (selection) {
-            // Insert a simple bullet list format
             this.quill.insertText(selection.index, "\n• ", "user");
             this.quill.setSelection(selection.index + 3);
           }
@@ -343,7 +318,7 @@ const EditorPage = () => {
     },
   };
 
-  if (isLoading) {
+  if (projectDetails.isLoading) {
     return (
       <div className="loading-spinner">
         <div className="spinner"></div>
@@ -354,71 +329,31 @@ const EditorPage = () => {
 
   return (
     <div className="overleaf-container">
-      {/* Header */}
-      {/* <div className="overleaf-header">
-        <div className="overleaf-logo">Dociere</div>
-        <div className="overleaf-project-name">
-          {currentProject ? currentProject.name : "No Project Selected"}
-        </div>
-        <div className="overleaf-actions"> */}
-      {/* <button className="btn-header" onClick={createProject}>
-            📁 New Project
-          </button> */}
-      {/* <button
-            className="btn-header"
-            onClick={saveProject}
-            disabled={!currentProject}
-          >
-            💾 Save
-          </button> */}
-      {/* <button
-        className="btn-header primary"
-        onClick={compileDocument}
-        disabled={!currentProject || isCompiling}
-      >
-        {isCompiling ? "🔄 Compiling..." : "🚀 Compile PDF"}
-      </button> */}
-      {/* </div> */}
-      {/* </div> */}
-
       <div className="overleaf-main">
-        {/* Sidebar */}
-        {/* <SectionSpace
-          projects={projects}
-          currentProject={currentProject}
-          activeFile={activeFile}
-          loadProject={loadProject}
-          setActiveFile={setActiveFile}
-        /> */}
-
-        {/* Editor Area */}
         <div className="h-[calc(100vh-4rem)] w-full ">
           <div className="flex flex-row h-full">
-            {/* LaTeX Code Editor Panel */}
             <MonacoEditorPanel
-              value={latexContent}
+              value={projectDetails.latexContent}
               onChange={handleLatexChange}
               monacoEditorRef={monacoEditorRef}
               handleLatexChange={handleLatexChange}
             />
 
-            {/* Rich Text Editor Panel */}
             <RichTextEditorPanel
-              value={richTextContent}
+              value={projectDetails.richTextContent}
               onChange={handleRichTextChange}
               quillModules={quillModules}
-              compilationStatus={compilationStatus}
-              compilationMessage={compilationMessage}
-              pdfUrl={pdfUrl}
+              compilationStatus={projectDetails.compilationStatus}
+              compilationMessage={projectDetails.compilationMessage}
+              pdfUrl={projectDetails.pdfUrl}
             />
           </div>
         </div>
       </div>
 
-      {/* Error Display */}
-      {error && (
+      {projectDetails.error && (
         <div className="error-message">
-          <strong>Error:</strong> {error}
+          <strong>Error:</strong> {projectDetails.error}
           <button
             style={{
               float: "right",
@@ -426,7 +361,7 @@ const EditorPage = () => {
               border: "none",
               cursor: "pointer",
             }}
-            onClick={() => setError("")}
+            onClick={() => updateProjectDetails({ error: "" })}
           >
             ✕
           </button>
