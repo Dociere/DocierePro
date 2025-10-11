@@ -1,62 +1,44 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import TemplateCards from "../components/templateCards";
+import FileOpen from "../assets/icons/fileOpen.svg?react";
 
-function startingPage() {
-  const [selected, setSelected] = useState("");
-
-  const templates = [
-    "Blank Document",
-    "IEEE Format",
-    "MLA Format",
-    "APA Format",
-    "Chicago Format",
-    "Harvard Format",
-    "ACM Format",
-    "XYZ Format",
-    "ABC Format",
-    "LMNO Format",
-  ];
-
+const StartingPage = () => {
   return (
-    <>
-      <div className="flex justify-center">
-        <div className="mt-6 ml-28 w-[72vw] mb-10">
-          <p className="font-playfair text-5xl font-bold">Templates</p>
-          <div className=" flex flex-row mt-2 justify-between w-full">
-            <div>
-              <p className="text-[#7D7D7D] font-inter font-medium">
-                Select the desired template to work upon
-              </p>
+    <div className="h-auto mt-20 flex flex-col ml-52">
+      <div>
+        <div className="text-black text-5xl font-playfair font-bold leading-[32px]">
+          Docière Pro
+        </div>
+        <div className="mt-4 text-[#7D7D7D] text-3xl font-inter font-extralight tracking-wide">
+          Latex Redefined
+        </div>
+        <div className="mt-10 text-[#3B3B3B] text-lg font-inter font-medium leading-[20px]">
+          Get started
+        </div>
+
+        <div className="mt-5 gap-5 flex flex-col w-fit">
+          <Link to="/template">
+            <div className="relative text-[#AB2D2D] text-lg font-inter font-medium text-nowrap border-[#AB2D2D] pl-14 pt-[1.1vh] pb-[0.7vh] pr-10 border-[1px]">
+              <span className="absolute left-5 font-playfair top-1 text-2xl">
+                +
+              </span>
+              Create New Project
             </div>
-            <div>
-              <select
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                className="bg-[#F9F9F9] px-2 py-1 text-[#4E4E4E] text-sm border-[#CFCFCF] border-2"
-              >
-                <option value="">Template Types</option>
-                <option value="tech">Technical</option>
-                <option value="non-tech">Non-Technical</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex flex-row flex-wrap mt-10 gap-20">
-            {templates.map((templateTitle) => (
-              <Link key={templateTitle} to={`/detailPage/${templateTitle}`}>
-                <TemplateCards title={templateTitle} />
-              </Link>
-            ))}
-            {/* <TemplateCards title="IEEE Format" />
-          <TemplateCards title="MLA Format" />
-          <TemplateCards title="APA Format" />
-          <TemplateCards title="XYZ Format" />
-          <TemplateCards title="ABC Format" /> */}
+          </Link>
+          <div className="relative text-[#256081] text-lg font-inter font-medium text-nowrap border-[#256081] pl-14 pt-[1.1vh] pb-[0.7vh] pr-10 border-[1px]">
+            <span className="absolute left-5 top-[1.9vh]">
+              <FileOpen style={{ fill: "#256081" }} className="w-4 h-4" />
+            </span>
+            Open Existing Project
           </div>
         </div>
       </div>
-    </>
-  );
-}
 
-export default startingPage;
+      {/* <div className="absolute left-[211px] top-[462px] text-[#555555] text-2xl font-inter font-medium leading-[20px]">
+        Recent Projects
+      </div> */}
+    </div>
+  );
+};
+
+export default StartingPage;
