@@ -8,39 +8,23 @@ const MonacoEditorPanel = ({
   handleLatexChange,
 }) => {
   return (
-    <div className="code-panel ml-14">
-      <div className="bg-gray-100 pt-2 pb-1 border-b-2 border-gray-200">
-        <div className="font-inter text-center text-gray-700 font-medium text-xs">
-          Full code view
-        </div>
-      </div>
-      <div className="monaco-editor-container">
-        <MonacoEditor
-          height="100%"
-          defaultLanguage="latex"
-          value={value} // Use local state, not project state
-          onChange={handleLatexChange}
-          theme="vs-light"
-          onMount={(editor, monaco) => {
-            monacoEditorRef.current = editor;
-          }}
-          options={{
-            minimap: { enabled: true },
-            fontSize: 14,
-            lineNumbers: "on",
-            wordWrap: "on",
-            automaticLayout: true,
-            scrollBeyondLastLine: false,
-            folding: true,
-            selectOnLineNumbers: true,
-            roundedSelection: false,
-            readOnly: false,
-            cursorStyle: "line",
-            automaticLayout: true,
-          }}
-        />
-      </div>
-    </div>
+    <MonacoEditor
+      height="100%"
+      width="100%"
+      language="latex"
+      theme="vs-light"
+      value={value}
+      onChange={handleLatexChange}
+      onMount={(editor) => {
+        monacoEditorRef.current = editor;
+      }}
+      options={{
+        minimap: { enabled: true },
+        fontSize: 14,
+        wordWrap: "on",
+        automaticLayout: true,
+      }}
+    />
   );
 };
 
