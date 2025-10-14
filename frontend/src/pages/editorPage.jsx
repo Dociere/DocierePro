@@ -1,6 +1,7 @@
-import React, { useEffect, useContext, useRef } from "react";
+import React, { useEffect, useContext, useRef, useState } from "react";
 import MonacoEditorPanel from "../components/monacoEditor";
 import RichTextEditorPanel from "../components/textEditor";
+import SectionEditor from "../components/sectionEditor.jsx";
 import "react-quill-new/dist/quill.snow.css";
 import axios from "axios";
 import "../App.css";
@@ -16,7 +17,7 @@ import { projectContext } from "../context/useProject.jsx";
 // const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const API_URL = "http://localhost:5000";
 
-const EditorPage = () => {
+const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
 
   // Sync control
@@ -24,6 +25,7 @@ const EditorPage = () => {
   const isUpdatingFromRichText = useRef(false);
   const updateTimeout = useRef(null);
   const monacoEditorRef = useRef(null);
+  const [activeView, setActiveView] = useState("code");
 
   useEffect(() => {
     fetchData();
@@ -230,23 +232,87 @@ const EditorPage = () => {
   return (
     <div className="overleaf-container">
       <div className="overleaf-main">
-        <div className="h-[calc(100vh-4rem)] w-full ">
-          <div className="flex flex-row h-full">
-            <MonacoEditorPanel
-              value={projectDetails.latexContent}
-              onChange={handleLatexChange}
-              monacoEditorRef={monacoEditorRef}
-              handleLatexChange={handleLatexChange}
-            />
+        <div className="h-[calc(100vh-4rem)] w-full flex flex-row">
+          {/* Left Panel - Editor with Tabs */}
+          <div className="flex-1 flex flex-col ml-16 border-r border-[#CFCFCF]">
+            {/* Tab Container */}
+            <div className="border-b border-[#CFCFCF] bg-white">
+              <div className="px-2 py-1 flex items-center gap-1">
+                <div
+                  onClick={() => setActiveView("code")}
+                  className={`px-4 py-2 cursor-pointer text-sm ${
+                    activeView === "code"
+                      ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Full Code View
+                </div>
+                <div
+                  onClick={() => setActiveView("text")}
+                  className={`px-4 py-2 cursor-pointer text-sm ${
+                    activeView === "text"
+                      ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Full Text View
+                </div>
+                <div
+                  onClick={() => setActiveView("section")}
+                  className={`px-4 py-2 cursor-pointer text-sm ${
+                    activeView === "section"
+                      ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Section View
+                </div>
+              </div>
+            </div>
 
-            <RichTextEditorPanel
-              value={projectDetails.richTextContent}
-              onChange={handleRichTextChange}
-              quillModules={quillModules}
-              compilationStatus={projectDetails.compilationStatus}
-              compilationMessage={projectDetails.compilationMessage}
-              pdfUrl={projectDetails.pdfUrl}
-            />
+            {/* Editor Content */}
+            <div className="flex-1 overflow-hidden">
+              {activeView === "code" && (
+                <div className="h-full w-full">
+                  <MonacoEditorPanel
+                    value={projectDetails.latexContent}
+                    onChange={handleLatexChange}
+                    monacoEditorRef={monacoEditorRef}
+                    handleLatexChange={handleLatexChange}
+                  />
+                </div>
+              )}
+
+              {activeView === "text" && (
+                <div className="h-full w-full">
+                  <RichTextEditorPanel
+                    value={projectDetails.richTextContent}
+                    onChange={handleRichTextChange}
+                    quillModules={quillModules}
+                    compilationStatus={projectDetails.compilationStatus}
+                    compilationMessage={projectDetails.compilationMessage}
+                    pdfUrl={projectDetails.pdfUrl}
+                  />
+                </div>
+              )}
+
+              {activeView === "section" && (
+                <div className="h-full w-full overflow-y-auto bg-white">
+                  <SectionEditor />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Panel - Preview */}
+          <div className="w-1/2 flex flex-col bg-[#F9F9F9]">
+            <div className="px-4 py-3 border-b border-[#CFCFCF] bg-white">
+              <span className="text-sm font-medium text-gray-700">Preview</span>
+            </div>
+            <div className="flex-1">
+              {/* Add your preview content here, such as a live preview or a PDF viewer */}
+            </div>
           </div>
         </div>
       </div>
