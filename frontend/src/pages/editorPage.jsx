@@ -230,11 +230,11 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   }
 
   return (
-    <div className="overleaf-container">
-      <div className="overleaf-main">
-        <div className="h-[calc(100vh-4rem)] w-full flex flex-row">
+    <div className="bg-red-500 flex flex-col">
+      <div className="">
+        <div className="h-[100vh] w-full flex flex-row">
           {/* Left Panel - Editor with Tabs */}
-          <div className="flex-1 flex flex-col ml-16 border-r border-[#CFCFCF]">
+          <div className="flex-1 flex flex-col ml-16  border-r border-[#CFCFCF]">
             {/* Tab Container */}
             <div className="border-b border-[#CFCFCF] bg-white">
               <div className="px-2 py-1 flex items-center gap-1">
