@@ -9,7 +9,7 @@ const PageLayout = () => {
     <>
       <NavBar />
       <div className="flex flex-row">
-        <div>
+        <div className="mr-14">
           <SideBar />
         </div>
         <div className="w-full h-auto mt-10">
