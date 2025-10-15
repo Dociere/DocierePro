@@ -1,4 +1,10 @@
-import React, { useEffect, useContext, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useContext,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import MonacoEditorPanel from "../components/monacoEditor";
 import RichTextEditorPanel from "../components/textEditor";
 import SectionEditor from "../components/sectionEditor.jsx";
@@ -10,22 +16,29 @@ import {
   reconstructLatexDocument,
   latexToRichText,
   richTextToLatex,
+  latexToSections,
+  sectionsToLatex,
 } from "../utils/latexUtility.jsx";
 import { loadProjects } from "../api/projectHandling.jsx";
 import { projectContext } from "../context/useProject.jsx";
 
-// const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const API_URL = "http://localhost:5000";
 
 const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
 
-  // Sync control
-  const isUpdatingFromLatex = useRef(false);
-  const isUpdatingFromRichText = useRef(false);
-  const updateTimeout = useRef(null);
+  // Track which editor is actively being edited
+  const [activeEditor, setActiveEditor] = useState(null);
+
+  // Refs
   const monacoEditorRef = useRef(null);
+  const updateTimeout = useRef(null);
+  const saveTimeout = useRef(null);
+  const lastSyncedLatex = useRef("");
+  const sectionsInitialized = useRef(false);
+
   const [activeView, setActiveView] = useState("code");
+  const [sections, setSections] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -41,41 +54,58 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       activeFile: ActiveFile,
       isLoading: Loading,
     });
-    checkServerHealth();
   };
 
-  // Update Rich Text when LaTeX changes (WITH VALIDATION)
+  const checkServerHealth = async () => {
+    try {
+      await axios.get(`${API_URL}/api/health`);
+    } catch (error) {
+      updateProjectDetails({
+        error:
+          "Cannot connect to server. Please make sure the backend is running.",
+      });
+    }
+  };
+
   useEffect(() => {
     if (
       projectDetails.currentProject &&
       projectDetails.activeFile &&
       projectDetails.currentProject.files[projectDetails.activeFile] &&
-      !isUpdatingFromRichText.current
+      !sectionsInitialized.current
     ) {
-      isUpdatingFromLatex.current = true;
-
       const latexDoc =
         projectDetails.currentProject.files[projectDetails.activeFile].content;
 
-      // Validate LaTeX document structure
       if (
+        latexDoc &&
         latexDoc.includes("\\begin{document}") &&
         latexDoc.includes("\\end{document}")
       ) {
-        const bodyContent = extractLatexBody(latexDoc);
-        const richTextHtml = latexToRichText(bodyContent);
-        updateProjectDetails({ richTextContent: richTextHtml });
-      } else {
-        console.warn("Invalid LaTeX document structure detected");
-      }
+        lastSyncedLatex.current = latexDoc;
 
-      setTimeout(() => {
-        isUpdatingFromLatex.current = false;
-      }, 100);
+        const bodyContent = extractLatexBody(latexDoc);
+        const extractedSections = latexToSections(latexDoc);
+
+        // Only set sections if they're actually different
+        setSections((prevSections) => {
+          if (prevSections.length === 0 || !sectionsInitialized.current) {
+            return extractedSections;
+          }
+          return prevSections;
+        });
+
+        updateProjectDetails({
+          latexContent: latexDoc,
+          richTextContent: latexToRichText(bodyContent),
+        });
+
+        sectionsInitialized.current = true;
+      }
     }
   }, [projectDetails.currentProject, projectDetails.activeFile]);
 
-  // Update local LaTeX content when project changes
+  // Update latexContent in context when file changes
   useEffect(() => {
     if (
       projectDetails.currentProject &&
@@ -90,36 +120,55 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
     }
   }, [projectDetails.currentProject, projectDetails.activeFile]);
 
-  // API functions
-  const checkServerHealth = async () => {
-    try {
-      await axios.get(`${API_URL}/api/health`);
-    } catch (error) {
-      updateProjectDetails({
-        error:
-          "Cannot connect to server. Please make sure the backend is running.",
-      });
-    }
-  };
+  // Reset on project change
+  useEffect(() => {
+    sectionsInitialized.current = false;
+    lastSyncedLatex.current = "";
+  }, [projectDetails.currentProject?.id]);
 
-  // Handle Monaco Editor changes (FIXED - No cursor jumping)
-  const handleLatexChange = (value) => {
-    if (
-      projectDetails.currentProject &&
-      projectDetails.activeFile &&
-      !isUpdatingFromLatex.current
-    ) {
-      updateProjectDetails({
-        latexContent: value,
-      });
+  // ============ UNIFIED UPDATE HANDLER ============
 
+  const updateAllEditors = useCallback(
+    (source, content) => {
       if (updateTimeout.current) {
         clearTimeout(updateTimeout.current);
       }
 
-      updateTimeout.current = setTimeout(() => {
-        updateProjectDetails({
-          currentProject: {
+      updateTimeout.current = setTimeout(
+        () => {
+          let newLatexContent;
+
+          switch (source) {
+            case "monaco":
+              newLatexContent = content;
+              break;
+
+            case "richText":
+              const bodyContent = richTextToLatex(content);
+              newLatexContent = reconstructLatexDocument(
+                projectDetails.latexContent || lastSyncedLatex.current,
+                bodyContent
+              );
+              break;
+
+            case "sections":
+              newLatexContent = sectionsToLatex(
+                content,
+                projectDetails.latexContent || lastSyncedLatex.current
+              );
+              break;
+
+            default:
+              return;
+          }
+
+          if (newLatexContent === lastSyncedLatex.current) {
+            return;
+          }
+
+          lastSyncedLatex.current = newLatexContent;
+
+          const updatedProject = {
             ...projectDetails.currentProject,
             files: {
               ...projectDetails.currentProject.files,
@@ -127,63 +176,82 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
                 ...projectDetails.currentProject.files[
                   projectDetails.activeFile
                 ],
-                content: value,
+                content: newLatexContent,
               },
             },
-          },
-        });
-      }, 300);
-    }
-  };
+          };
 
-  // Handle Rich Text Editor changes (FIXED)
-  const handleRichTextChange = (value) => {
-    if (
-      projectDetails.currentProject &&
-      projectDetails.activeFile &&
-      !isUpdatingFromLatex.current
-    ) {
-      updateProjectDetails({ richTextContent: value });
-
-      if (updateTimeout.current) {
-        clearTimeout(updateTimeout.current);
-      }
-
-      updateTimeout.current = setTimeout(() => {
-        isUpdatingFromRichText.current = true;
-
-        const newBodyContent = richTextToLatex(value);
-        const originalLatex = projectDetails.latexContent;
-        const newLatexDocument = reconstructLatexDocument(
-          originalLatex,
-          newBodyContent
-        );
-
-        if (
-          newLatexDocument.includes("\\begin{document}") &&
-          newLatexDocument.includes("\\end{document}")
-        ) {
           updateProjectDetails({
-            latexContent: newLatexDocument,
-            currentProject: {
-              ...projectDetails.currentProject,
-              files: {
-                ...projectDetails.currentProject.files,
-                [projectDetails.activeFile]: {
-                  ...projectDetails.currentProject.files[
-                    projectDetails.activeFile
-                  ],
-                  content: newLatexDocument,
-                },
-              },
-            },
+            latexContent: newLatexContent,
+            currentProject: updatedProject,
           });
-        }
 
-        setTimeout(() => {
-          isUpdatingFromRichText.current = false;
-        }, 100);
-      }, 1000);
+          // Update derived states for non-active editors
+          if (source !== "richText") {
+            const bodyContent = extractLatexBody(newLatexContent);
+            updateProjectDetails({
+              richTextContent: latexToRichText(bodyContent),
+            });
+          }
+
+          if (source !== "sections") {
+            setSections(latexToSections(newLatexContent));
+          }
+
+          if (saveTimeout.current) {
+            clearTimeout(saveTimeout.current);
+          }
+
+          saveTimeout.current = setTimeout(() => {
+            saveProjectToServer(updatedProject);
+          }, 1000);
+        },
+        source === "monaco" ? 300 : source === "richText" ? 500 : 300
+      );
+    },
+    [projectDetails, updateProjectDetails]
+  );
+
+  // ============ EDITOR HANDLERS ============
+
+  const handleLatexChange = useCallback(
+    (value) => {
+      setActiveEditor("monaco");
+      updateProjectDetails({ latexContent: value });
+      updateAllEditors("monaco", value);
+    },
+    [updateAllEditors]
+  );
+
+  const handleRichTextChange = useCallback(
+    (value) => {
+      setActiveEditor("richText");
+      updateProjectDetails({ richTextContent: value });
+      updateAllEditors("richText", value);
+    },
+    [updateAllEditors]
+  );
+
+  const handleSectionsChange = useCallback(
+    (updatedSections) => {
+      setActiveEditor("sections");
+      setSections([...updatedSections]);
+      updateAllEditors("sections", updatedSections);
+    },
+    [updateAllEditors]
+  );
+
+  const saveProjectToServer = async (updatedProject) => {
+    if (!updatedProject || !projectDetails.activeFile) return;
+
+    try {
+      await axios.put(`${API_URL}/api/projects/${updatedProject.id}`, {
+        files: updatedProject.files,
+        activeFile: projectDetails.activeFile,
+      });
+      console.log("Auto-saved to server");
+    } catch (error) {
+      console.error("Auto-save failed:", error);
     }
   };
 
@@ -192,158 +260,121 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       container: [
         [{ header: [2, 3, 4, false] }],
         ["bold", "italic", "underline"],
-        ["custom-list-ordered", "custom-list-bullet"], // Custom list buttons
+        [{ list: "ordered" }, { list: "bullet" }],
         [{ indent: "-1" }, { indent: "+1" }],
         ["blockquote", "code-block"],
         ["link"],
         ["clean"],
       ],
-      handlers: {
-        "custom-list-ordered": function () {
-          const selection = this.quill.getSelection();
-          if (selection) {
-            this.quill.insertText(selection.index, "\n1. ", "user");
-            this.quill.setSelection(selection.index + 4);
-          }
-        },
-        "custom-list-bullet": function () {
-          const selection = this.quill.getSelection();
-          if (selection) {
-            this.quill.insertText(selection.index, "\n• ", "user");
-            this.quill.setSelection(selection.index + 3);
-          }
-        },
-      },
     },
     clipboard: {
       matchVisual: false,
     },
   };
 
+  useEffect(() => {
+    return () => {
+      if (updateTimeout.current) clearTimeout(updateTimeout.current);
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    };
+  }, []);
+
   if (projectDetails.isLoading) {
     return (
-      <div className="loading-spinner">
-        <div className="spinner"></div>
-        <p>Loading...</p>
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!projectDetails.currentProject) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-gray-600">
+          No project loaded. Please create or open a project.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col">
-      <div className="">
-        <div className="h-[100vh] w-full flex flex-row">
-          {/* Left Panel - Editor with Tabs */}
-          <div className="flex-1 flex flex-col border-r border-[#CFCFCF]">
-            {/* Tab Container */}
-            <div className="flex flex-row justify-evenly border-b border-[#CFCFCF] bg-white">
-              <div className="px-2 py-1 flex items-center justify-between gap-1 w-full">
-                <div
-                  onClick={() => setActiveView("code")}
-                  className={`relative flex-1 text-nowrap pl-3 pr-10 py-2 cursor-pointer text-sm ${
-                    activeView === "code"
-                      ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                      : "text-gray-600"
-                  }`}
-                >
-                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 cursor-pointer">
-                    x
-                  </span>
-                  Full Code View
-                </div>
+    <div className="flex h-screen overflow-hidden fixed inset-0 pt-11">
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col border-r border-[#CFCFCF] overflow-hidden ml-16">
+          <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
+            <div className="px-2 py-1 flex items-center gap-1">
+              <button
+                onClick={() => setActiveView("code")}
+                className={`px-4 py-2 cursor-pointer text-sm rounded-t ${
+                  activeView === "code"
+                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0 font-semibold"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Full Code View
+              </button>
+              <button
+                onClick={() => setActiveView("text")}
+                className={`px-4 py-2 cursor-pointer text-sm rounded-t ${
+                  activeView === "text"
+                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0 font-semibold"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Full Text View
+              </button>
+              <button
+                onClick={() => setActiveView("section")}
+                className={`px-4 py-2 cursor-pointer text-sm rounded-t ${
+                  activeView === "section"
+                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0 font-semibold"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Section View
+              </button>
+            </div>
+          </div>
 
-                <div
-                  onClick={() => setActiveView("text")}
-                  className={`relative flex-1 text-nowrap pl-3 pr-10 py-2 cursor-pointer text-sm ${
-                    activeView === "text"
-                      ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                      : "text-gray-600"
-                  }`}
-                >
-                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 cursor-pointer">
-                    x
-                  </span>
-                  Full Text View
-                </div>
-
-                <div
-                  onClick={() => setActiveView("section")}
-                  className={`relative flex-1 text-nowrap pl-3 pr-10 py-2 cursor-pointer text-sm ${
-                    activeView === "section"
-                      ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                      : "text-gray-600"
-                  }`}
-                >
-                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 cursor-pointer">
-                    x
-                  </span>
-                  Section View
-                </div>
+          <div className="flex-1 overflow-hidden relative">
+            {activeView === "code" && (
+              <div className="h-full w-full">
+                <MonacoEditorPanel
+                  value={projectDetails.latexContent || ""}
+                  handleLatexChange={handleLatexChange}
+                  monacoEditorRef={monacoEditorRef}
+                />
               </div>
-            </div>
+            )}
 
-            {/* Editor Content */}
-            <div className="flex-1 overflow-hidden">
-              {activeView === "code" && (
-                <div className="h-full w-full">
-                  <MonacoEditorPanel
-                    value={projectDetails.latexContent}
-                    onChange={handleLatexChange}
-                    monacoEditorRef={monacoEditorRef}
-                    handleLatexChange={handleLatexChange}
-                  />
-                </div>
-              )}
+            {activeView === "text" && (
+              <div className="h-full w-full overflow-y-auto">
+                <RichTextEditorPanel
+                  value={projectDetails.richTextContent || ""}
+                  onChange={handleRichTextChange}
+                  quillModules={quillModules}
+                />
+              </div>
+            )}
 
-              {activeView === "text" && (
-                <div className="h-full w-full">
-                  <RichTextEditorPanel
-                    value={projectDetails.richTextContent}
-                    onChange={handleRichTextChange}
-                    quillModules={quillModules}
-                    compilationStatus={projectDetails.compilationStatus}
-                    compilationMessage={projectDetails.compilationMessage}
-                    pdfUrl={projectDetails.pdfUrl}
-                  />
-                </div>
-              )}
-
-              {activeView === "section" && (
-                <div className="h-full w-full overflow-y-auto bg-white">
-                  <SectionEditor />
-                </div>
-              )}
-            </div>
+            {activeView === "section" && (
+              <div className="h-full w-full overflow-y-auto">
+                <SectionEditor
+                  sections={sections}
+                  onSectionsChange={handleSectionsChange}
+                />
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Right Panel - Preview */}
-          <div className="w-1/2 flex flex-col bg-[#F9F9F9]">
-            <div className="px-4 py-3 border-b border-[#CFCFCF] bg-white text-center">
-              <span className="text-sm font-medium text-gray-700">Preview</span>
-            </div>
-            <div className="flex-1">
-              {/* Add your preview content here, such as a live preview or a PDF viewer */}
-            </div>
+        <div className="w-1/2 flex flex-col bg-[#F9F9F9] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#CFCFCF] bg-white flex-shrink-0">
+            <span className="text-sm font-medium text-gray-700">Preview</span>
           </div>
+          <div className="flex-1 overflow-auto"></div>
         </div>
       </div>
-
-      {projectDetails.error && (
-        <div className="error-message">
-          <strong>Error:</strong> {projectDetails.error}
-          <button
-            style={{
-              float: "right",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-            onClick={() => updateProjectDetails({ error: "" })}
-          >
-            ✕
-          </button>
-        </div>
-      )}
     </div>
   );
 };
