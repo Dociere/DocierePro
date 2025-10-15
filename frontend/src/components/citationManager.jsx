@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { TbX, TbCopy, TbDeviceFloppy } from "react-icons/tb";
 
-const API_BASE_URL = "http://localhost:3001";
+const API_BASE_URL = "http://localhost:5000";
 
 const citationFormats = ["IEEE", "APA", "MLA", "Chicago", "Harvard"];
 
@@ -166,7 +166,10 @@ const CitationManager = ({ onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-800">Citation Manager</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
             <TbX size={24} />
           </button>
         </div>
@@ -205,7 +208,9 @@ const CitationManager = ({ onClose }) => {
                 <div className="space-y-4">
                   {/* Citation Format */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Citation Format *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Citation Format *
+                    </label>
                     <select
                       name="format"
                       value={formData.format}
@@ -222,7 +227,9 @@ const CitationManager = ({ onClose }) => {
 
                   {/* Authors */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Authors *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Authors *
+                    </label>
                     <textarea
                       name="authors"
                       value={formData.authors}
@@ -235,7 +242,9 @@ const CitationManager = ({ onClose }) => {
 
                   {/* Title */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Paper Title *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Paper Title *
+                    </label>
                     <input
                       type="text"
                       name="title"
@@ -248,7 +257,9 @@ const CitationManager = ({ onClose }) => {
 
                   {/* Journal */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Journal Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Journal Name
+                    </label>
                     <input
                       type="text"
                       name="journal"
@@ -262,7 +273,9 @@ const CitationManager = ({ onClose }) => {
                   {/* Volume, Issue, Pages - Row */}
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Volume</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Volume
+                      </label>
                       <input
                         type="text"
                         name="volume"
@@ -273,7 +286,9 @@ const CitationManager = ({ onClose }) => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Issue</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Issue
+                      </label>
                       <input
                         type="text"
                         name="issue"
@@ -284,7 +299,9 @@ const CitationManager = ({ onClose }) => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Pages</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pages
+                      </label>
                       <input
                         type="text"
                         name="pages"
@@ -298,7 +315,9 @@ const CitationManager = ({ onClose }) => {
 
                   {/* Year */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Year *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Year *
+                    </label>
                     <input
                       type="text"
                       name="year"
@@ -311,7 +330,9 @@ const CitationManager = ({ onClose }) => {
 
                   {/* DOI */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">DOI (optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      DOI (optional)
+                    </label>
                     <input
                       type="text"
                       name="doi"
@@ -336,10 +357,17 @@ const CitationManager = ({ onClose }) => {
               {/* Preview Section */}
               <div className="flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Reference Preview</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Reference Preview
+                  </h3>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => copyToClipboard(latexCode, "LaTeX code copied to clipboard!")}
+                      onClick={() =>
+                        copyToClipboard(
+                          latexCode,
+                          "LaTeX code copied to clipboard!"
+                        )
+                      }
                       disabled={!latexCode}
                       className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
                       title="Copy LaTeX"
@@ -362,12 +390,17 @@ const CitationManager = ({ onClose }) => {
                 <div className="flex-1 border border-gray-300 rounded bg-gray-50 overflow-auto">
                   {previewUrl ? (
                     <div className="w-full h-full p-4">
-                      <img src={previewUrl} alt="Reference Preview" className="w-full h-auto" />
+                      <img
+                        src={previewUrl}
+                        alt="Reference Preview"
+                        className="w-full h-auto"
+                      />
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-full">
                       <p className="text-gray-400">
-                        Fill in the form and click "Generate Citation" to see reference
+                        Fill in the form and click "Generate Citation" to see
+                        reference
                       </p>
                     </div>
                   )}
@@ -399,7 +432,9 @@ const CitationManager = ({ onClose }) => {
                               {citation.title}
                             </h4>
                           </div>
-                          <p className="text-sm text-gray-600 mt-1">{citation.authors}</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {citation.authors}
+                          </p>
                           <p className="text-xs text-gray-500 mt-1">
                             Format: {citation.format} | Year: {citation.year}
                           </p>
@@ -407,10 +442,14 @@ const CitationManager = ({ onClose }) => {
                       </div>
                       <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
                         <button
-                          onClick={() => copyToClipboard(
-                            `[${citation.citationNumber || index + 1}]`,
-                            `Citation number [${citation.citationNumber || index + 1}] copied!`
-                          )}
+                          onClick={() =>
+                            copyToClipboard(
+                              `[${citation.citationNumber || index + 1}]`,
+                              `Citation number [${
+                                citation.citationNumber || index + 1
+                              }] copied!`
+                            )
+                          }
                           className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-xs flex items-center gap-1"
                           title="Copy citation number"
                         >
@@ -418,21 +457,28 @@ const CitationManager = ({ onClose }) => {
                           Copy [{citation.citationNumber || index + 1}]
                         </button>
                         <button
-                          onClick={() => copyToClipboard(
-                            `^{[${citation.citationNumber || index + 1}]}`,
-                            `Superscript citation ^{[${citation.citationNumber || index + 1}]} copied!`
-                          )}
+                          onClick={() =>
+                            copyToClipboard(
+                              `^{[${citation.citationNumber || index + 1}]}`,
+                              `Superscript citation ^{[${
+                                citation.citationNumber || index + 1
+                              }]} copied!`
+                            )
+                          }
                           className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-xs flex items-center gap-1"
                           title="Copy superscript citation"
                         >
                           <TbCopy size={14} />
-                          Copy ^{"{[" + (citation.citationNumber || index + 1) + "]}"}
+                          Copy ^
+                          {"{[" + (citation.citationNumber || index + 1) + "]}"}
                         </button>
                         <button
-                          onClick={() => copyToClipboard(
-                            citation.latexCode,
-                            "Full reference copied!"
-                          )}
+                          onClick={() =>
+                            copyToClipboard(
+                              citation.latexCode,
+                              "Full reference copied!"
+                            )
+                          }
                           className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs flex items-center gap-1"
                           title="Copy full reference"
                         >
@@ -446,7 +492,9 @@ const CitationManager = ({ onClose }) => {
                           Load
                         </button>
                         <button
-                          onClick={() => handleDeleteCitation(citation.fileName)}
+                          onClick={() =>
+                            handleDeleteCitation(citation.fileName)
+                          }
                           className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-xs"
                         >
                           Delete
@@ -469,14 +517,17 @@ const CitationManager = ({ onClose }) => {
         {showSaveDialog && (
           <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
             <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Save Citation</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Save Citation
+              </h3>
               <p className="text-sm text-gray-600 mb-3">
-                This will be saved as citation <strong>[{savedCitations.length + 1}]</strong>
+                This will be saved as citation{" "}
+                <strong>[{savedCitations.length + 1}]</strong>
               </p>
               <input
                 type="text"
                 value={saveFileName}
-                onChange={e => setSaveFileName(e.target.value)}
+                onChange={(e) => setSaveFileName(e.target.value)}
                 placeholder="Enter file name"
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
               />

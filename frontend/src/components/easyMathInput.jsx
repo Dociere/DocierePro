@@ -8,7 +8,7 @@ import {
   TbFolder,
 } from "react-icons/tb";
 
-const API_BASE_URL = "http://localhost:3001";
+const API_BASE_URL = "http://localhost:5000";
 
 // Utility to wrap placeholder parts
 const wrapPlaceholder = (latex) => latex.replace(/⟨([^⟩]+)⟩/g, "‹$1›"); // visually highlight placeholders
