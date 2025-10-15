@@ -13,8 +13,8 @@ const RichTextEditorPanel = ({
   pdfUrl,
 }) => {
   return (
-    <div className="preview-panel">
-      <div className="bg-gray-100 pt-2 pb-1 border-b-2 border-gray-200">
+    <div className="flex flex-col bg-white h-[100vh]">
+      {/* <div className="bg-gray-100 pt-2 pb-1 border-b-2 border-gray-200">
         <div className="font-inter text-center text-gray-700 font-medium text-xs">
           Full text view
         </div>
@@ -28,7 +28,7 @@ const RichTextEditorPanel = ({
             </button>
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Compilation Status */}
       {compilationStatus && (

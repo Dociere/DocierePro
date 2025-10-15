@@ -3,7 +3,7 @@ import MonacoEditor from "@monaco-editor/react";
 
 const MonacoEditorPanel = ({ value, handleLatexChange, monacoEditorRef }) => {
   return (
-    <div className="code-panel ml-14">
+    <div className="h[100vh] flex-1 flex flex-col border-r border-[#dee2e6]">
       {/* <div className="bg-gray-100 pt-2 pb-1 border-b-2 border-gray-200">
         <div className="font-inter text-center text-gray-700 font-medium text-xs">
           Full code view
@@ -11,7 +11,7 @@ const MonacoEditorPanel = ({ value, handleLatexChange, monacoEditorRef }) => {
       </div> */}
       <div className="monaco-editor-container">
         <MonacoEditor
-          height="100"
+          height="100vh"
           defaultLanguage="latex"
           value={value}
           onChange={handleLatexChange}
