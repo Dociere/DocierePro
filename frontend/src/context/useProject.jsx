@@ -12,6 +12,9 @@ export const ProjectProvider = (props) => {
     compilationMessage: "",
     pdfUrl: "",
     latexContent: "",
+    richTextContent: "",
+    activeView: "code", // Added for view switching
+    isSectionSpaceOpen: false, // Added for section space toggle
   });
 
   const updateProjectDetails = (newDetails) => {
