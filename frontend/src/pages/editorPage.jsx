@@ -21,6 +21,7 @@ import {
 } from "../utils/latexUtility.jsx";
 import { loadProjects } from "../api/projectHandling.jsx";
 import { projectContext } from "../context/useProject.jsx";
+// import PdfViewer from "../components/pdfViewer.jsx";
 
 const API_URL = "http://localhost:5000";
 
@@ -300,14 +301,14 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0 pt-11">
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 flex flex-col border-r border-[#CFCFCF] overflow-hidden ml-16">
+        <div className="flex-1 flex flex-col border-r border-[#CFCFCF] overflow-hidden ml-12">
           <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
-            <div className="px-2 py-1 flex items-center gap-1">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setActiveView("code")}
-                className={`px-4 py-2 cursor-pointer text-sm rounded-t ${
+                className={`py-2 cursor-pointer flex-1 text-sm ${
                   activeView === "code"
-                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0 font-semibold"
+                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -315,9 +316,9 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
               </button>
               <button
                 onClick={() => setActiveView("text")}
-                className={`px-4 py-2 cursor-pointer text-sm rounded-t ${
+                className={`py-2 cursor-pointer flex-1 text-sm ${
                   activeView === "text"
-                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0 font-semibold"
+                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -325,9 +326,9 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
               </button>
               <button
                 onClick={() => setActiveView("section")}
-                className={`px-4 py-2 cursor-pointer text-sm rounded-t ${
+                className={`py-2 cursor-pointer flex-1 text-sm ${
                   activeView === "section"
-                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0 font-semibold"
+                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -369,10 +370,14 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
         </div>
 
         <div className="w-1/2 flex flex-col bg-[#F9F9F9] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#CFCFCF] bg-white flex-shrink-0">
-            <span className="text-sm font-medium text-gray-700">Preview</span>
+          <div className="py-1 text-center border-b border-[#CFCFCF] bg-white flex-shrink-0">
+            <span className="text-sm px-4 py-2 font-sm text-gray-600">
+              Preview
+            </span>
           </div>
-          <div className="flex-1 overflow-auto"></div>
+          <div className="flex-1 overflow-auto">
+            {/* <PdfViewer pdfUrl={projectDetails.pdfUrl} /> */}
+          </div>
         </div>
       </div>
     </div>

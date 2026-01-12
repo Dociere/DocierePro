@@ -133,10 +133,10 @@ export const compileDocument = async (
       throw new Error("Invalid LaTeX document structure");
     }
 
-    console.log(
-      "Compiling LaTeX document:",
-      contentToCompile.substring(0, 200) + "..."
-    );
+    // console.log(
+    //   "Compiling LaTeX document:",
+    //   contentToCompile.substring(0, 200) + "..."
+    // );
 
     const response = await axios.post(`${API_URL}/api/compile`, {
       content: contentToCompile,
@@ -158,6 +158,14 @@ export const compileDocument = async (
       compilationStatus = "success";
       compilationMessage = "PDF compiled successfully!";
 
+      // console.log(
+      //   "\nStatus:",
+      //   compilationStatus,
+      //   "\nMessage:",
+      //   compilationMessage
+      // );
+      window.open(pdfUrl, "_blank");
+
       // Auto-save after successful compilation
       await saveProject(
         currentProject,
@@ -170,6 +178,8 @@ export const compileDocument = async (
       compilationMessage = `Compilation failed: ${response.data.error}`;
       console.log("Compilation details:", response.data);
     }
+
+    return { pdfUrl };
   } catch (error) {
     compilationStatus = "error";
     compilationMessage = "Compilation failed: " + error.message;

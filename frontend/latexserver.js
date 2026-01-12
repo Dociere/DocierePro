@@ -1,4 +1,3 @@
-// server.js - Complete Backend API for LaTeX Math Input Tool (ES6 Modules)
 import express from "express";
 import { promises as fs } from "fs";
 import path from "path";
@@ -509,8 +508,19 @@ app.post("/api/citation/compile", async (req, res) => {
   console.log("📚 Received citation compilation request");
 
   try {
-    const { authors, title, journal, volume, issue, pages, year, doi, format, citationNumber, customLatex } =
-      req.body;
+    const {
+      authors,
+      title,
+      journal,
+      volume,
+      issue,
+      pages,
+      year,
+      doi,
+      format,
+      citationNumber,
+      customLatex,
+    } = req.body;
 
     let citationLatex = "";
 
@@ -518,7 +528,7 @@ app.post("/api/citation/compile", async (req, res) => {
     if (customLatex) {
       console.log("🔄 Recompiling with custom LaTeX");
       citationLatex = customLatex;
-    } 
+    }
     // CASE 2: Request from Generate Citation (has form data)
     else {
       console.log("🆕 Generating new citation from form data");
@@ -647,12 +657,10 @@ app.post("/api/citation/compile", async (req, res) => {
     // Convert to image - NO CROPPING, just convert as-is
     try {
       const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
-      
+
       // Just use the converted image as-is, no cropping
       const finalImagePath = path.join(outputDir, `final_${imgFileName}`);
-      await sharp(rawImagePath)
-        .png({ quality: 100 })
-        .toFile(finalImagePath);
+      await sharp(rawImagePath).png({ quality: 100 }).toFile(finalImagePath);
 
       // Cleanup auxiliary files
       await cleanupAuxFiles(outputDir, baseFileName);
@@ -662,7 +670,9 @@ app.post("/api/citation/compile", async (req, res) => {
         previewUrl: `/output/final_${imgFileName}`,
         latexCode: citationLatex, // Return just the citation content
         format: format,
-        message: customLatex ? "Citation recompiled successfully" : "Citation generated successfully",
+        message: customLatex
+          ? "Citation recompiled successfully"
+          : "Citation generated successfully",
       });
     } catch (imageError) {
       console.error("⚠️ Image conversion failed:", imageError.message);
@@ -945,7 +955,7 @@ app.use((req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
