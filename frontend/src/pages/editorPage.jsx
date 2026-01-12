@@ -376,6 +376,7 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
             </span>
           </div>
           <div className="flex-1 overflow-auto">
+            <iframe src={projectDetails.pdfUrl} className="w-full h-full" />
             {/* <PdfViewer pdfUrl={projectDetails.pdfUrl} /> */}
           </div>
         </div>
