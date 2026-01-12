@@ -6,7 +6,7 @@ dotenv.config();
 
 const app = express();
 
-const PORT = process.env.PORT || 5026;
+const PORT = process.env.PORT;
 
 // Middleware
 app.use(
@@ -15,6 +15,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5000",
+      
     ],
     credentials: true,
   })

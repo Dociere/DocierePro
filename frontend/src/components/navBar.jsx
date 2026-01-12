@@ -17,7 +17,6 @@ const NavBar = () => {
   const menuRefs = useRef({});
 
   const hasProject = projectDetails.currentProject !== null;
-
   // File Menu Actions
   const handleNewProject = () => {
     navigate("/template");
@@ -41,7 +40,7 @@ const NavBar = () => {
           activeFile: projectDetails.activeFile,
         }
       );
-      
+
       updateProjectDetails({
         compilationStatus: "success",
         compilationMessage: "Project saved successfully!",
@@ -226,13 +225,13 @@ const NavBar = () => {
       alert("Please compile your document first to generate a PDF");
       return;
     }
-    
+
     // Trigger PDF download
     const link = document.createElement("a");
     link.href = projectDetails.pdfUrl;
     link.download = `${projectDetails.currentProject?.title || "document"}.pdf`;
     link.click();
-    
+
     alert("PDF download started!");
   };
 
@@ -283,11 +282,11 @@ const NavBar = () => {
   const handleAbout = () => {
     alert(
       "Docière Pro v1.0\nLaTeX Editor Redefined\n\n" +
-      "A modern LaTeX editor with intuitive interfaces:\n" +
-      "• Full Code View with Monaco Editor\n" +
-      "• Rich Text Editor for WYSIWYG editing\n" +
-      "• Section-based editing for structured documents\n\n" +
-      "Created with ❤️ for seamless document creation"
+        "A modern LaTeX editor with intuitive interfaces:\n" +
+        "• Full Code View with Monaco Editor\n" +
+        "• Rich Text Editor for WYSIWYG editing\n" +
+        "• Section-based editing for structured documents\n\n" +
+        "Created with ❤️ for seamless document creation"
     );
   };
 
@@ -337,7 +336,10 @@ const NavBar = () => {
       action: () => {
         // Monaco editor handles this natively
         const activeElement = document.activeElement;
-        if (activeElement && activeElement.classList.contains('monaco-editor')) {
+        if (
+          activeElement &&
+          activeElement.classList.contains("monaco-editor")
+        ) {
           // Focus is in Monaco editor - it handles undo automatically
           return;
         }
@@ -352,7 +354,10 @@ const NavBar = () => {
       action: () => {
         // Monaco editor handles this natively
         const activeElement = document.activeElement;
-        if (activeElement && activeElement.classList.contains('monaco-editor')) {
+        if (
+          activeElement &&
+          activeElement.classList.contains("monaco-editor")
+        ) {
           return;
         }
         document.execCommand("redo");
@@ -371,7 +376,7 @@ const NavBar = () => {
             document.execCommand("delete");
           }
         } catch (err) {
-          console.error('Failed to cut:', err);
+          console.error("Failed to cut:", err);
           // Fallback to old method
           document.execCommand("cut");
         }
@@ -388,7 +393,7 @@ const NavBar = () => {
             await navigator.clipboard.writeText(selection);
           }
         } catch (err) {
-          console.error('Failed to copy:', err);
+          console.error("Failed to copy:", err);
           // Fallback to old method
           document.execCommand("copy");
         }
@@ -402,15 +407,21 @@ const NavBar = () => {
         try {
           const text = await navigator.clipboard.readText();
           const activeElement = document.activeElement;
-          if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          if (
+            activeElement &&
+            (activeElement.tagName === "INPUT" ||
+              activeElement.tagName === "TEXTAREA")
+          ) {
             const start = activeElement.selectionStart;
             const end = activeElement.selectionEnd;
             const value = activeElement.value;
-            activeElement.value = value.substring(0, start) + text + value.substring(end);
-            activeElement.selectionStart = activeElement.selectionEnd = start + text.length;
+            activeElement.value =
+              value.substring(0, start) + text + value.substring(end);
+            activeElement.selectionStart = activeElement.selectionEnd =
+              start + text.length;
           }
         } catch (err) {
-          console.error('Failed to paste:', err);
+          console.error("Failed to paste:", err);
           // Fallback to old method
           document.execCommand("paste");
         }
@@ -424,10 +435,10 @@ const NavBar = () => {
       action: () => {
         // Monaco editor handles find natively when focused
         // For other views, we can show a custom find dialog
-        const event = new KeyboardEvent('keydown', {
-          key: 'f',
+        const event = new KeyboardEvent("keydown", {
+          key: "f",
           ctrlKey: true,
-          bubbles: true
+          bubbles: true,
         });
         document.activeElement?.dispatchEvent(event);
       },
@@ -438,10 +449,10 @@ const NavBar = () => {
       shortcut: "Ctrl+H",
       action: () => {
         // Monaco editor handles replace natively
-        const event = new KeyboardEvent('keydown', {
-          key: 'h',
+        const event = new KeyboardEvent("keydown", {
+          key: "h",
           ctrlKey: true,
-          bubbles: true
+          bubbles: true,
         });
         document.activeElement?.dispatchEvent(event);
       },
@@ -453,10 +464,10 @@ const NavBar = () => {
       shortcut: "Ctrl+A",
       action: () => {
         // Let the browser handle this natively
-        const event = new KeyboardEvent('keydown', {
-          key: 'a',
+        const event = new KeyboardEvent("keydown", {
+          key: "a",
           ctrlKey: true,
-          bubbles: true
+          bubbles: true,
         });
         document.activeElement?.dispatchEvent(event);
       },
@@ -485,7 +496,9 @@ const NavBar = () => {
     },
     { divider: true },
     {
-      label: projectDetails.isSectionSpaceOpen ? "Hide Section Space" : "Show Section Space",
+      label: projectDetails.isSectionSpaceOpen
+        ? "Hide Section Space"
+        : "Show Section Space",
       shortcut: "Ctrl+B",
       action: handleToggleSectionSpace,
       disabled: !hasProject,
@@ -507,9 +520,11 @@ const NavBar = () => {
       shortcut: "Ctrl++",
       action: () => {
         // Apply zoom to editor content
-        const editorElement = document.querySelector('.monaco-editor, .text-editor');
+        const editorElement = document.querySelector(
+          ".monaco-editor, .text-editor"
+        );
         if (editorElement) {
-          const currentZoom = parseFloat(editorElement.style.zoom || '1');
+          const currentZoom = parseFloat(editorElement.style.zoom || "1");
           editorElement.style.zoom = (currentZoom + 0.1).toString();
         }
       },
@@ -519,10 +534,15 @@ const NavBar = () => {
       label: "Zoom Out",
       shortcut: "Ctrl+-",
       action: () => {
-        const editorElement = document.querySelector('.monaco-editor, .text-editor');
+        const editorElement = document.querySelector(
+          ".monaco-editor, .text-editor"
+        );
         if (editorElement) {
-          const currentZoom = parseFloat(editorElement.style.zoom || '1');
-          editorElement.style.zoom = Math.max(0.5, currentZoom - 0.1).toString();
+          const currentZoom = parseFloat(editorElement.style.zoom || "1");
+          editorElement.style.zoom = Math.max(
+            0.5,
+            currentZoom - 0.1
+          ).toString();
         }
       },
       disabled: !hasProject,
@@ -531,9 +551,11 @@ const NavBar = () => {
       label: "Reset Zoom",
       shortcut: "Ctrl+0",
       action: () => {
-        const editorElement = document.querySelector('.monaco-editor, .text-editor');
+        const editorElement = document.querySelector(
+          ".monaco-editor, .text-editor"
+        );
         if (editorElement) {
-          editorElement.style.zoom = '1';
+          editorElement.style.zoom = "1";
         }
       },
       disabled: !hasProject,
@@ -560,31 +582,35 @@ const NavBar = () => {
   const helpMenuItems = [
     {
       label: "Getting Started",
-      action: () => window.open("https://www.overleaf.com/learn", "_blank"),
+      action: () => window.open("https://www.dociere.com/learn", "_blank"),
     },
     {
       label: "Documentation",
-      action: () => window.open("https://www.overleaf.com/learn", "_blank"),
+      action: () => window.open("https://www.dociere.com/learn", "_blank"),
     },
     { divider: true },
     {
       label: "LaTeX Tutorials",
       action: () =>
-        window.open("https://www.overleaf.com/learn/latex/Tutorials", "_blank"),
+        window.open("https://www.dociere.com/learn/latex/Tutorials", "_blank"),
     },
     {
       label: "LaTeX Reference",
       action: () =>
-        window.open("https://www.overleaf.com/learn/latex/Main_Page", "_blank"),
+        window.open("https://www.dociere.com/learn/latex/Main_Page", "_blank"),
     },
     {
       label: "Math Symbols",
       action: () =>
-        window.open("https://www.overleaf.com/learn/latex/List_of_Greek_letters_and_math_symbols", "_blank"),
+        window.open(
+          "https://www.dociere.com/learn/latex/List_of_Greek_letters_and_math_symbols",
+          "_blank"
+        ),
     },
     {
       label: "Table Generator",
-      action: () => window.open("https://www.tablesgenerator.com/latex_tables", "_blank"),
+      action: () =>
+        window.open("https://www.tablesgenerator.com/latex_tables", "_blank"),
     },
     { divider: true },
     {
@@ -610,14 +636,16 @@ const NavBar = () => {
     {
       label: "Report an Issue",
       action: () => {
-        const mailto = "mailto:support@dociere.pro?subject=Bug Report&body=Please describe the issue:";
+        const mailto =
+          "mailto:support@dociere.pro?subject=Bug Report&body=Please describe the issue:";
         window.location.href = mailto;
       },
     },
     {
       label: "Suggest a Feature",
       action: () => {
-        const mailto = "mailto:support@dociere.pro?subject=Feature Request&body=Please describe your feature idea:";
+        const mailto =
+          "mailto:support@dociere.pro?subject=Feature Request&body=Please describe your feature idea:";
         window.location.href = mailto;
       },
     },
@@ -632,7 +660,7 @@ const NavBar = () => {
     <>
       <div className="z-50 fixed w-full top-0">
         <div className="bg-[#F9F9F9] h-11 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex">
-          <div className="flex gap-7 mt-3 text-sm pl-5 text-[#212121]">
+          <div className="flex flex-1 gap-7 text-sm pl-5 text-[#212121]">
             <button
               ref={(el) => (menuRefs.current.file = el)}
               onClick={(e) => handleMenuClick("file", e)}
@@ -670,7 +698,12 @@ const NavBar = () => {
               Help
             </button>
           </div>
-          <SearchBar />
+          <div className="flex-1 text-center py-0 mt-3 text-sm font-inter font-medium">
+            {projectDetails?.currentProject?.title}
+          </div>
+
+          {/* Right Spacer */}
+          <div className="flex-1" />
         </div>
 
         {/* Dropdown Menus */}

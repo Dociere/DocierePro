@@ -17,7 +17,7 @@ const DynamicSideBar = () => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
   const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
-  const { projectDetails } = useContext(projectContext);
+  const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const {
     currentProject,
     activeFile,
@@ -33,8 +33,8 @@ const DynamicSideBar = () => {
     setIsMathModalOpen(true);
   };
 
-  const handleCompile = () => {
-    compileDocument(
+  const handleCompile = async () => {
+    const response = await compileDocument(
       currentProject,
       activeFile,
       isCompiling,
@@ -43,6 +43,12 @@ const DynamicSideBar = () => {
       pdfUrl,
       latexContent
     );
+
+    // console.log("handleCompile response", response.pdfUrl);
+
+    updateProjectDetails({
+      pdfUrl: response.pdfUrl,
+    });
   };
 
   const handleCitationIconClick = (e) => {
@@ -52,15 +58,17 @@ const DynamicSideBar = () => {
 
   return (
     <>
-      <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-14 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
-        <div className="flex flex-col items-center pt-4 space-y-5">
+      <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-12 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
+        <div className="flex flex-col items-center pt-4 space-y-3">
           {/* Section Space */}
           <div onClick={() => setIsSectionSpaceOpen(!isSectionSpaceOpen)}>
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Section Space"
             >
-              <SectionIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+              <div className="p-3 hover:bg-gray-200 rounded-md">
+                <SectionIcon style={{ fill: "#585858" }} className="w-4 h-4" />
+              </div>
 
               <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Section Space
@@ -69,69 +77,81 @@ const DynamicSideBar = () => {
           </div>
 
           {/* Citation Manager */}
-          <Link to="/canvas" onClick={handleCitationIconClick}>
-            <span
-              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
-              title="Citation Manager"
+          <div className="relative group">
+            <Link to="/canvas" onClick={handleCitationIconClick}>
+              <div
+                className="flex items-center justify-center text-[#585858] cursor-pointer p-2"
+                title="Citation Manager"
+              >
+                <CitationIcon style={{ fill: "#585858" }} className="w-4 h-4" />
+              </div>
+            </Link>
+
+            <p
+              className="absolute left-full top-2 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded 
+                opacity-0 group-hover:opacity-100 transition-opacity duration-200 
+                whitespace-nowrap z-50"
             >
-              <CitationIcon style={{ fill: "#585858" }} className="w-5 h-5" />
-              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Citation Manager
-              </span>
-            </span>
-          </Link>
+              Citation Manager
+            </p>
+          </div>
+
           {/* Share / Collaborate */}
           <Link to="/canvas">
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Share"
             >
-              <ShareIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+              <ShareIcon style={{ fill: "#585858" }} className="w-4 h-4" />
 
-              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+              <span className="absolute left-full top-1 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Share
               </span>
             </span>
           </Link>
+
           {/* Easy Math Input */}
           <Link to="/canvas" onClick={handleMathIconClick}>
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Easy Math Input"
             >
-              <MathIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+              <MathIcon style={{ fill: "#585858" }} className="w-4 h-4" />
 
-              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+              <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Easy Math Input
               </span>
             </span>
           </Link>
+
           {/* Draft Versioning */}
           <Link to="/canvas">
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Draft Versioning"
             >
-              <DraftIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+              <DraftIcon style={{ fill: "#585858" }} className="w-4 h-4" />
 
-              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+              <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Draft Versioning
               </span>
             </span>
           </Link>
+
           {/* Extensions */}
           <Link to="/canvas">
             <span
               className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
               title="Extensions"
             >
-              <ExtensionIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+              <ExtensionIcon style={{ fill: "#585858" }} className="w-4 h-4" />
 
-              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+              <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Extensions
               </span>
             </span>
           </Link>
+
           {/* Compile */}
           <div onClick={handleCompile}>
             <span
