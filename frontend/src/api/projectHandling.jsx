@@ -164,7 +164,7 @@ export const compileDocument = async (
       //   "\nMessage:",
       //   compilationMessage
       // );
-      window.open(pdfUrl, "_blank");
+      // window.open(pdfUrl, "_blank");
 
       // Auto-save after successful compilation
       await saveProject(
@@ -179,7 +179,7 @@ export const compileDocument = async (
       console.log("Compilation details:", response.data);
     }
 
-    return { pdfUrl };
+    return { pdfUrl, compilationStatus, compilationMessage };
   } catch (error) {
     compilationStatus = "error";
     compilationMessage = "Compilation failed: " + error.message;
