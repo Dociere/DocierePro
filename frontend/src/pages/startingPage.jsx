@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SearchBar from "../components/searchBar";
@@ -6,18 +6,21 @@ import TemplateCards from "../components/templateCards";
 import { loadProjects } from "../api/projectHandling.jsx";
 
 const StartingPage = () => {
+  const [projectData, setProjectData] = useState([]);
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     const { Projects } = await loadProjects();
+    setProjectData(Projects);
     console.log("Starting Page", Projects);
   };
 
   return (
-    <div className="h-screen overflow-y-auto mt-20 flex flex-col ml-36">
-      <div className="flex flex-row">
+    <div className="h-screen overflow-y-auto scrollbar-hide flex flex-col ml-36 mr-20 pb-10">
+      <div className="flex flex-row mt-20">
         <div>
           <div className="text-black text-5xl font-playfair font-bold leading-[32px]">
             Docière Pro
@@ -55,12 +58,10 @@ const StartingPage = () => {
           Recent Projects
         </div>
         <SearchBar />
-        <div className="flex flex-row mt-10 gap-8">
-          <TemplateCards title="IEEE Format" />
-          <TemplateCards title="MLA Format" />
-          <TemplateCards title="APA Format" />
-          <TemplateCards title="XYZ Format" />
-          <TemplateCards title="ABC Format" />
+        <div className="flex flex-row mt-10 gap-8 flex-wrap">
+          {projectData.slice(0, 5).map((project) => (
+            <TemplateCards title={project.title} />
+          ))}
         </div>
       </div>
     </div>
