@@ -26,3 +26,10 @@ dist-ssr
 output
 temp
 projects
+
+# Python / Virtual Environment
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
