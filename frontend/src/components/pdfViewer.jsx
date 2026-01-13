@@ -39,7 +39,9 @@ const PdfViewer = ({ pdfUrl }) => {
           ))}
         </Document>
       ) : (
-        <div className="empty-state">No PDF to display</div>
+        <div className="empty-state">
+          Compile the project to view the PDF File
+        </div>
       )}
     </div>
   );

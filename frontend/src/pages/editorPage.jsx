@@ -419,7 +419,6 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
 
         {activeRightView === "preview" && (
           <div className="flex-1 overflow-hidden relative">
-            {/* <iframe src={projectDetails.pdfUrl} className="w-full h-full" /> */}
             <PdfViewer pdfUrl={projectDetails.pdfUrl} />
           </div>
         )}
