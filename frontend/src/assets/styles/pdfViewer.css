@@ -39,6 +39,8 @@
 .loading-text,
 .error-text,
 .empty-state {
-  color: #fff;
-  margin-top: 20px;
+  color: #444444;
+  margin-top: 40vh;
+  font-family: inter;
+  font-weight: 300;
 }

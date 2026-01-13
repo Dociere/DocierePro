@@ -54,11 +54,6 @@ function TemplateSelect() {
                 <TemplateCards title={templateTitle} />
               </Link>
             ))}
-            {/* <TemplateCards title="IEEE Format" />
-          <TemplateCards title="MLA Format" />
-          <TemplateCards title="APA Format" />
-          <TemplateCards title="XYZ Format" />
-          <TemplateCards title="ABC Format" /> */}
           </div>
         </div>
       </div>

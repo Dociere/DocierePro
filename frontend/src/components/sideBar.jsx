@@ -62,10 +62,23 @@ const DynamicSideBar = () => {
     <>
       <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-12 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
         <div className="flex flex-col items-center pt-4 space-y-3">
+          {/* Current Project file */}
+          <Link to="/canvas">
+            <span
+              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              title="Current Project file"
+            >
+              <DraftIcon style={{ fill: "#585858" }} className="w-4 h-4" />
+
+              <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                Current Project file
+              </span>
+            </span>
+          </Link>
           {/* Section Space */}
           <div onClick={() => setIsSectionSpaceOpen(!isSectionSpaceOpen)}>
             <span
-              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+              className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
               title="Section Space"
             >
               <div className="p-3 hover:bg-gray-200 rounded-md">
@@ -122,20 +135,6 @@ const DynamicSideBar = () => {
 
               <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Easy Math Input
-              </span>
-            </span>
-          </Link>
-
-          {/* Draft Versioning */}
-          <Link to="/canvas">
-            <span
-              className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
-              title="Draft Versioning"
-            >
-              <DraftIcon style={{ fill: "#585858" }} className="w-4 h-4" />
-
-              <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Draft Versioning
               </span>
             </span>
           </Link>
