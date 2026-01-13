@@ -48,6 +48,8 @@ const DynamicSideBar = () => {
 
     updateProjectDetails({
       pdfUrl: response.pdfUrl,
+      compilationStatus: response.compilationStatus,
+      compilationMessage: response.compilationMessage,
     });
   };
 

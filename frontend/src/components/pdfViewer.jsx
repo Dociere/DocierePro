@@ -1,23 +1,48 @@
-// import { useState } from "react";
-// import { Document, Page, pdfjs } from "react-pdf";
-// import pdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.js";
+import React, { useState } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "../assets/styles/pdfViewer.css";
 
-// pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
-// export default function PdfViewer({ pdfUrl }) {
-//   const [numPages, setNumPages] = useState(null);
+const PdfViewer = ({ pdfUrl }) => {
+  const [numPages, setNumPages] = useState(null);
 
-//   if (!pdfUrl) return <div>Loading PDF...</div>;
+  function onDocumentLoadSuccess({ numPages }) {
+    setNumPages(numPages);
+  }
 
-//   const onDocumentLoadSuccess = ({ numPages }) => setNumPages(numPages);
+  console.log("pdfUrl", pdfUrl);
 
-//   return (
-//     <div className="w-full h-full overflow-auto">
-//       <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess}>
-//         {Array.from({ length: numPages || 0 }, (_, index) => (
-//           <Page key={index} pageNumber={index + 1} width={800} />
-//         ))}
-//       </Document>
-//     </div>
-//   );
-// }
+  return (
+    <div className="pdf-container">
+      {pdfUrl ? (
+        <Document
+          file={pdfUrl}
+          onLoadSuccess={onDocumentLoadSuccess}
+          className="pdf-document"
+          loading={<div className="loading-text">Loading PDF...</div>}
+          error={<div className="error-text">Failed to load PDF.</div>}
+        >
+          {/* Render every page */}
+          {Array.from(new Array(numPages), (el, index) => (
+            <div key={`page_${index + 1}`} className="page-wrapper">
+              <Page
+                pageNumber={index + 1}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                scale={1}
+                // width={600}
+              />
+            </div>
+          ))}
+        </Document>
+      ) : (
+        <div className="empty-state">No PDF to display</div>
+      )}
+    </div>
+  );
+};
+
+export default PdfViewer;
