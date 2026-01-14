@@ -11,13 +11,17 @@ import ExtensionIcon from "../assets/icons/extensionIcon.svg?react";
 import CompileIcon from "../assets/icons/compileIcon.svg?react";
 import SettingsIcon from "../assets/icons/settings.svg?react";
 import UserIcon from "../assets/icons/user.svg?react";
+import LogoutIcon from "../assets/icons/logout.svg?react";
 import SectionSpace from "./sectionSpace";
 import { projectContext } from "../context/useProject";
 import { compileDocument } from "../api/projectHandling";
+import { useAuth } from "../context/useAuth";
+import axios from "axios";
 
 const DynamicSideBar = () => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
+  const [isProfileActive, setIsProfileActive] = useState(false);
   const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const {
@@ -29,10 +33,18 @@ const DynamicSideBar = () => {
     pdfUrl,
     latexContent,
   } = projectDetails;
+  const { user } = useAuth();
+
+  console.log(user);
 
   const handleMathIconClick = (e) => {
     e.preventDefault();
     setIsMathModalOpen(true);
+  };
+
+  const handleProfileIconClick = (e) => {
+    e.preventDefault();
+    setIsProfileActive((prev) => !prev);
   };
 
   const handleCompile = async () => {
@@ -58,6 +70,21 @@ const DynamicSideBar = () => {
   const handleCitationIconClick = (e) => {
     e.preventDefault();
     setIsCitationModalOpen(true);
+  };
+
+  const handleLogout = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_admin_server}/api/signout`,
+        {},
+        { withCredentials: true }
+      );
+      console.log("Successfully Logged Out");
+      window.location.reload();
+    } catch (error) {
+      console.log("Logout Error:", error);
+    }
   };
 
   return (
@@ -99,7 +126,7 @@ const DynamicSideBar = () => {
 
             {/* Citation Manager */}
             <div className="relative group">
-              <Link to="/canvas" onClick={handleCitationIconClick}>
+              <Link onClick={handleCitationIconClick}>
                 <div
                   className="flex items-center justify-center text-[#585858] cursor-pointer p-2"
                   title="Citation Manager"
@@ -135,7 +162,7 @@ const DynamicSideBar = () => {
             </Link>
 
             {/* Easy Math Input */}
-            <Link to="/canvas" onClick={handleMathIconClick}>
+            <Link onClick={handleMathIconClick}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Easy Math Input"
@@ -190,13 +217,58 @@ const DynamicSideBar = () => {
               </span>
             </Link>
             {/* User Profile */}
-            <Link to="/signup">
+            <Link onClick={handleProfileIconClick}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Account"
               >
-                <UserIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+                {user?.userName ? (
+                  <span>
+                    {user?.userName
+                      .split(" ")
+                      .map((word) => word[0])
+                      .join("")}
+                  </span>
+                ) : (
+                  <UserIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+                )}
               </span>
+              {isProfileActive &&
+                (user?.userId ? (
+                  <div className="absolute ml-14 z-50 bottom-4 h-20 min-w-40 w-auto bg-[#F9F9F9] border-[#CFCFCF] border-[1px]">
+                    <div className="font-inter py-3">
+                      <p className="text-[0.8rem] text-[#A3A3A3] px-3">
+                        {user?.emailId}
+                      </p>
+                      <div className="mt-1 w-40 h-[1px] bg-[#CFCFCF]"></div>
+                      <div
+                        onClick={handleLogout}
+                        className="flex flex-row justify-between"
+                      >
+                        <p className="px-3 text-sm mt-3 text-red-500 font-normal">
+                          Logout
+                        </p>
+                        <LogoutIcon
+                          style={{ fill: "#C01A1A" }}
+                          className="w-4 h-4 mt-[2vh] mr-4"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="absolute ml-14 z-50 bottom-4 h-10 w-40 bg-[#F9F9F9] border-[#CFCFCF] border-[1px]">
+                    <div className="font-inter py-2">
+                      <Link to="/signup">
+                        <div className="flex flex-row justify-between">
+                          <p className="px-3 text-sm text-black font-normal">
+                            Sign In
+                          </p>
+                          <span className="text-sm mr-4"> {"->"} </span>
+                        </div>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
             </Link>
           </div>
         </div>

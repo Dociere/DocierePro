@@ -36,7 +36,7 @@ function Login() {
       //   }
       // );
       console.log("Login successful");
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       console.error("Login failed:", err);
       setError(
@@ -316,12 +316,12 @@ function Login() {
                     </div>
                   </div>
                 </div>
-                {/* <p className="text-sm text-center pt-3 font-inter text-gray-600">
+                <p className="text-sm text-center pt-3 font-inter text-gray-600">
                   Don't have an account?{" "}
                   <Link to="/signup" className="hover:text-[#0C2340]">
                     Sign up here
                   </Link>
-                </p> */}
+                </p>
               </div>
             </div>
           </div>
@@ -329,9 +329,7 @@ function Login() {
 
         {/* Fixed footer at bottom with minimal spacing */}
         <div className="flex-shrink-0 py-3 text-center text-black/60 text-xs">
-          <p>
-            © 2025 Clint George, Mustansir Habil Bhagat. All rights reserved.
-          </p>
+          <p>© 2025 Dociere. All rights reserved.</p>
         </div>
       </div>
     </div>

@@ -29,3 +29,6 @@ temp
 equations
 citations
 projects
+
+# Environment Variables
+*.env

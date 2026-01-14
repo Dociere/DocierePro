@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain, contextBridge } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 
@@ -33,6 +33,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     icon: path.join(__dirname, "../public/dociereLogo1.png"),
+    frame: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -81,3 +82,9 @@ app.on("activate", () => {
     createWindow();
   }
 });
+
+ipcMain.on("window-minimize", () => mainWindow.minimize());
+ipcMain.on("window-maximize", () =>
+  mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize()
+);
+ipcMain.on("window-close", () => mainWindow.close());
