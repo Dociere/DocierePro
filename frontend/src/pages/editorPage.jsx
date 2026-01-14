@@ -314,7 +314,7 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       {/* Left side of the screen */}
       <div className="flex-1 flex flex-col border-r border-[#CFCFCF] overflow-hidden ml-12">
         <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <button
               onClick={() => setActiveView("code")}
               className={`py-2 cursor-pointer flex-1 text-sm ${

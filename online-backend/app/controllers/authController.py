@@ -1,10 +1,14 @@
-from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
+import bcrypt
+import jwt
+import datetime
 from instance.db import db
+from flask import current_app
 
-# In-memory DB for demo
-users_db = {}
-
+# Secret key for JWT (store in env in real apps)
+JWT_SECRET = "your_secret_key_here"
+JWT_ALGORITHM = "HS256"
+JWT_EXP_DELTA_SECONDS = 3600  # 1 hour
 
 def register_user(data):
     userName = data.get("userName")
@@ -14,29 +18,44 @@ def register_user(data):
     if not userName or not emailId or not password:
         return {"success": False, "error": "Username, EmailID and password required"}, 400
 
-    # Use username as document ID (simple & common)
-    if userName in db:
+    # Check if user exists
+    if emailId in db:
         return {"success": False, "error": "User already exists"}, 400
 
+    # Hash password using bcrypt
+    hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
     user_doc = {
-        "_id": userName,              # document ID
         "userId": str(uuid.uuid4()),
         "userName": userName,
         "emailId": emailId,
-        "password": generate_password_hash(password),
-        "type": "user"
+        "password": hashed_pw.decode("utf-8"),
     }
 
     db.save(user_doc)
 
     return {"success": True, "message": "User registered successfully"}, 201
 
+
 def login_user(data):
     userName = data.get("userName")
-    emailId = data.get("emailId")
     password = data.get("password")
-    user = users_db.get(userName)
-    if not user or not check_password_hash(user["password"], password):
-        return {"success": False, "error": "Invalid userName or password"}, 401
-    token = str(uuid.uuid4())
+
+    try:
+        user = db[userName]
+    except KeyError:
+        return {"success": False, "error": "Invalid username or password"}, 401
+
+    # Verify password
+    if not bcrypt.checkpw(password.encode("utf-8"), user["password"].encode("utf-8")):
+        return {"success": False, "error": "Invalid username or password"}, 401
+
+    # Generate JWT
+    payload = {
+        "userId": user["userId"],
+        "userName": userName,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(seconds=JWT_EXP_DELTA_SECONDS)
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
     return {"success": True, "token": token}, 200
