@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, Flask
 import os, re, logging
-import google.generativeai as genai
+from google import genai
 from ..utils.latex_helpers import build_prompt, clean_latex
 
 logger = logging.getLogger(__name__)
