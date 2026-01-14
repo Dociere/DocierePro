@@ -5,11 +5,13 @@ import TemplateSelect from "./pages/templateSelect";
 import DetailsPage from "./pages/detailsPage";
 import CanvasPage from "./pages/canvasPage";
 import Signup from "./pages/User_Account/signup";
+import Login from "./pages/User_Account/login";
 
 function App() {
   return (
     <Routes>
       <Route path="/signup" element={<Signup />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/" element={<PageLayout />}>
         <Route path="/" element={<StartingPage />} />
         <Route path="/template" element={<TemplateSelect />} />
