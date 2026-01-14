@@ -23,13 +23,15 @@ const RichTextEditorPanel = ({
             height: "calc(100% - 42px)", // Account for toolbar height
             display: "flex",
             flexDirection: "column",
+            fontFamily: "Arial",
+            fontSize: "20px",
           }}
           className="h-full"
         />
       </div>
 
       {/* Compilation Status Bar (if present) */}
-      {compilationStatus && compilationMessage && (
+      {/* {compilationStatus && compilationMessage && (
         <div
           className={`px-4 py-2 text-sm border-t border-gray-200 ${
             compilationStatus === "success"
@@ -41,14 +43,14 @@ const RichTextEditorPanel = ({
         >
           {compilationMessage}
         </div>
-      )}
+      )} */}
 
       {/* PDF Preview (if available) */}
-      {pdfUrl && (
+      {/* {pdfUrl && (
         <div className="h-64 border-t border-gray-200">
           <iframe src={pdfUrl} className="w-full h-full" title="PDF Preview" />
         </div>
-      )}
+      )} */}
     </div>
   );
 };
