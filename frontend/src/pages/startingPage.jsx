@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SearchBar from "../components/searchBar";
@@ -7,6 +7,7 @@ import { loadProjects } from "../api/projectHandling.jsx";
 
 const StartingPage = () => {
   const [projectData, setProjectData] = useState([]);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -43,7 +44,12 @@ const StartingPage = () => {
                 Create New Project
               </div>
             </Link>
-            <div className="relative text-[#256081] text-base font-inter font-normal text-nowrap border-[#256081] pl-14 pt-[1vh] pb-[0.7vh] pr-0 border-[1px]">
+            <input type="file" accept=".tex" ref={fileRef} hidden />
+
+            <div
+              onClick={() => fileRef.current.click()}
+              className="relative cursor-pointer text-[#256081] text-base font-inter font-normal text-nowrap border-[#256081] pl-14 pt-[1vh] pb-[0.7vh] pr-0 border-[1px]"
+            >
               <span className="absolute left-5 top-[1.7vh]">
                 <FileOpen style={{ fill: "#256081" }} className="w-4 h-4" />
               </span>
