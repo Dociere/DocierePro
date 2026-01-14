@@ -4,7 +4,9 @@ import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-import google.generativeai as genai
+
+# New SDK imports
+from google import genai
 
 # Load environment variables
 load_dotenv()
@@ -16,7 +18,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Middleware / CORS Setup
-# Replicating the specific origin and credentials settings from Express
 CORS(app, resources={r"/*": {
     "origins": [
         "http://localhost:3000",
@@ -26,20 +27,15 @@ CORS(app, resources={r"/*": {
     "supports_credentials": True
 }})
 
-# Initialize Gemini
+# Initialize API Key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     logger.error("GEMINI_API_KEY is missing in environment variables.")
 
-genai.configure(api_key=GEMINI_API_KEY)
-
-# Generation Configuration
-generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 64,
-    "max_output_tokens": 8192,
-}
+# Note: In the new SDK, we typically instantiate the client where needed 
+# or create a global client instance if thread-safety permits. 
+# Initializing it here for reuse.
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 @app.route('/api/generate-latex', methods=['POST'])
 def generate_latex():
@@ -105,17 +101,15 @@ Generate a professional {template_type} document with:
 
 IMPORTANT: Your ENTIRE response must be valid LaTeX code. Start with \\documentclass and end with \\end{{document}}. Nothing else."""
 
-        # Get Generative Model
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash", # Updated to current efficient model equivalent
-            generation_config=generation_config
+        # Generate Content using the new SDK
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
         )
 
-        # Generate Content
-        response = model.generate_content(prompt)
         latex_content = response.text.strip()
 
-        # Robust trimming logic (Optimized with Regex)
+        # Robust trimming logic
         # Removes ```latex, ```tex, or ``` at the start, and ``` at the end
         latex_content = re.sub(r'^```(latex|tex)?\s*', '', latex_content, flags=re.IGNORECASE)
         latex_content = re.sub(r'\s*```$', '', latex_content)
@@ -145,6 +139,5 @@ def health_check():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    # In production, use a WSGI server like gunicorn. For dev, this is fine.
     print(f"Server is running on port {port}")
     app.run(host='0.0.0.0', port=port, debug=True)
