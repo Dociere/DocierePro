@@ -5,6 +5,7 @@ import MenuDropdown from "./menuDropdown";
 import ShortcutsModal from "./shortcutsModal";
 import { projectContext } from "../context/useProject";
 import EditIcon from "../assets/icons/edit.svg?react";
+import dociereLogo from "../../public/dociere.png";
 import axios from "axios";
 
 const API_URL = "http://localhost:5000";
@@ -699,10 +700,16 @@ const NavBar = () => {
               Help
             </button>
           </div>
-          <div className="flex flex-1 py-0 text-sm font-inter font-medium flex-row justify-center items-center">
-            {projectDetails?.currentProject?.title}
-            <EditIcon style={{ fill: "#585858" }} className="ml-2 w-3 h-3" />
-          </div>
+          {projectDetails?.currentProject?.title ? (
+            <div className="flex flex-1 py-0 text-sm font-inter font-medium flex-row justify-center items-center">
+              {projectDetails?.currentProject?.title}
+              <EditIcon style={{ fill: "#585858" }} className="ml-2 w-3 h-3" />
+            </div>
+          ) : (
+            <div>
+              <img src={dociereLogo} alt="" className="w-[5.2vw] mt-2" />
+            </div>
+          )}
 
           {/* Right Spacer */}
           <div className="flex-1" />
