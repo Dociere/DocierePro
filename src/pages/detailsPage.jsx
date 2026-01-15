@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/useAuth";
 
 import { createProject } from "../api/projectHandling";
 
@@ -15,6 +16,10 @@ const DetailsPage = () => {
   const [isGenChecked, setIsGenChecked] = useState(false);
   const [userIdea, setUserIdea] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const { user } = useAuth();
+
+  console.log(user);
 
   const { templateTitle } = useParams(); // Get the template title from the URL
 
@@ -66,6 +71,7 @@ const DetailsPage = () => {
         authorDetails,
         userIdea,
         isGenChecked,
+        user?.emailId ?? null,
         e
       );
 

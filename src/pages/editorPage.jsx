@@ -19,7 +19,7 @@ import {
   latexToSections,
   sectionsToLatex,
 } from "../utils/latexUtility.jsx";
-import { loadProjects } from "../api/projectHandling.jsx";
+import { loadProjects, saveProject } from "../api/projectHandling.jsx";
 import { projectContext } from "../context/useProject.jsx";
 import PdfViewer from "../components/pdfViewer.jsx";
 
@@ -37,6 +37,7 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   const saveTimeout = useRef(null);
   const lastSyncedLatex = useRef("");
   const sectionsInitialized = useRef(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [activeView, setActiveView] = useState("code");
   const [activeRightView, setActiveRightView] = useState("preview");
@@ -69,6 +70,24 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       });
     }
   };
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const token = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("uid="))
+    ?.split("=")[1];
 
   useEffect(() => {
     if (
@@ -215,7 +234,7 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
           }
 
           saveTimeout.current = setTimeout(() => {
-            saveProjectToServer(updatedProject);
+            saveProjectToServer(updatedProject, projectDetails.activeFile);
           }, 1000);
         },
         source === "monaco" ? 300 : source === "richText" ? 500 : 300
@@ -253,19 +272,26 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
     [updateAllEditors]
   );
 
-  const saveProjectToServer = async (updatedProject) => {
+  const saveProjectToServer = async (updatedProject, activeFile) => {
     if (!updatedProject || !projectDetails.activeFile) return;
 
     try {
-      await axios.put(`${API_URL}/api/projects/${updatedProject.id}`, {
-        files: updatedProject.files,
-        activeFile: projectDetails.activeFile,
-      });
+      let compilationStatus = "success";
+      let compilationMessage = "Project saved successfully!";
+
+      await saveProject(
+        updatedProject,
+        activeFile,
+        compilationStatus,
+        compilationMessage
+      );
       console.log("Auto-saved to server");
     } catch (error) {
       console.error("Auto-save failed:", error);
     }
   };
+
+  //updatedProject, projectDetails.activeFile
 
   const quillModules = {
     toolbar: {
@@ -355,6 +381,9 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
                 value={projectDetails.latexContent || ""}
                 handleLatexChange={handleLatexChange}
                 monacoEditorRef={monacoEditorRef}
+                projectId={projectDetails.currentProject?.id}
+                token={token}
+                isOnline={isOnline}
               />
             </div>
           )}
