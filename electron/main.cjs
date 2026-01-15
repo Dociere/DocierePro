@@ -32,7 +32,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(__dirname, "../public/dociereLogo1.png"),
+    icon: path.join(__dirname, "../public/dociereLogo9.png"),
     frame: true,
     webPreferences: {
       nodeIntegration: false,

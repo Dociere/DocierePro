@@ -2,6 +2,7 @@ import React, { useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
+import ShareProject from "./shareProject";
 import SectionIcon from "../assets/icons/sectionIcon.svg?react";
 import CitationIcon from "../assets/icons/citation-manager.svg?react";
 import ShareIcon from "../assets/icons/shareIcon.svg?react";
@@ -21,6 +22,7 @@ import axios from "axios";
 const DynamicSideBar = () => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
   const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -36,10 +38,16 @@ const DynamicSideBar = () => {
   const { user } = useAuth();
 
   console.log(user);
+  console.log(projectDetails);
 
   const handleMathIconClick = (e) => {
     e.preventDefault();
     setIsMathModalOpen(true);
+  };
+
+  const handleShareIconClick = (e) => {
+    e.preventDefault();
+    setIsShareModalOpen(true);
   };
 
   const handleProfileIconClick = (e) => {
@@ -148,7 +156,7 @@ const DynamicSideBar = () => {
             </div>
 
             {/* Share / Collaborate */}
-            <Link to="/canvas">
+            <div onClick={handleShareIconClick}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Share"
@@ -159,7 +167,7 @@ const DynamicSideBar = () => {
                 Share
               </span> */}
               </span>
-            </Link>
+            </div>
 
             {/* Easy Math Input */}
             <Link onClick={handleMathIconClick}>
@@ -282,6 +290,15 @@ const DynamicSideBar = () => {
       {/* Citation Manager Modal */}
       {isCitationModalOpen && (
         <CitationManager onClose={() => setIsCitationModalOpen(false)} />
+      )}
+
+      {/* Share Project Modal */}
+      {isShareModalOpen && (
+        <ShareProject
+          onClose={() => setIsShareModalOpen(false)}
+          projectId={projectDetails?.currentProject?.id}
+          isOwner={projectDetails?.currentProject?.owner}
+        />
       )}
 
       {isSectionSpaceOpen && <SectionSpace />}

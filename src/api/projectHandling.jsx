@@ -15,6 +15,7 @@ export const createProject = async (
   authorDetails,
   userIdea,
   isGenChecked,
+  Owner,
   e
 ) => {
   e.preventDefault();
@@ -26,6 +27,7 @@ export const createProject = async (
       authorDetails,
       generateBoilerplate: isGenChecked,
       userIdea: isGenChecked ? userIdea : null,
+      Owner: Owner || null,
     };
 
     const response = await axios.post(
@@ -88,10 +90,11 @@ export const saveProject = async (
   compilationMessage
 ) => {
   if (!currentProject) return;
-
+  console.log("From saveProject", currentProject);
   try {
     await axios.put(`${API_URL}/api/projects/${currentProject.id}`, {
       files: currentProject.files,
+      owner: currentProject.owner,
       activeFile: activeFile,
     });
 
