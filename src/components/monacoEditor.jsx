@@ -32,11 +32,11 @@ const MonacoEditorPanel = ({
   useYjsMonaco(projectId, token, isOnline, editorInstanceRef.current);
 
   return (
-    <div className="h-[100vh] flex-1 flex flex-col border-r border-[#dee2e6]">
+    <div className="h-full w-full flex-1 flex flex-col">
       {/* Monaco Editor Container */}
-      <div className="flex-1">
+      <div className="flex-1 h-full">
         <MonacoEditor
-          height="100vh"
+          height="100%"
           defaultLanguage="latex"
           value={value}
           onChange={handleLatexChange}
