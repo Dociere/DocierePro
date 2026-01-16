@@ -1,18 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { checkServerConnection } from "../api/projectHandling";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isServerConnected, setIsServerConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
+      const serverRes = await checkServerConnection();
+      setIsServerConnected(serverRes);
+      console.log("serverRes", serverRes);
       try {
         const response = await axios.get(
           `${import.meta.env.VITE_admin_server}/api/check-auth`,
@@ -27,26 +32,12 @@ export const AuthProvider = ({ children }) => {
           console.log("setUser", user);
           console.log("setUser res", response);
         }
-        // else {
-        //   // Only navigate if we're not already on the login page
-        //   if (window.location.pathname !== "/login") {
-        //     navigate("/login");
-        //   }
-        // }
       } catch (error) {
         console.error("Error fetching data:", error);
         if (error.response) {
           setMessage(
             error.response.data.message || "You are not authenticated."
           );
-          // Only navigate if we're not already on the login page
-          //   if (
-          //     error.response.status === 401 &&
-          //     window.location.pathname !== "/login"
-          //   ) {
-          //     // navigate("/login");
-          //     navigate("/signup");
-          //   }
         } else {
           setMessage("Failed to load message due to network issue.");
         }
@@ -64,7 +55,9 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, message }}>
+    <AuthContext.Provider
+      value={{ user, isServerConnected, isAuthenticated, loading, message }}
+    >
       {children}
     </AuthContext.Provider>
   );

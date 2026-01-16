@@ -526,8 +526,8 @@ app.put("/api/projects/:id", async (req, res) => {
     const projectDir = path.join(PROJECTS_DIR, id);
     const projectPath = path.join(projectDir, "project.json");
 
-    console.log("✅ owner ✅", owner);
-    console.log("✅ files ✅", files);
+    // console.log("✅ owner ✅", owner);
+    // console.log("✅ files ✅", files);
 
     if (!(await fs.pathExists(projectPath))) {
       return res

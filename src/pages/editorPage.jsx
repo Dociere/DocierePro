@@ -22,11 +22,13 @@ import {
 import { loadProjects, saveProject } from "../api/projectHandling.jsx";
 import { projectContext } from "../context/useProject.jsx";
 import PdfViewer from "../components/pdfViewer.jsx";
+import { useOutletContext } from "react-router-dom";
 
 // const API_URL = "http://localhost:5025";
 
-const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
+const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
+  const { isSectionSpaceOpen } = useOutletContext();
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -336,9 +338,13 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   }
 
   return (
-    <div className="flex flex-row h-screen overflow-hidden fixed inset-0 pt-11">
+    <div
+      className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-11 ${
+        isSectionSpaceOpen ? "ml-56" : "ml-0"
+      }`}
+    >
       {/* Left side of the screen */}
-      <div className="flex-1 flex flex-col border-r border-[#CFCFCF] overflow-hidden ml-12">
+      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-12">
         <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center">
             <button
@@ -410,7 +416,7 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       </div>
 
       {/* Right side of the screen */}
-      <div className="flex-1 flex flex-col border-r border-[#CFCFCF] overflow-hidden">
+      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden">
         <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-1">
             <button

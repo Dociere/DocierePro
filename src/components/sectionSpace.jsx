@@ -50,7 +50,7 @@ import React from "react";
 
 const SectionSpace = () => {
   return (
-    <div className="ml-14 top-0 h-screen w-56 bg-[#F9F9F9] border-[#CFCFCF] border-r-[1px] -mr-14">
+    <div className="ml-12 top-0 h-screen w-56 bg-[#F9F9F9] border-[#CFCFCF] border-r-[1px] -mr-12 z-10 relative">
       <p>Section Space</p>
     </div>
   );
