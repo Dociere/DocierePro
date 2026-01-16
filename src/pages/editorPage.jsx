@@ -493,7 +493,7 @@ const EditorPage = () => {
       }`}
     >
       {/* Left side of the screen */}
-      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-12">
+      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-12 pb-[3.2vh]">
         <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center">
             <button
