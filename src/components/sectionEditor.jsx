@@ -98,7 +98,6 @@ const SectionEditor = ({
   token,
   isOnline,
 }) => {
-  // 1. GLOBAL FOCUS STATE
   const [focusedSectionId, setFocusedSectionId] = useState(null);
 
   useEffect(() => {
@@ -165,7 +164,7 @@ const SectionEditor = ({
   };
 
   const addRootSectionEnd = (e) => {
-    e.stopPropagation(); // Prevent clearing focus immediately
+    e.stopPropagation();
     const newSection = {
       id: Date.now() + Math.random(),
       type: "section",
@@ -174,42 +173,47 @@ const SectionEditor = ({
       children: [],
     };
     onSectionsChange([...sections, newSection]);
-    setFocusedSectionId(newSection.id); // Auto-focus new section
+    setFocusedSectionId(newSection.id);
   };
 
   return (
-    // 2. CLICK OUTSIDE HANDLER (on the background wrapper)
     <div
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-5 bg-gray-100 min-h-full cursor-default"
       onClick={() => setFocusedSectionId(null)}
     >
       <div className="space-y-6">
         {sections &&
-          sections.map((section, index) => (
-            <RecursiveSection
-              key={section.id}
-              section={section}
-              index={index}
-              level={0}
-              isLast={index === sections.length - 1}
-              isFirst={index === 0}
-              totalSections={sections.length}
-              // Focus Props
-              focusedSectionId={focusedSectionId}
-              setFocusedSectionId={setFocusedSectionId}
-              // Handlers
-              onUpdate={handleRootUpdate}
-              onDelete={() => handleRootDelete(section.id)}
-              onMoveUp={() => handleRootMove(index, -1)}
-              onMoveDown={() => handleRootMove(index, 1)}
-              onDuplicate={() => handleRootDuplicate(section, index)}
-              onAddAfter={() => handleRootAddAfter(index)}
-              // Props
-              projectId={projectId}
-              token={token}
-              isOnline={isOnline}
-            />
-          ))}
+          sections.map((section, index) => {
+            // HIDE PREAMBLE AND POSTAMBLE FROM UI
+            if (section.type === "preamble" || section.type === "postamble")
+              return null;
+
+            return (
+              <RecursiveSection
+                key={section.id}
+                section={section}
+                index={index}
+                level={0}
+                isLast={index === sections.length - 1}
+                isFirst={index === 0}
+                totalSections={sections.length}
+                // Focus Props
+                focusedSectionId={focusedSectionId}
+                setFocusedSectionId={setFocusedSectionId}
+                // Handlers
+                onUpdate={handleRootUpdate}
+                onDelete={() => handleRootDelete(section.id)}
+                onMoveUp={() => handleRootMove(index, -1)}
+                onMoveDown={() => handleRootMove(index, 1)}
+                onDuplicate={() => handleRootDuplicate(section, index)}
+                onAddAfter={() => handleRootAddAfter(index)}
+                // Props
+                projectId={projectId}
+                token={token}
+                isOnline={isOnline}
+              />
+            );
+          })}
 
         <button
           onClick={addRootSectionEnd}
@@ -232,10 +236,8 @@ const RecursiveSection = ({
   isFirst,
   isLast,
   totalSections,
-  // Focus Props Received
   focusedSectionId,
   setFocusedSectionId,
-  // Handlers
   onUpdate,
   onDelete,
   onMoveUp,
@@ -246,27 +248,46 @@ const RecursiveSection = ({
   token,
   isOnline,
 }) => {
-  // 3. DERIVED FOCUS STATE
   const isFocused = focusedSectionId === section.id;
-
   const [isEditingName, setIsEditingName] = useState(false);
   const [isCodeMode, setIsCodeMode] = useState(false);
   const [richTextContent, setRichTextContent] = useState("");
 
+  // STORE HIDDEN PARTS (Preamble/Postamble) HERE
+  const hiddenParts = React.useRef({ preamble: "", postamble: "" });
+
   useEffect(() => {
     if (!isCodeMode) {
-      const html = latexUtility.latexToRichText(section.content);
+      // 1. SPLIT CONTENT
+      const { preamble, body, postamble } = latexUtility.splitLatex(
+        section.content
+      );
+
+      // 2. SAVE HIDDEN PARTS TO REF
+      hiddenParts.current = { preamble, postamble };
+
+      // 3. CONVERT ONLY BODY TO HTML
+      const html = latexUtility.latexToRichText(body);
       setRichTextContent(html);
     }
   }, [section.content, isCodeMode]);
 
   const handleRichTextChange = (html) => {
     setRichTextContent(html);
-    const latex = latexUtility.richTextToLatex(html);
-    onUpdate({ ...section, content: latex });
+
+    // 1. CONVERT HTML TO BODY LATEX
+    const bodyLatex = latexUtility.richTextToLatex(html);
+
+    // 2. RECOMBINE WITH HIDDEN PARTS
+    const fullLatex =
+      hiddenParts.current.preamble + bodyLatex + hiddenParts.current.postamble;
+
+    onUpdate({ ...section, content: fullLatex });
   };
 
-  // --- CHILDREN HANDLERS ---
+  // ... (Rest of your component handlers: handleChildUpdate, addChild, rendering, etc. remain EXACTLY THE SAME)
+  // Just copy the rest of RecursiveSection from the previous working version.
+
   const handleChildUpdate = (childId, updatedChild) => {
     const newChildren = section.children.map((c) =>
       c.id === childId ? updatedChild : c
@@ -312,7 +333,7 @@ const RecursiveSection = ({
     const newChildren = [...section.children];
     newChildren.splice(childIndex + 1, 0, newSibling);
     onUpdate({ ...section, children: newChildren });
-    setFocusedSectionId(newSibling.id); // Auto-focus
+    setFocusedSectionId(newSibling.id);
   };
 
   const addChild = () => {
@@ -329,7 +350,7 @@ const RecursiveSection = ({
     };
     const currentChildren = section.children || [];
     onUpdate({ ...section, children: [...currentChildren, newChild] });
-    setFocusedSectionId(newChild.id); // Auto-focus
+    setFocusedSectionId(newChild.id);
   };
 
   const getSiblingLabel = () => {
@@ -347,7 +368,6 @@ const RecursiveSection = ({
 
   return (
     <div className={`relative mb-4 transition-all duration-200`}>
-      {/* TOOLBAR */}
       {isFocused && (
         <div className="absolute -top-5 right-8 flex gap-0.5 bg-gray-50 rounded border border-gray-300 p-1 shadow-md z-20">
           <button
@@ -418,16 +438,13 @@ const RecursiveSection = ({
         </div>
       )}
 
-      {/* CARD */}
       <div
         className={`relative flex rounded border transition-all duration-150 bg-white min-h-[120px] ${cardBorder}`}
         onClick={(e) => {
-          // 4. SET FOCUS ON CLICK, STOP PROPAGATION
           e.stopPropagation();
           setFocusedSectionId(section.id);
         }}
       >
-        {/* SIDEBAR */}
         <div className="w-8 bg-gray-50 border-r border-gray-200 flex flex-col items-center pt-2 flex-shrink-0 gap-2">
           <button
             className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded"
@@ -440,7 +457,6 @@ const RecursiveSection = ({
           </span>
         </div>
 
-        {/* CONTENT */}
         <div className="flex-1 p-3 sm:p-4 relative">
           {(isEditingName || (!section.name && isFocused)) && (
             <div className="mb-3 p-2 bg-gray-50 rounded border border-gray-300">
@@ -453,7 +469,7 @@ const RecursiveSection = ({
                 placeholder="Unnamed Section"
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
                 autoFocus
-                onClick={(e) => e.stopPropagation()} // Stop input clicks from triggering wrapper events logic
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           )}
@@ -510,7 +526,6 @@ const RecursiveSection = ({
         </div>
       </div>
 
-      {/* FOOTER ACTIONS */}
       <div
         className={`flex gap-2 pt-2 pb-2 justify-center transition-all duration-200 overflow-hidden ${
           isFocused ? "opacity-100 max-h-16" : "opacity-0 max-h-0"
@@ -540,7 +555,6 @@ const RecursiveSection = ({
         )}
       </div>
 
-      {/* RECURSIVE CHILDREN */}
       {section.children && section.children.length > 0 && (
         <div className="mt-2 ml-4 pl-4 border-l-2 border-gray-200">
           {section.children.map((child, i) => (
@@ -552,10 +566,8 @@ const RecursiveSection = ({
               isFirst={i === 0}
               isLast={i === section.children.length - 1}
               totalSections={section.children.length}
-              // Pass Focus Props Down
               focusedSectionId={focusedSectionId}
               setFocusedSectionId={setFocusedSectionId}
-              // Handlers
               onUpdate={(updated) => handleChildUpdate(child.id, updated)}
               onDelete={() => handleChildDelete(child.id)}
               onMoveUp={() => handleChildMove(i, -1)}
