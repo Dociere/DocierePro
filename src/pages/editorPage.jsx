@@ -44,6 +44,17 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   const [sections, setSections] = useState([]);
   const [logs, setLogs] = useState([]);
 
+  const [debugLogs, setDebugLogs] = useState([]);
+
+  // 2. Add helper function to log messages:
+  const addDebugLog = (message, type = "info", details = null) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugLogs((prev) => [
+      ...prev.slice(-50),
+      { timestamp, message, type, details },
+    ]); // Keep last 50 logs
+  };
+
   useEffect(() => {
     fetchData();
     checkServerHealth();
@@ -159,6 +170,90 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
 
   // ============ UNIFIED UPDATE HANDLER ============
 
+  // const updateAllEditors = useCallback(
+  //   (source, content) => {
+  //     if (updateTimeout.current) {
+  //       clearTimeout(updateTimeout.current);
+  //     }
+
+  //     updateTimeout.current = setTimeout(
+  //       () => {
+  //         let newLatexContent;
+
+  //         switch (source) {
+  //           case "monaco":
+  //             newLatexContent = content;
+  //             break;
+
+  //           case "richText":
+  //             const bodyContent = richTextToLatex(content);
+  //             newLatexContent = reconstructLatexDocument(
+  //               projectDetails.latexContent || lastSyncedLatex.current,
+  //               bodyContent
+  //             );
+  //             break;
+
+  //           case "sections":
+  //             newLatexContent = sectionsToLatex(
+  //               content,
+  //               projectDetails.latexContent || lastSyncedLatex.current
+  //             );
+  //             break;
+
+  //           default:
+  //             return;
+  //         }
+
+  //         if (newLatexContent === lastSyncedLatex.current) {
+  //           return;
+  //         }
+
+  //         lastSyncedLatex.current = newLatexContent;
+
+  //         const updatedProject = {
+  //           ...projectDetails.currentProject,
+  //           files: {
+  //             ...projectDetails.currentProject.files,
+  //             [projectDetails.activeFile]: {
+  //               ...projectDetails.currentProject.files[
+  //                 projectDetails.activeFile
+  //               ],
+  //               content: newLatexContent,
+  //             },
+  //           },
+  //         };
+
+  //         updateProjectDetails({
+  //           latexContent: newLatexContent,
+  //           currentProject: updatedProject,
+  //         });
+
+  //         // Update derived states for non-active editors
+  //         if (source !== "richText") {
+  //           const bodyContent = extractLatexBody(newLatexContent);
+  //           updateProjectDetails({
+  //             richTextContent: latexToRichText(bodyContent),
+  //           });
+  //         }
+
+  //         if (source !== "sections") {
+  //           setSections(latexToSections(newLatexContent));
+  //         }
+
+  //         if (saveTimeout.current) {
+  //           clearTimeout(saveTimeout.current);
+  //         }
+
+  //         saveTimeout.current = setTimeout(() => {
+  //           saveProjectToServer(updatedProject, projectDetails.activeFile);
+  //         }, 1000);
+  //       },
+  //       source === "monaco" ? 300 : source === "richText" ? 500 : 300
+  //     );
+  //   },
+  //   [projectDetails, updateProjectDetails]
+  // );
+
   const updateAllEditors = useCallback(
     (source, content) => {
       if (updateTimeout.current) {
@@ -169,31 +264,70 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
         () => {
           let newLatexContent;
 
+          addDebugLog(`🔄 UPDATE from ${source}`, "info");
+
           switch (source) {
             case "monaco":
               newLatexContent = content;
+              addDebugLog("✅ Monaco: Direct pass-through");
               break;
 
             case "richText":
+              addDebugLog("🔄 Converting Rich Text → LaTeX");
+
+              // Check what's in the rich text
+              const hasPreambleMarker = content.includes("<!--LATEX_PREAMBLE:");
+              const hasPostambleMarker = content.includes(
+                "<!--LATEX_POSTAMBLE:"
+              );
+              addDebugLog(
+                `Rich text markers: Preamble=${hasPreambleMarker}, Postamble=${hasPostambleMarker}`,
+                hasPreambleMarker && hasPostambleMarker ? "success" : "warning"
+              );
+
               const bodyContent = richTextToLatex(content);
+
+              const hasBegin = bodyContent.includes("\\begin{document}");
+              const hasEnd = bodyContent.includes("\\end{document}");
+
+              addDebugLog(
+                `After richTextToLatex: \\begin=${hasBegin}, \\end=${hasEnd}`,
+                hasBegin && hasEnd ? "success" : "error",
+                `Length: ${bodyContent.length} chars`
+              );
+
               newLatexContent = reconstructLatexDocument(
                 projectDetails.latexContent || lastSyncedLatex.current,
                 bodyContent
               );
+
+              const finalHasBegin =
+                newLatexContent.includes("\\begin{document}");
+              const finalHasEnd = newLatexContent.includes("\\end{document}");
+
+              addDebugLog(
+                `Final LaTeX: \\begin=${finalHasBegin}, \\end=${finalHasEnd}`,
+                finalHasBegin && finalHasEnd ? "success" : "error",
+                `Length: ${newLatexContent.length} chars`
+              );
               break;
 
             case "sections":
+              addDebugLog("🔄 Converting Sections → LaTeX");
               newLatexContent = sectionsToLatex(
                 content,
                 projectDetails.latexContent || lastSyncedLatex.current
               );
+              addDebugLog("✅ Sections conversion complete");
               break;
 
             default:
+              addDebugLog(`⚠️ Unknown source: ${source}`, "warning");
               return;
           }
 
           if (newLatexContent === lastSyncedLatex.current) {
+            addDebugLog("⏭️ No changes detected, skipping");
             return;
           }
 
@@ -219,13 +353,25 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
 
           // Update derived states for non-active editors
           if (source !== "richText") {
+            addDebugLog("🔄 Updating rich text from LaTeX");
             const bodyContent = extractLatexBody(newLatexContent);
+            const richText = latexToRichText(bodyContent);
+
+            const hasPreamble = richText.includes("<!--LATEX_PREAMBLE:");
+            const hasPostamble = richText.includes("<!--LATEX_POSTAMBLE:");
+
+            addDebugLog(
+              `Rich text generated: Preamble=${hasPreamble}, Postamble=${hasPostamble}`,
+              hasPreamble && hasPostamble ? "success" : "warning"
+            );
+
             updateProjectDetails({
-              richTextContent: latexToRichText(bodyContent),
+              richTextContent: richText,
             });
           }
 
           if (source !== "sections") {
+            addDebugLog("🔄 Updating sections from LaTeX");
             setSections(latexToSections(newLatexContent));
           }
 
@@ -234,8 +380,11 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
           }
 
           saveTimeout.current = setTimeout(() => {
+            addDebugLog("💾 Auto-saving to server");
             saveProjectToServer(updatedProject, projectDetails.activeFile);
           }, 1000);
+
+          addDebugLog("✅ Update complete", "success");
         },
         source === "monaco" ? 300 : source === "richText" ? 500 : 300
       );
@@ -372,6 +521,7 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
               Section View
             </button>
           </div>
+          {/* <DebugPanel debugLogs={debugLogs} onClear={() => setDebugLogs([])} /> */}
         </div>
 
         <div className="flex-1 overflow-hidden relative">
