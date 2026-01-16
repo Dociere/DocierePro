@@ -15,6 +15,14 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
 
   const handleShare = async () => {
+    console.log("Project ID:", projectId);
+    console.log("User:", user);
+    console.log("All cookies:", document.cookie);
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("uid="))
+      ?.split("=")[1];
+    console.log("UID token:", token);
     if (!collaboratorEmail) {
       setMessage("Please enter collaborator email");
       return;
@@ -25,7 +33,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/projects/${projectId}/share`,
+        `http://localhost:5025/api/projects/${projectId}/share`,
         { collaboratorEmail, permissions: "edit" },
         { withCredentials: true }
       );
@@ -52,7 +60,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/projects/join/${joinToken}`,
+        `http://localhost:5025/api/projects/join/${joinToken}`,
         {},
         { withCredentials: true }
       );

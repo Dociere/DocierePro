@@ -20,7 +20,7 @@ function TemplateSelect() {
   ];
 
   return (
-    <>
+    <div className="mt-20">
       <Link to="/">
         <div className="font-inter ml-24 mt-10 text-sm flex ">
           <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5" />
@@ -57,7 +57,7 @@ function TemplateSelect() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

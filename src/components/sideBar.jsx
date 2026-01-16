@@ -19,12 +19,12 @@ import { compileDocument } from "../api/projectHandling";
 import { useAuth } from "../context/useAuth";
 import axios from "axios";
 
-const DynamicSideBar = () => {
+const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
-  const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
+  // const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const {
     currentProject,
@@ -35,10 +35,11 @@ const DynamicSideBar = () => {
     pdfUrl,
     latexContent,
   } = projectDetails;
-  const { user } = useAuth();
+  const { user, isServerConnected, isAuthenticated } = useAuth();
 
-  console.log(user);
-  console.log(projectDetails);
+  console.log("user", user);
+  console.log("isServerConnected", isServerConnected);
+  console.log("projectDetails", projectDetails);
 
   const handleMathIconClick = (e) => {
     e.preventDefault();
@@ -63,10 +64,12 @@ const DynamicSideBar = () => {
       compilationStatus,
       compilationMessage,
       pdfUrl,
-      latexContent
+      latexContent,
+      isServerConnected,
+      isAuthenticated
     );
 
-    // console.log("handleCompile response", response.pdfUrl);
+    console.log("handleCompile response", response.pdfUrl);
 
     updateProjectDetails({
       pdfUrl: response.pdfUrl,
@@ -95,9 +98,13 @@ const DynamicSideBar = () => {
     }
   };
 
+  const toggleSectionSpace = () => {
+    setIsSectionSpaceOpen(!isSectionSpaceOpen);
+  };
+
   return (
     <>
-      <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-12 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px]">
+      <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-12 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px] select-none">
         <div className="flex flex-col justify-between h-full">
           <div className="flex flex-col items-center pt-4 space-y-3">
             {/* Current Project file */}
@@ -114,7 +121,7 @@ const DynamicSideBar = () => {
               </span>
             </Link>
             {/* Section Space */}
-            <div onClick={() => setIsSectionSpaceOpen(!isSectionSpaceOpen)}>
+            <div onClick={toggleSectionSpace}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                 title="Section Space"
@@ -206,7 +213,14 @@ const DynamicSideBar = () => {
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Compile"
               >
-                <CompileIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+                {/* <CompileIcon style={{ fill: "#585858" }} className="w-5 h-5" /> */}
+                {projectDetails.compilationStatus === "error" ? (
+                  <div className="text-xl text-[#ff0000]">►</div>
+                ) : projectDetails.compilationStatus === "success" ? (
+                  <div className="text-xl text-[#16be00]">►</div>
+                ) : (
+                  <div className="text-xl text-[#929292]">►</div>
+                )}
 
                 {/* <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Compile
@@ -301,7 +315,7 @@ const DynamicSideBar = () => {
         />
       )}
 
-      {isSectionSpaceOpen && <SectionSpace />}
+      {/* {isSectionSpaceOpen && <SectionSpace />} */}
     </>
   );
 };

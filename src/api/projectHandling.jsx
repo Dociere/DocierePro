@@ -87,10 +87,13 @@ export const saveProject = async (
   currentProject,
   activeFile,
   compilationStatus,
-  compilationMessage
+  compilationMessage,
+  isServerConnected,
+  isAuthenticated
 ) => {
   if (!currentProject) return;
   console.log("From saveProject", currentProject);
+
   try {
     await axios.put(`${API_URL}/api/projects/${currentProject.id}`, {
       files: currentProject.files,
@@ -98,12 +101,30 @@ export const saveProject = async (
       activeFile: activeFile,
     });
 
-    compilationStatus = "success";
-    compilationMessage = "Project saved successfully";
-    setTimeout(() => {
-      compilationStatus = "";
-      compilationMessage = "";
-    }, 3000);
+    if (isServerConnected && isAuthenticated) {
+      try {
+        await axios.put(
+          `${import.meta.env.VITE_admin_server}/api/projects/${
+            currentProject.id
+          }`,
+          {
+            files: currentProject.files,
+            owner: currentProject.owner,
+            title: currentProject.title,
+            activeFile: activeFile,
+          }
+        );
+      } catch (error) {
+        console.log("Failed to save project to DB: " + error.message);
+      }
+    }
+
+    // compilationStatus = "success";
+    // compilationMessage = "Project saved successfully";
+    // setTimeout(() => {
+    //   compilationStatus = "";
+    //   compilationMessage = "";
+    // }, 3000);
   } catch (error) {
     console.log("Failed to save project: " + error.message);
   }
@@ -116,7 +137,9 @@ export const compileDocument = async (
   compilationStatus,
   compilationMessage,
   pdfUrl,
-  latexContent
+  latexContent,
+  isServerConnected,
+  isAuthenticated
 ) => {
   if (!currentProject || !activeFile) return;
 
@@ -174,7 +197,9 @@ export const compileDocument = async (
         currentProject,
         activeFile,
         compilationStatus,
-        compilationMessage
+        compilationMessage,
+        isServerConnected,
+        isAuthenticated
       );
     } else {
       compilationStatus = "error";
@@ -193,6 +218,16 @@ export const compileDocument = async (
       compilationStatus = "";
       compilationMessage = "";
     }, 8000);
+  }
+};
+
+export const checkServerConnection = async () => {
+  try {
+    await axios.get(`${import.meta.env.VITE_admin_server}/api/health`);
+    return true;
+  } catch (error) {
+    console.log("Error connecting to the Backend Server");
+    return false;
   }
 };
 

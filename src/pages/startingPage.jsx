@@ -20,7 +20,7 @@ const StartingPage = () => {
   };
 
   return (
-    <div className="h-screen overflow-y-auto scrollbar-hide flex flex-col ml-36 mr-20 pb-10">
+    <div className="h-screen overflow-y-auto scrollbar-hide flex flex-col ml-36 mr-20 pb-10 mt-10">
       <div className="flex flex-row mt-20">
         <div>
           <div className="text-black text-5xl font-playfair font-bold leading-[32px]">
