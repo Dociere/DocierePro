@@ -23,7 +23,7 @@ import { loadProjects, saveProject } from "../api/projectHandling.jsx";
 import { projectContext } from "../context/useProject.jsx";
 import PdfViewer from "../components/pdfViewer.jsx";
 
-const API_URL = "http://localhost:5000";
+// const API_URL = "http://localhost:5025";
 
 const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -46,7 +46,7 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
 
   useEffect(() => {
     fetchData();
-    checkServerHealth();
+    // checkServerHealth();
   }, []);
 
   const fetchData = async () => {
@@ -60,16 +60,16 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
     });
   };
 
-  const checkServerHealth = async () => {
-    try {
-      await axios.get(`${API_URL}/api/health`);
-    } catch (error) {
-      updateProjectDetails({
-        error:
-          "Cannot connect to server. Please make sure the backend is running.",
-      });
-    }
-  };
+  // const checkServerHealth = async () => {
+  //   try {
+  //     await axios.get(`${API_URL}/api/health`);
+  //   } catch (error) {
+  //     updateProjectDetails({
+  //       error:
+  //         "Cannot connect to server. Please make sure the backend is running.",
+  //     });
+  //   }
+  // };
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -433,16 +433,16 @@ const EditorPage = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
             >
               Logs
             </button>
-            {/* <button
-                onClick={() => setActiveRightView("aichat")}
-                className={`py-2 cursor-pointer flex-1 text-sm ${
-                  activeRightView === "aichat"
-                    ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                Chat Window
-              </button> */}
+            <button
+              onClick={() => setActiveRightView("aichat")}
+              className={`py-2 cursor-pointer flex-1 text-sm ${
+                activeRightView === "aichat"
+                  ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              AI Chat
+            </button>
           </div>
         </div>
 

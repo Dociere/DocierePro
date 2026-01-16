@@ -38,7 +38,7 @@ const DynamicSideBar = () => {
   const { user } = useAuth();
 
   console.log(user);
-  console.log(projectDetails);
+  console.log("projectDetails", projectDetails);
 
   const handleMathIconClick = (e) => {
     e.preventDefault();
@@ -206,7 +206,14 @@ const DynamicSideBar = () => {
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Compile"
               >
-                <CompileIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+                {/* <CompileIcon style={{ fill: "#585858" }} className="w-5 h-5" /> */}
+                {projectDetails.compilationStatus === "error" ? (
+                  <div className="text-xl text-[#ff0000]">►</div>
+                ) : projectDetails.compilationStatus === "success" ? (
+                  <div className="text-xl text-[#16be00]">►</div>
+                ) : (
+                  <div className="text-xl text-[#929292]">►</div>
+                )}
 
                 {/* <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Compile

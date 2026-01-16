@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -10,6 +10,7 @@ const PdfViewer = ({ pdfUrl }) => {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
+  const pageRefs = useRef([]);
 
   const zoomIn = () => setScale((s) => Math.min(3, s + 0.2));
   const zoomOut = () => setScale((s) => Math.max(0.5, s - 0.2));
@@ -19,6 +20,11 @@ const PdfViewer = ({ pdfUrl }) => {
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
   }
+
+  useEffect(() => {
+    const page = pageRefs.current[pageNumber - 1];
+    page?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [pageNumber]);
 
   return (
     <div className="flex flex-col h-full">
@@ -80,7 +86,7 @@ const PdfViewer = ({ pdfUrl }) => {
                 <div className="p-4 text-red-600">Failed to load PDF.</div>
               }
             >
-              {Array.from(new Array(numPages), (el, index) => (
+              {/* {Array.from(new Array(numPages), (el, index) => (
                 <Page
                   key={`page_${index + 1}`}
                   pageNumber={index + 1}
@@ -89,6 +95,25 @@ const PdfViewer = ({ pdfUrl }) => {
                   scale={scale}
                   className="shadow-lg mb-4"
                 />
+              ))} */}
+              {/* <Page
+                pageNumber={index + 1}
+                scale={scale}
+                ref={(el) => (pageRefs.current[index] = el)}
+                renderTextLayer
+                renderAnnotationLayer
+                className="shadow-lg mb-4"
+              /> */}
+              {Array.from(new Array(numPages), (_, index) => (
+                <div key={index} ref={(el) => (pageRefs.current[index] = el)}>
+                  <Page
+                    pageNumber={index + 1}
+                    scale={scale}
+                    renderTextLayer
+                    renderAnnotationLayer
+                    className="shadow-lg mb-4"
+                  />
+                </div>
               ))}
             </Document>
           </div>
