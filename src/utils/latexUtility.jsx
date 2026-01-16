@@ -148,178 +148,320 @@ const shouldUseEnvironment = (headingText) => {
       normalized.replace(/\s+/g, "") === env.replace(/\s+/g, "")
   );
 };
-
-// ============ LATEX TO SECTIONS - FIXED ============
 export const latexToSections = (latexDoc) => {
   const body = extractLatexBody(latexDoc);
   if (!body) return [];
 
-  const sections = [];
-  let position = 0;
+  const root = [];
+  let currentSection = null;
+  let currentSubsection = null; // Track the active subsection for sub-subsections
 
-  // Regex patterns
-  const sectionPattern = /\\(section|subsection|subsubsection)\{([^}]*)\}/g;
-  const envPattern =
-    /\\begin\{(abstract|acknowledgements?|preface|theorem|lemma|proof|definition|corollary|proposition|example|remark|note)\}/gi;
+  // Split the document by headers, capturing the delimiters
+  // This Regex splits by \section{...}, \subsection{...}, \subsubsection{...}
+  const parts = body.split(
+    /(\\(?:section|subsection|subsubsection)\{[^}]*\})/g
+  );
 
-  // Collect all markers (sections and environments) with their positions
-  const markers = [];
+  parts.forEach((part) => {
+    if (!part.trim()) return;
 
-  // Find all section commands
-  let match;
-  while ((match = sectionPattern.exec(body)) !== null) {
-    markers.push({
-      type: "section",
-      sectionType: match[1],
-      name: match[2],
-      start: match.index,
-      end: match.index + match[0].length,
-    });
-  }
+    // Check if this part is a Heading Command
+    const match = part.match(/\\(section|subsection|subsubsection)\{([^}]*)\}/);
 
-  // Find all special environments
-  envPattern.lastIndex = 0;
-  while ((match = envPattern.exec(body)) !== null) {
-    const envName = match[1].toLowerCase();
-    const envStart = match.index;
-    const beginTag = match[0];
+    if (match) {
+      const type = match[1];
+      const name = match[2];
 
-    // Find the matching \end{envName}
-    const envEndPattern = new RegExp(`\\\\end\\{${envName}\\}`, "gi");
-    envEndPattern.lastIndex = match.index + beginTag.length;
-
-    const endMatch = envEndPattern.exec(body);
-    if (endMatch) {
-      const contentStart = match.index + beginTag.length;
-      const contentEnd = endMatch.index;
-      const content = body.substring(contentStart, contentEnd).trim();
-
-      markers.push({
-        type: "environment",
-        sectionType: "environment",
-        name: envName.charAt(0).toUpperCase() + envName.slice(1),
-        start: envStart,
-        end: endMatch.index + endMatch[0].length,
-        content: content,
-        envName: envName, // Store original env name for reconstruction
-      });
-    }
-  }
-
-  // Sort markers by position
-  markers.sort((a, b) => a.start - b.start);
-
-  // Build sections from markers
-  for (let i = 0; i < markers.length; i++) {
-    const marker = markers[i];
-    const nextMarker = markers[i + 1];
-
-    if (marker.type === "environment") {
-      // Environment with pre-extracted content
-      sections.push({
+      const newBlock = {
         id: Date.now() + Math.random(),
-        type: "environment",
-        name: marker.name,
-        content: marker.content || "",
-        envName: marker.envName, // Keep env name for conversion back
-      });
-    } else if (marker.type === "section") {
-      // Regular section - content is between this marker and the next
-      const contentStart = marker.end;
-      const contentEnd = nextMarker ? nextMarker.start : body.length;
-      const content = body.substring(contentStart, contentEnd).trim();
+        type: type,
+        name: name,
+        content: "",
+        children: [], // Important: Initialize empty children array
+      };
 
-      sections.push({
-        id: Date.now() + Math.random(),
-        type: marker.sectionType,
-        name: marker.name,
-        content: content,
-      });
-    }
-  }
+      // --- LOGIC TO NEST SECTIONS ---
 
-  // Handle content before first marker
-  if (markers.length > 0 && markers[0].start > 0) {
-    const initialContent = body.substring(0, markers[0].start).trim();
-    if (initialContent) {
-      sections.unshift({
-        id: Date.now() + Math.random(),
-        type: "text",
-        name: "",
-        content: initialContent,
-      });
-    }
-  }
-
-  // If no markers found, treat entire body as one section
-  if (sections.length === 0 && body.trim()) {
-    sections.push({
-      id: Date.now(),
-      type: "section",
-      name: "",
-      content: body.trim(),
-    });
-  }
-
-  return sections;
-};
-
-// ============ SECTIONS TO LATEX - FIXED ============
-export const sectionsToLatex = (sections, originalLatex) => {
-  if (!sections || sections.length === 0) {
-    return originalLatex;
-  }
-
-  let latexBody = "";
-
-  sections.forEach((section, index) => {
-    if (index > 0) {
-      latexBody += "\n\n";
-    }
-
-    const hasName = section.name && section.name.trim();
-    const hasContent = section.content && section.content.trim();
-
-    if (hasName) {
-      const trimmedName = section.name.trim();
-      const lowerName = trimmedName.toLowerCase();
-
-      // Check if it's a special environment
-      if (section.type === "environment" || shouldUseEnvironment(trimmedName)) {
-        // Use the stored envName if available, otherwise derive from name
-        const envName = section.envName || lowerName;
-        latexBody += `\\begin{${envName}}\n`;
-        if (hasContent) {
-          latexBody += section.content.trim() + "\n";
+      if (type === "section") {
+        // Start a new top-level section
+        currentSection = newBlock;
+        currentSubsection = null; // Reset subsection tracker when a new section starts
+        root.push(newBlock);
+      } else if (type === "subsection") {
+        // Add to current section if it exists
+        if (currentSection) {
+          currentSection.children.push(newBlock);
+          currentSubsection = newBlock; // This becomes the active subsection
+        } else {
+          // Orphan subsection (no parent section found), treat as root
+          root.push(newBlock);
+          currentSubsection = newBlock;
         }
-        latexBody += `\\end{${envName}}`;
-      }
-      // Regular sections
-      else if (
-        ["section", "subsection", "subsubsection"].includes(section.type)
-      ) {
-        latexBody += `\\${section.type}{${trimmedName}}\n\n`;
-        if (hasContent) {
-          latexBody += section.content.trim();
+      } else if (type === "subsubsection") {
+        // Add to current subsection if exists
+        if (currentSubsection) {
+          currentSubsection.children.push(newBlock);
+        } else if (currentSection) {
+          // Fallback: Add directly to section if no subsection exists
+          currentSection.children.push(newBlock);
+        } else {
+          // Orphan sub-subsection
+          root.push(newBlock);
         }
       }
-      // Default to section
-      else {
-        latexBody += `\\section{${trimmedName}}\n\n`;
-        if (hasContent) {
-          latexBody += section.content.trim();
+    }
+    // --- CONTENT HANDLING ---
+    else {
+      // Append text content to the DEEPEST active node
+      if (currentSubsection && currentSubsection.children.length > 0) {
+        // If the subsection already has sub-subsections, does this text belong
+        // to the last sub-subsection or the subsection itself?
+        // Usually, text follows a header.
+        const lastSubSub =
+          currentSubsection.children[currentSubsection.children.length - 1];
+        lastSubSub.content += part;
+      } else if (currentSubsection) {
+        currentSubsection.content += part;
+      } else if (currentSection) {
+        // Same logic: if section has subsections, append to the last one
+        if (currentSection.children.length > 0) {
+          const lastSub =
+            currentSection.children[currentSection.children.length - 1];
+          lastSub.content += part;
+        } else {
+          currentSection.content += part;
         }
-      }
-    } else {
-      // No name - just content
-      if (hasContent) {
-        latexBody += section.content.trim();
+      } else {
+        // Content before the first section (Introduction / Preamble)
+        // Check if we already created an "Introduction" block
+        const lastRoot = root[root.length - 1];
+        if (
+          lastRoot &&
+          lastRoot.type === "section" &&
+          lastRoot.name === "Introduction"
+        ) {
+          lastRoot.content += part;
+        } else {
+          // Create a pseudo-section for the start of the doc
+          const introBlock = {
+            id: Date.now(),
+            type: "section",
+            name: "Introduction",
+            content: part,
+            children: [],
+          };
+          root.push(introBlock);
+          currentSection = introBlock; // Set as active
+        }
       }
     }
   });
 
-  return reconstructLatexDocument(originalLatex, latexBody);
+  return root;
 };
+
+// ==========================================
+// 2. FIXED: RECURSIVE WRITER (SECTIONS -> LATEX)
+// ==========================================
+export const sectionsToLatex = (sections) => {
+  let latex = "";
+
+  const processNode = (node) => {
+    // 1. Write the Header (e.g., \section{Title})
+    if (
+      node.type === "section" ||
+      node.type === "subsection" ||
+      node.type === "subsubsection"
+    ) {
+      latex += `\n\\${node.type}{${node.name}}\n`;
+    }
+
+    // 2. Write the Content
+    if (node.content) {
+      latex += node.content + "\n";
+    }
+
+    // 3. Recursively Write Children
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(processNode);
+    }
+  };
+
+  sections.forEach(processNode);
+  return latex;
+};
+
+// // ============ LATEX TO SECTIONS - FIXED ============
+// export const latexToSections = (latexDoc) => {
+//   const body = extractLatexBody(latexDoc);
+//   if (!body) return [];
+
+//   const sections = [];
+//   let position = 0;
+
+//   // Regex patterns
+//   const sectionPattern = /\\(section|subsection|subsubsection)\{([^}]*)\}/g;
+//   const envPattern =
+//     /\\begin\{(abstract|acknowledgements?|preface|theorem|lemma|proof|definition|corollary|proposition|example|remark|note)\}/gi;
+
+//   // Collect all markers (sections and environments) with their positions
+//   const markers = [];
+
+//   // Find all section commands
+//   let match;
+//   while ((match = sectionPattern.exec(body)) !== null) {
+//     markers.push({
+//       type: "section",
+//       sectionType: match[1],
+//       name: match[2],
+//       start: match.index,
+//       end: match.index + match[0].length,
+//     });
+//   }
+
+//   // Find all special environments
+//   envPattern.lastIndex = 0;
+//   while ((match = envPattern.exec(body)) !== null) {
+//     const envName = match[1].toLowerCase();
+//     const envStart = match.index;
+//     const beginTag = match[0];
+
+//     // Find the matching \end{envName}
+//     const envEndPattern = new RegExp(`\\\\end\\{${envName}\\}`, "gi");
+//     envEndPattern.lastIndex = match.index + beginTag.length;
+
+//     const endMatch = envEndPattern.exec(body);
+//     if (endMatch) {
+//       const contentStart = match.index + beginTag.length;
+//       const contentEnd = endMatch.index;
+//       const content = body.substring(contentStart, contentEnd).trim();
+
+//       markers.push({
+//         type: "environment",
+//         sectionType: "environment",
+//         name: envName.charAt(0).toUpperCase() + envName.slice(1),
+//         start: envStart,
+//         end: endMatch.index + endMatch[0].length,
+//         content: content,
+//         envName: envName, // Store original env name for reconstruction
+//       });
+//     }
+//   }
+
+//   // Sort markers by position
+//   markers.sort((a, b) => a.start - b.start);
+
+//   // Build sections from markers
+//   for (let i = 0; i < markers.length; i++) {
+//     const marker = markers[i];
+//     const nextMarker = markers[i + 1];
+
+//     if (marker.type === "environment") {
+//       // Environment with pre-extracted content
+//       sections.push({
+//         id: Date.now() + Math.random(),
+//         type: "environment",
+//         name: marker.name,
+//         content: marker.content || "",
+//         envName: marker.envName, // Keep env name for conversion back
+//       });
+//     } else if (marker.type === "section") {
+//       // Regular section - content is between this marker and the next
+//       const contentStart = marker.end;
+//       const contentEnd = nextMarker ? nextMarker.start : body.length;
+//       const content = body.substring(contentStart, contentEnd).trim();
+
+//       sections.push({
+//         id: Date.now() + Math.random(),
+//         type: marker.sectionType,
+//         name: marker.name,
+//         content: content,
+//       });
+//     }
+//   }
+
+//   // Handle content before first marker
+//   if (markers.length > 0 && markers[0].start > 0) {
+//     const initialContent = body.substring(0, markers[0].start).trim();
+//     if (initialContent) {
+//       sections.unshift({
+//         id: Date.now() + Math.random(),
+//         type: "text",
+//         name: "",
+//         content: initialContent,
+//       });
+//     }
+//   }
+
+//   // If no markers found, treat entire body as one section
+//   if (sections.length === 0 && body.trim()) {
+//     sections.push({
+//       id: Date.now(),
+//       type: "section",
+//       name: "",
+//       content: body.trim(),
+//     });
+//   }
+
+//   return sections;
+// };
+
+// // ============ SECTIONS TO LATEX - FIXED ============
+// export const sectionsToLatex = (sections, originalLatex) => {
+//   if (!sections || sections.length === 0) {
+//     return originalLatex;
+//   }
+
+//   let latexBody = "";
+
+//   sections.forEach((section, index) => {
+//     if (index > 0) {
+//       latexBody += "\n\n";
+//     }
+
+//     const hasName = section.name && section.name.trim();
+//     const hasContent = section.content && section.content.trim();
+
+//     if (hasName) {
+//       const trimmedName = section.name.trim();
+//       const lowerName = trimmedName.toLowerCase();
+
+//       // Check if it's a special environment
+//       if (section.type === "environment" || shouldUseEnvironment(trimmedName)) {
+//         // Use the stored envName if available, otherwise derive from name
+//         const envName = section.envName || lowerName;
+//         latexBody += `\\begin{${envName}}\n`;
+//         if (hasContent) {
+//           latexBody += section.content.trim() + "\n";
+//         }
+//         latexBody += `\\end{${envName}}`;
+//       }
+//       // Regular sections
+//       else if (
+//         ["section", "subsection", "subsubsection"].includes(section.type)
+//       ) {
+//         latexBody += `\\${section.type}{${trimmedName}}\n\n`;
+//         if (hasContent) {
+//           latexBody += section.content.trim();
+//         }
+//       }
+//       // Default to section
+//       else {
+//         latexBody += `\\section{${trimmedName}}\n\n`;
+//         if (hasContent) {
+//           latexBody += section.content.trim();
+//         }
+//       }
+//     } else {
+//       // No name - just content
+//       if (hasContent) {
+//         latexBody += section.content.trim();
+//       }
+//     }
+//   });
+
+//   return reconstructLatexDocument(originalLatex, latexBody);
+// };
 
 // ============ LATEX TO RICH TEXT - FIXED ============
 export const latexToRichText = (latexBody) => {
