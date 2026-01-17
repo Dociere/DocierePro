@@ -56,20 +56,42 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     }
 
     setLoading(true);
-    setMessage("");
 
     try {
+      // Decode token to extract server info
+      const tokenParts = joinToken.split(".");
+      const payload = JSON.parse(atob(tokenParts[1]));
+
+      const serverUrl = payload.serverUrl; // e.g., http://192.168.1.102:5025
+      const wsUrl = payload.wsUrl; // e.g., ws://192.168.1.102:5001
+
+      console.log("Connecting to:", serverUrl);
+
+      // Call Laptop 1's server to join
       const response = await axios.post(
-        `http://localhost:5025/api/projects/join/${joinToken}`,
+        `${serverUrl}/api/projects/join/${joinToken}`,
         {},
         { withCredentials: true }
       );
 
-      setMessage(`Successfully joined project: ${response.data.project.name}`);
-      // Redirect to project
-      window.location.href = `/project/${response.data.project.projectId}`;
+      // Save server info for this project
+      localStorage.setItem(
+        `project_${response.data.project.projectId}_server`,
+        serverUrl
+      );
+      localStorage.setItem(
+        `project_${response.data.project.projectId}_ws`,
+        wsUrl
+      );
+
+      setMessage("Successfully joined project!");
+
+      // Redirect to collaborative editor
+      setTimeout(() => {
+        window.location.href = `/canvas`; // Or your editor route
+      }, 1000);
     } catch (error) {
-      setMessage(error.response?.data?.error || "Failed to join project");
+      setMessage(error.response?.data?.error || "Failed to connect to server");
     } finally {
       setLoading(false);
     }
