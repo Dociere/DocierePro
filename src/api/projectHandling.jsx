@@ -83,6 +83,27 @@ export const loadProject = async (projectId) => {
   }
 };
 
+export const loadProjectFromServer = async (projectId, serverUrl) => {
+  try {
+    const response = await axios.get(`${serverUrl}/api/projects/${projectId}`, {
+      withCredentials: true,
+    });
+
+    return {
+      project: response.data,
+      loading: false,
+      error: null,
+    };
+  } catch (error) {
+    console.error("Error loading project from server:", error);
+    return {
+      project: null,
+      loading: false,
+      error: error.response?.data?.error || "Failed to load project",
+    };
+  }
+};
+
 export const saveProject = async (
   currentProject,
   activeFile,

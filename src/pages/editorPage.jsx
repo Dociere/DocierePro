@@ -10,7 +10,6 @@ import RichTextEditorPanel from "../components/textEditor";
 import SectionEditor from "../components/sectionEditor.jsx";
 import LeaveSession from "../components/LeaveSession.jsx";
 import "react-quill-new/dist/quill.snow.css";
-import axios from "axios";
 import "../App.css";
 import {
   extractLatexBody,
@@ -20,16 +19,21 @@ import {
   latexToSections,
   sectionsToLatex,
 } from "../utils/latexUtility.jsx";
-import { loadProjects, saveProject } from "../api/projectHandling.jsx";
+import {
+  loadProjects,
+  saveProject,
+  loadProjectFromServer,
+} from "../api/projectHandling.jsx";
 import { projectContext } from "../context/useProject.jsx";
 import PdfViewer from "../components/pdfViewer.jsx";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 
 // const API_URL = "http://localhost:5025";
 
 const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const { isSectionSpaceOpen } = useOutletContext();
+  const [searchParams] = useSearchParams();
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -84,6 +88,77 @@ const EditorPage = () => {
   //     });
   //   }
   // };
+
+  useEffect(() => {
+    console.log("EditorPage mounted");
+    console.log("Search params:", searchParams.toString());
+
+    const projectIdFromUrl = searchParams.get("project");
+    console.log("Project ID from URL:", projectIdFromUrl);
+
+    if (projectIdFromUrl) {
+      console.log("Loading remote project...");
+      loadRemoteProject(projectIdFromUrl);
+    } else {
+      console.log("Loading local projects...");
+      fetchData();
+    }
+
+    // checkServerHealth();
+  }, [searchParams]);
+
+  const loadRemoteProject = async (projectId) => {
+    console.log("loadRemoteProject called with:", projectId);
+
+    const serverUrl = localStorage.getItem(`project_${projectId}_server`);
+    console.log("Server URL from localStorage:", serverUrl);
+
+    if (!serverUrl) {
+      console.error("No server URL found");
+      updateProjectDetails({
+        error: "Server URL not found. Please rejoin the project.",
+        isLoading: false,
+      });
+      return;
+    }
+
+    try {
+      console.log(
+        "Fetching project from:",
+        `${serverUrl}/api/projects/${projectId}`
+      );
+
+      const { project, error } = await loadProjectFromServer(
+        projectId,
+        serverUrl
+      );
+
+      console.log("Load result:", { project, error });
+
+      if (error) {
+        updateProjectDetails({ error, isLoading: false });
+        return;
+      }
+
+      updateProjectDetails({
+        currentProject: project,
+        activeFile: project.activeFile || "main.tex",
+        latexContent:
+          project.files[project.activeFile || "main.tex"]?.content || "",
+        isLoading: false,
+        isRemoteProject: true,
+        serverUrl: serverUrl,
+      });
+
+      console.log("✓ Remote project loaded successfully");
+    } catch (error) {
+      console.error("Error in loadRemoteProject:", error);
+      updateProjectDetails({
+        error: "Failed to load project from server",
+        isLoading: false,
+      });
+    }
+  };
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
