@@ -8,6 +8,7 @@ import React, {
 import MonacoEditorPanel from "../components/monacoEditor";
 import RichTextEditorPanel from "../components/textEditor";
 import SectionEditor from "../components/sectionEditor.jsx";
+import LeaveSession from "../components/LeaveSession.jsx";
 import "react-quill-new/dist/quill.snow.css";
 import axios from "axios";
 import "../App.css";
@@ -492,6 +493,7 @@ const EditorPage = () => {
         isSectionSpaceOpen ? "ml-56" : "ml-0"
       }`}
     >
+      <LeaveSession projectId={projectDetails.currentProject?.id} />
       {/* Left side of the screen */}
       <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-12 pb-[3.2vh]">
         <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
