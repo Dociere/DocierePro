@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useContext, useRef, useState } from "react";
 import MonacoEditor from "@monaco-editor/react";
 import { useYjsMonaco } from "../hooks/useYjsMonaco";
 
@@ -11,6 +11,13 @@ const MonacoEditorPanel = ({
   isOnline = null,
 }) => {
   const editorInstanceRef = useRef(null);
+
+  const { users, syncStatus } = useYjsMonaco(
+    projectId,
+    token,
+    isOnline,
+    editorInstanceRef.current
+  );
 
   const handleEditorMount = (editor, monaco) => {
     monacoEditorRef.current = editor;
@@ -33,6 +40,28 @@ const MonacoEditorPanel = ({
 
   return (
     <div className="h-full w-full flex-1 flex flex-col">
+      {/* Active Users Bar */}
+      {users.length > 0 && (
+        <div className="bg-gray-50 px-4 py-2 border-b flex items-center gap-3">
+          <span className="text-xs text-gray-600">Active:</span>
+          {users.map((user, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs"
+              style={{ backgroundColor: user.user.color + "20" }}
+            >
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: user.user.color }}
+              />
+              <span>{user.user.name}</span>
+              {user.user.isGuest && (
+                <span className="text-gray-500">(Guest)</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {/* Monaco Editor Container */}
       <div className="flex-1 h-full">
         <MonacoEditor
