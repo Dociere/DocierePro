@@ -58,40 +58,56 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     setLoading(true);
 
     try {
-      // Decode token to extract server info
-      const tokenParts = joinToken.split(".");
-      const payload = JSON.parse(atob(tokenParts[1]));
+      let token = joinToken.trim();
+      if (token.includes("/join/")) {
+        token = token.split("/join/")[1];
+      }
 
-      const serverUrl = payload.serverUrl; // e.g., http://192.168.1.102:5025
-      const wsUrl = payload.wsUrl; // e.g., ws://192.168.1.102:5001
+      const tokenParts = token.split(".");
+      const base64 = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = base64.padEnd(
+        base64.length + ((4 - (base64.length % 4)) % 4),
+        "="
+      );
+      const payload = JSON.parse(atob(padded));
+
+      const serverUrl = payload.serverUrl;
+      const wsUrl = payload.wsUrl;
 
       console.log("Connecting to:", serverUrl);
 
-      // Call Laptop 1's server to join
       const response = await axios.post(
-        `${serverUrl}/api/projects/join/${joinToken}`,
+        `${serverUrl}/api/projects/join/${token}`,
         {},
         { withCredentials: true }
       );
 
-      // Save server info for this project
-      localStorage.setItem(
-        `project_${response.data.project.projectId}_server`,
-        serverUrl
-      );
-      localStorage.setItem(
-        `project_${response.data.project.projectId}_ws`,
-        wsUrl
-      );
+      const data = response.data;
+      const projectId = data.project.projectId;
 
-      setMessage("Successfully joined project!");
+      // Save server info
+      localStorage.setItem(`project_${projectId}_server`, serverUrl);
+      localStorage.setItem(`project_${projectId}_ws`, wsUrl);
 
-      // Redirect to collaborative editor
+      // Handle based on user type
+      if (data.userType === "guest") {
+        localStorage.setItem(`project_${projectId}_guest`, "true");
+        setMessage(
+          "Joined as guest! Session ends when you close the tab or leave."
+        );
+      } else {
+        localStorage.setItem(`project_${projectId}_guest`, "false");
+        setMessage("Successfully joined project!");
+      }
+
       setTimeout(() => {
-        window.location.href = `/canvas`; // Or your editor route
+        window.location.href = `/canvas?project=${projectId}`;
       }, 1000);
     } catch (error) {
-      setMessage(error.response?.data?.error || "Failed to connect to server");
+      console.error("Error from handleJoin", error);
+      setMessage(
+        error.response?.data?.error || error.message || "Failed to join project"
+      );
     } finally {
       setLoading(false);
     }
