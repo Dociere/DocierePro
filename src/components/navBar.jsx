@@ -726,15 +726,18 @@ const NavBar = () => {
             {/* Center Part - Branding and Project name */}
           </div>
           {projectDetails?.currentProject?.title ? (
-            <div className="flex flex-1 py-0 text-sm font-inter font-medium flex-row justify-center items-center">
+            <div
+              onClick={() => setRenameProject((prev) => !prev)}
+              className="flex flex-1 py-0 text-sm font-inter font-medium flex-row justify-center items-center cursor-pointer"
+              style={{ WebkitAppRegion: "no-drag" }}
+            >
               {projectDetails?.currentProject?.title}
               <EditIcon
-                onClick={() => setRenameProject((prev) => !prev)}
                 style={{ fill: "#585858", WebkitAppRegion: "no-drag" }}
                 className="ml-2 w-3 h-3 relative select-none"
               />
               {renameProject && (
-                <div className="absolute mt-20 bg-[#EAEAEA] px-2 py-2 border-2 border-[#CFCFCF] select-none rounded-md flex flex-row">
+                <div className="absolute mt-20 bg-[#EAEAEA] px-2 py-2 border-2 border-[#CFCFCF] select-none rounded-md flex flex-row z-10">
                   <input
                     className="pl-2 bg-white w-96"
                     type="text"
@@ -759,7 +762,7 @@ const NavBar = () => {
             </div>
           ) : (
             <div>
-              <img src={dociereLogo} alt="" className="w-[5.2vw] mt-2" />
+              <img src={dociereLogo} alt="" className="w-[70px] mt-2" />
             </div>
           )}
 

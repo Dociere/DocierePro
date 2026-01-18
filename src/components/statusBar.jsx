@@ -11,7 +11,7 @@ const StatusBar = () => {
   return (
     <>
       <div className="w-screen z-30 h-5 fixed bottom-0 bg-[#F9F9F9] border-[#CFCFCF] border-[1.5px]">
-        <div className="flex flex-row justify-between text-[#9095A1] mx-5 text-[0.9vw]">
+        <div className="flex flex-row justify-between text-[#9095A1] mx-5 text-[13px]">
           <div className="flex flex-row gap-5">
             {isServerConnected ? (
               <div className="flex flex-row gap-5">

@@ -529,34 +529,40 @@ const EditorPage = () => {
   };
 
   const getCollaborationToken = () => {
-    // For owners - get their auth token
-    const authToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("uid="))
-      ?.split("=")[1];
-
-    if (authToken) {
-      console.log("Using auth token for collaboration");
-      return authToken;
-    }
-
-    // For guests/collaborators - get guest token
+    // Priority 1: Check if this is a remote project (collaborator/guest)
     const projectId = projectDetails.currentProject?.id;
     if (projectId) {
       const guestToken = localStorage.getItem(
         `project_${projectId}_guest_token`,
       );
       if (guestToken) {
-        console.log("Using guest token for collaboration");
+        console.log("✓ Using guest token for collaboration");
         return guestToken;
       }
     }
 
-    console.warn("No collaboration token found");
+    // Priority 2: Use auth token (for owner or authenticated collaborator)
+    const authToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("uid="))
+      ?.split("=")[1];
+
+    if (authToken) {
+      console.log("✓ Using auth token for collaboration");
+      return authToken;
+    }
+
+    console.warn("⚠️ No collaboration token found");
     return null;
   };
 
   const collaborationToken = getCollaborationToken();
+
+  console.log("Collaboration setup:", {
+    projectId: projectDetails.currentProject?.id,
+    hasToken: !!collaborationToken,
+    isRemote: projectDetails.isRemoteProject,
+  });
 
   //updatedProject, projectDetails.activeFile
 
