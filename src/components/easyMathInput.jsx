@@ -64,81 +64,129 @@ const EasyMathInput = ({ onClose }) => {
     }
   };
 
-  const compileLatex = async (latex, isTemp = true, fileName = "temp") => {
-    setIsCompiling(true);
-    try {
-      const cleanLatex = latex.replace(/[‹›]/g, "");
-      const response = await fetch(`${API_BASE_URL}/api/latex/compile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ latex: cleanLatex, isTemp, fileName, format: "image" }),
-      });
+ const compileLatex = async (latex, isTemp = true, fileName = "temp") => {
+  setIsCompiling(true);
+  try {
+    const cleanLatex = latex.replace(/[‹›]/g, "");
+    
+    console.log("🔄 Sending compilation request...", {
+      latex: cleanLatex.substring(0, 100),
+      isTemp,
+      fileName
+    });
+    
+    const response = await fetch(`${API_BASE_URL}/api/latex/compile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        latex: cleanLatex, 
+        isTemp, 
+        fileName, 
+        format: "image" 
+      }),
+    });
 
-      if (response.ok) {
-        const result = await response.json();
-        return `${API_BASE_URL}${result.pdfUrl}`;
-      } else {
-        const errorText = await response.text();
-        throw new Error(`Compilation failed: ${errorText}`);
-      }
-    } catch (error) {
-      console.error("Compilation error:", error);
-      alert(`Compilation failed: ${error.message}`);
-      return null;
-    } finally {
-      setIsCompiling(false);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Server response not OK:", response.status, errorText);
+      throw new Error(`Server error (${response.status}): ${errorText}`);
     }
-  };
 
-  useEffect(() => {
-    if (activeTab !== "editor") {
-      setPreviewUrl("");
+    const result = await response.json();
+    
+    console.log("✅ Compilation result:", result);
+    
+    if (result.success && result.pdfUrl) {
+      return `${API_BASE_URL}${result.pdfUrl}`;
+    } else {
+      throw new Error(result.error || "Compilation failed - no URL returned");
     }
-  }, [activeTab]);
+  } catch (error) {
+    console.error("❌ Compilation error:", error);
+    alert(`Compilation failed: ${error.message}`);
+    return null;
+  } finally {
+    setIsCompiling(false);
+  }
+};
 
-  const handleCompile = async (codeToCompile) => {
-    const code = codeToCompile || latexCode; // Use argument if provided, otherwise state
-    if (!code.trim()) {
-      alert("Please enter some LaTeX code first");
-      return;
-    }
-    setPreviewUrl("");
-    const pdfUrl = await compileLatex(code);
+const handleCompile = async () => {
+  console.log("🔘 Compile button clicked!");
+  console.log("📝 Current latexCode:", latexCode?.substring(0, 50));
+  
+  if (!latexCode.trim()) {
+    alert("Please enter some LaTeX code first");
+    return;
+  }
+  
+  console.log("✅ Starting compilation...");
+  setIsCompiling(true);
+  setPreviewUrl(""); // Clear previous preview
+  
+  try {
+    const pdfUrl = await compileLatex(latexCode);
+    console.log("📄 Received PDF URL:", pdfUrl);
+    
     if (pdfUrl) {
       setPreviewUrl(`${pdfUrl}?t=${Date.now()}`);
+      console.log("✅ Preview URL set!");
+    } else {
+      console.error("❌ No PDF URL returned");
+      alert("Compilation failed - no output generated");
     }
-  };
+  } catch (error) {
+    console.error("❌ Compilation error:", error);
+    alert(`Compilation failed: ${error.message}`);
+  } finally {
+    setIsCompiling(false);
+  }
+};
 
   const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) return;
+  if (!aiPrompt.trim()) return;
 
-    setIsGenerating(true);
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/generate-equation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: aiPrompt })
-        });
+  console.log("🤖 AI Generate button clicked!");
+  setIsGenerating(true);
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generate-equation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: aiPrompt })
+    });
 
-        const data = await response.json();
+    const data = await response.json();
+    console.log("🤖 AI Response:", data);
 
-        if (data.success && data.latexEquation) {
-            setLatexCode(data.latexEquation); // Update text area
-            setIsAiMode(false);               // Switch back to manual mode
-            setAiPrompt("");                  // Clear prompt
-            
-            // Auto-compile the result immediately
-            await handleCompile(data.latexEquation);
-        } else {
-            alert("Failed to generate: " + (data.error || "Unknown error"));
+    if (data.success && data.latexEquation) {
+      console.log("✅ Setting LaTeX code:", data.latexEquation);
+      setLatexCode(data.latexEquation); // Update text area
+      setIsAiMode(false);               // Switch back to manual mode
+      setAiPrompt("");                  // Clear prompt
+      
+      // Auto-compile the result immediately
+      console.log("🔄 Auto-compiling AI result...");
+      
+      // Small delay to ensure state is updated
+      setTimeout(async () => {
+        setIsCompiling(true);
+        const pdfUrl = await compileLatex(data.latexEquation);
+        if (pdfUrl) {
+          setPreviewUrl(`${pdfUrl}?t=${Date.now()}`);
         }
-    } catch (error) {
-        console.error("AI Generation Error:", error);
-        alert("Error connecting to AI service");
-    } finally {
-        setIsGenerating(false);
+        setIsCompiling(false);
+      }, 100);
+      
+    } else {
+      alert("Failed to generate: " + (data.error || "Unknown error"));
     }
-  };
+  } catch (error) {
+    console.error("❌ AI Generation Error:", error);
+    alert("Error connecting to AI service");
+  } finally {
+    setIsGenerating(false);
+  }
+};
 
   const handleSaveEquation = async () => {
     if (!saveFileName.trim()) return alert("Please enter a filename");
@@ -393,199 +441,244 @@ const EasyMathInput = ({ onClose }) => {
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1"><TbX size={24} /></button>
         </div>
 
-        {/* Tab Content */}
         {activeTab === "editor" && (
-          <>
-            <div className="px-4 py-2 bg-blue-50 text-sm text-blue-800 border-b border-gray-200">
-              <strong>Tip:</strong> Placeholders are shown as ‹like this›. Replace them with your values.
+  <>
+    <div className="px-4 py-2 bg-blue-50 text-sm text-blue-800 border-b border-gray-200">
+      <strong>Tip:</strong> Placeholders are shown as ‹like this›. Replace them with your values.
+    </div>
+
+    <div className="flex flex-1 overflow-hidden">
+      {/* LEFT PANEL: Common Symbols / Equations Dropdown */}
+      <div className="w-1/5 border-r border-gray-200 p-4 overflow-y-auto bg-gray-50/30">
+        
+        {/* Dropdown Header */}
+        <div className="relative mb-3">
+          <select 
+            value={leftPanelMode}
+            onChange={(e) => setLeftPanelMode(e.target.value)}
+            className="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-blue-500 font-semibold cursor-pointer"
+          >
+            <option value="symbols">Common Symbols</option>
+            <option value="equations">Common Equations</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <TbChevronDown size={16} />
+          </div>
+        </div>
+
+        {/* Left Panel Content */}
+        <div className={leftPanelMode === 'symbols' ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}>
+          {leftPanelMode === 'symbols' ? (
+            commonSymbols.map((symbol, index) => (
+              <button
+                key={index}
+                onClick={() => insertSymbol(symbol.latex)}
+                className="p-2 border border-gray-300 bg-white rounded hover:bg-gray-100 transition-colors text-sm flex flex-col items-center justify-center min-h-[50px] shadow-sm"
+                title={`${symbol.name}: ${symbol.latex}`}
+              >
+                <span className="text-lg mb-1">{symbol.symbol}</span>
+                <span className="text-xs text-gray-600 truncate w-full text-center">{symbol.name}</span>
+              </button>
+            ))
+          ) : (
+            commonEquations.map((eq, index) => (
+              <button
+                key={index}
+                onClick={() => insertSymbol(eq.latex)}
+                className="p-2 border border-gray-300 bg-white rounded hover:bg-gray-100 transition-colors text-sm flex flex-col items-start justify-center min-h-[50px] shadow-sm px-3"
+                title={eq.latex}
+              >
+                <span className="text-xs font-bold text-gray-700 mb-1">{eq.name}</span>
+                <span className="text-sm font-mono text-blue-600 truncate w-full text-left">{eq.symbol}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* CENTER PANEL: Editor */}
+      <div className="flex-1 flex flex-col p-4">
+        <div className="flex flex-col mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <label className="font-semibold text-gray-700">
+              {isAiMode ? "Describe Equation" : "LaTeX Code"}
+            </label>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setIsAiMode(!isAiMode)} 
+                className={`flex items-center gap-1 px-3 py-1 rounded transition-colors text-sm border ${
+                  isAiMode 
+                    ? 'bg-purple-100 text-purple-700 border-purple-300' 
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+                title={isAiMode ? "Switch to Manual Editor" : "Switch to AI Generator"}
+              >
+                <TbRobot size={16} /> {isAiMode ? "Manual Mode" : "AI Mode"}
+              </button>
+              
+              <button 
+                onClick={() => setShowSaveDialog(true)} 
+                className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm disabled:opacity-50"
+                disabled={!latexCode.trim()}
+              >
+                <TbDeviceFloppy size={16} /> Save
+              </button>
+              
+              <button 
+                onClick={copyToClipboard} 
+                className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm disabled:opacity-50"
+                disabled={!latexCode.trim()}
+              >
+                <TbCopy size={16} /> Copy
+              </button>
+              
+              <button 
+                onClick={() => handleCompile()} 
+                disabled={isCompiling || !latexCode.trim()} 
+                className="flex items-center gap-1 px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <TbPlayerPlay size={16} /> 
+                {isCompiling ? "Compiling..." : "Compile"}
+              </button>
             </div>
+          </div>
 
-            <div className="flex flex-1 overflow-hidden">
-              {/* LEFT PANEL: Common Symbols / Equations Dropdown */}
-              <div className="w-1/5 border-r border-gray-200 p-4 overflow-y-auto bg-gray-50/30">
-                
-                {/* Dropdown Header */}
-                <div className="relative mb-3">
-                  <select 
-                    value={leftPanelMode}
-                    onChange={(e) => setLeftPanelMode(e.target.value)}
-                    className="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-blue-500 font-semibold cursor-pointer"
-                  >
-                    <option value="symbols">Common Symbols</option>
-                    <option value="equations">Common Equations</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <TbChevronDown size={16} />
-                  </div>
-                </div>
+          {isAiMode ? (
+            <div className="relative h-32 w-full">
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => { 
+                  if(e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    handleAiGenerate(); 
+                  } 
+                }}
+                className="h-full w-full p-3 border border-purple-300 rounded resize-none font-sans text-sm leading-relaxed focus:ring-2 focus:ring-purple-100 outline-none pr-12"
+                placeholder="e.g., 'Schrodinger equation for a free particle' or 'Determinant of a 3x3 matrix'"
+                autoFocus
+              />
+              <button 
+                onClick={handleAiGenerate}
+                disabled={isGenerating || !aiPrompt.trim()}
+                className="absolute bottom-3 right-3 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 disabled:bg-purple-300 transition-colors shadow-sm"
+                title="Generate Equation"
+              >
+                {isGenerating ? <TbLoader className="animate-spin" /> : <TbArrowUp size={20} />}
+              </button>
+            </div>
+          ) : (
+            <textarea
+              value={latexCode}
+              onChange={(e) => setLatexCode(e.target.value)}
+              className="h-32 w-full p-3 border border-gray-300 rounded resize-none font-mono text-sm leading-relaxed focus:ring-2 focus:ring-blue-100 outline-none"
+              placeholder="Type LaTeX here or click symbols to insert..."
+            />
+          )}
+        </div>
 
-                {/* Left Panel Content */}
-                <div className={leftPanelMode === 'symbols' ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}>
-                  {leftPanelMode === 'symbols' ? (
-                    commonSymbols.map((symbol, index) => (
-                      <button
-                        key={index}
-                        onClick={() => insertSymbol(symbol.latex)}
-                        className="p-2 border border-gray-300 bg-white rounded hover:bg-gray-100 transition-colors text-sm flex flex-col items-center justify-center min-h-[50px] shadow-sm"
-                        title={`${symbol.name}: ${symbol.latex}`}
-                      >
-                        <span className="text-lg mb-1">{symbol.symbol}</span>
-                        <span className="text-xs text-gray-600 truncate w-full text-center">{symbol.name}</span>
-                      </button>
-                    ))
-                  ) : (
-                    commonEquations.map((eq, index) => (
-                      <button
-                        key={index}
-                        onClick={() => insertSymbol(eq.latex)}
-                        className="p-2 border border-gray-300 bg-white rounded hover:bg-gray-100 transition-colors text-sm flex flex-col items-start justify-center min-h-[50px] shadow-sm px-3"
-                        title={eq.latex}
-                      >
-                        <span className="text-xs font-bold text-gray-700 mb-1">{eq.name}</span>
-                        <span className="text-sm font-mono text-blue-600 truncate w-full text-left">{eq.symbol}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
+        <div className="flex-1 flex flex-col">
+          <label className="font-semibold text-gray-700 mb-2">Preview</label>
+          <div className="flex-1 border border-gray-300 rounded bg-white overflow-hidden flex items-center justify-center p-4">
+            {isCompiling || isGenerating ? (
+              <div className="flex flex-col items-center text-gray-500 animate-pulse">
+                <TbLoader size={32} className="animate-spin mb-2" />
+                <p>{isGenerating ? "Generating..." : "Compiling..."}</p>
               </div>
+            ) : previewUrl ? (
+              previewUrl.toLowerCase().endsWith(".pdf") ? (
+                <iframe 
+                  src={previewUrl} 
+                  className="w-full h-full border-none" 
+                  title="PDF Preview"
+                />
+              ) : (
+                <img 
+                  src={previewUrl} 
+                  className="max-w-full max-h-full object-contain" 
+                  alt="LaTeX Preview" 
+                />
+              )
+            ) : (
+              <div className="text-center text-gray-400">
+                <TbPlayerPlay size={48} className="mx-auto mb-2 opacity-50" />
+                <p>Click "Compile" or generate via AI to preview</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-              {/* CENTER PANEL: Editor */}
-              <div className="flex-1 flex flex-col p-4">
-                <div className="flex flex-col mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="font-semibold text-gray-700">{isAiMode ? "Describe Equation" : "LaTeX Code"}</label>
-                    <div className="flex gap-2">
-                      <button onClick={() => setIsAiMode(!isAiMode)} className={`flex items-center gap-1 px-3 py-1 rounded transition-colors text-sm border ${isAiMode ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}title={isAiMode ? "Switch to Manual Editor" : "Switch to AI Generator"}><TbRobot size={16} /> {isAiMode ? "Manual Mode" : "AI Mode"}</button>
-                      <button onClick={() => setShowSaveDialog(true)} className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"><TbDeviceFloppy size={16} /> Save</button>
-                      <button onClick={copyToClipboard} className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"><TbCopy size={16} /> Copy</button>
-                      {!isAiMode && (
-                      <button onClick={handleCompile} disabled={isCompiling} className="flex items-center gap-1 px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm disabled:opacity-50"><TbPlayerPlay size={16} /> {isCompiling ? "Compiling..." : "Compile"}</button>
-                      )}
-                    </div>
+      {/* RIGHT PANEL: Search & Library */}
+      <div className="w-1/4 border-l border-gray-200 p-4 flex flex-col bg-gray-50/30">
+        <div className="relative mb-3">
+          <div className="flex items-center border border-gray-300 rounded bg-white">
+            <TbSearch className="absolute left-2 text-gray-400" size={20} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setShowDropdown(true)}
+              placeholder="Search..."
+              className="w-full pl-9 pr-3 py-2 outline-none rounded bg-transparent"
+            />
+          </div>
+          {showDropdown && searchTerm && (
+            <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto z-10">
+              {filteredSymbols.slice(0, 50).map((symbol, index) => (
+                <button key={index} onClick={() => insertSymbol(symbol.latex)} className="w-full p-2 text-left hover:bg-gray-100 flex items-center gap-3 border-b border-gray-100">
+                  <span className="text-lg w-8 text-center">{symbol.symbol}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-gray-600 truncate">{symbol.name}</div>
                   </div>
-{isAiMode ? (
-  // --- AI PROMPT INPUT ---
-  <div className="relative h-32 w-full">
-      <textarea
-          value={aiPrompt}
-          onChange={(e) => setAiPrompt(e.target.value)}
-          // Allow submitting with Enter key
-          onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiGenerate(); } }}
-          className="h-full w-full p-3 border border-purple-300 rounded resize-none font-sans text-sm leading-relaxed focus:ring-2 focus:ring-purple-100 outline-none pr-12"
-          placeholder="e.g., 'Schrodinger equation for a free particle' or 'Determinant of a 3x3 matrix'"
-          autoFocus
-      />
-      {/* Magic Generate Button inside textarea */}
-      <button 
-          onClick={handleAiGenerate}
-          disabled={isGenerating || !aiPrompt.trim()}
-          className="absolute bottom-3 right-3 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 disabled:bg-purple-300 transition-colors shadow-sm"
-          title="Generate Equation"
-      >
-          {isGenerating ? <TbLoader className="animate-spin" /> : <TbArrowUp size={20} />}
-      </button>
-  </div>
-) : (
-  // --- STANDARD LATEX INPUT (Your existing textarea) ---
-  <textarea
-      value={latexCode}
-      onChange={(e) => setLatexCode(e.target.value)}
-      className="h-32 w-full p-3 border border-gray-300 rounded resize-none font-mono text-sm leading-relaxed focus:ring-2 focus:ring-blue-100 outline-none"
-      placeholder="Type LaTeX here or click symbols to insert..."
-  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mb-3 flex gap-2">
+          <button onClick={() => setExpandedCategories(new Set(categories))} className="flex-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Expand All</button>
+          <button onClick={() => setExpandedCategories(new Set())} className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Collapse All</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 pr-1">
+          {categories.map((category) => {
+            const categorySymbols = mathSymbols.filter((s) => s.category === category);
+            const isExpanded = expandedCategories.has(category);
+            const showButton = categorySymbols.length > 12;
+            const symbolsToShow = isExpanded ? categorySymbols : categorySymbols.slice(0, 12);
+
+            return (
+              <div key={category} className="mb-4">
+                <h4 className="font-semibold text-xs text-gray-500 uppercase tracking-wider mb-2 sticky top-0 bg-gray-50 py-1 border-b border-gray-200">
+                  {category}
+                </h4>
+                <div className="grid grid-cols-4 gap-1">
+                  {symbolsToShow.map((symbol, index) => (
+                    <button
+                      key={index}
+                      onClick={() => insertSymbol(symbol.latex)}
+                      className="p-1 border border-gray-200 bg-white rounded hover:bg-blue-50 hover:border-blue-300 text-center transition-all h-10 flex items-center justify-center shadow-sm"
+                      title={`${symbol.name}`}
+                    >
+                      <span className="text-base text-gray-800">{symbol.symbol}</span>
+                    </button>
+                  ))}
+                </div>
+                {showButton && (
+                  <button onClick={() => toggleCategoryExpansion(category)} className="w-full mt-1 py-1 text-[10px] text-blue-600 hover:bg-blue-50 rounded">
+                    {isExpanded ? "Show Less" : `Show All (${categorySymbols.length})`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  </>
 )}
-                </div>
-
-                <div className="flex-1 flex flex-col">
-                  <label className="font-semibold text-gray-700 mb-2">Preview</label>
-                  <div className="flex-1 border border-gray-300 rounded bg-white overflow-hidden flex items-center justify-center p-4">
-                   {isCompiling || isGenerating ? (
-                      <div className="flex flex-col items-center text-gray-500 animate-pulse">
-                      <TbLoader size={32} className="animate-spin mb-2" />
-                      <p>{isGenerating ? "Generating..." : "Compiling..."}</p>
-                      </div>
-                    ) : previewUrl ? (
-                        <img src={previewUrl} className="max-w-full max-h-full object-contain" alt="LaTeX Preview" />
-                    ) : (
-                        <div className="text-center text-gray-400">
-                        <TbPlayerPlay size={48} className="mx-auto mb-2 opacity-50" />
-                        <p>Click "Compile" or generate via AI to preview</p>
-                        </div>
-                      )}
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT PANEL: Search & Library */}
-              <div className="w-1/4 border-l border-gray-200 p-4 flex flex-col bg-gray-50/30">
-                <div className="relative mb-3">
-                  <div className="flex items-center border border-gray-300 rounded bg-white">
-                    <TbSearch className="absolute left-2 text-gray-400" size={20} />
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onFocus={() => setShowDropdown(true)}
-                      placeholder="Search..."
-                      className="w-full pl-9 pr-3 py-2 outline-none rounded bg-transparent"
-                    />
-                  </div>
-                  {showDropdown && searchTerm && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto z-10">
-                      {filteredSymbols.slice(0, 50).map((symbol, index) => (
-                        <button key={index} onClick={() => insertSymbol(symbol.latex)} className="w-full p-2 text-left hover:bg-gray-100 flex items-center gap-3 border-b border-gray-100">
-                          <span className="text-lg w-8 text-center">{symbol.symbol}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs text-gray-600 truncate">{symbol.name}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mb-3 flex gap-2">
-                  <button onClick={() => setExpandedCategories(new Set(categories))} className="flex-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Expand All</button>
-                  <button onClick={() => setExpandedCategories(new Set())} className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Collapse All</button>
-                </div>
-
-                <div className="overflow-y-auto flex-1 pr-1">
-                  {categories.map((category) => {
-                    const categorySymbols = mathSymbols.filter((s) => s.category === category);
-                    const isExpanded = expandedCategories.has(category);
-                    const showButton = categorySymbols.length > 12;
-                    const symbolsToShow = isExpanded ? categorySymbols : categorySymbols.slice(0, 12);
-
-                    return (
-                      <div key={category} className="mb-4">
-                        <h4 className="font-semibold text-xs text-gray-500 uppercase tracking-wider mb-2 sticky top-0 bg-gray-50 py-1 border-b border-gray-200">
-                          {category}
-                        </h4>
-                        <div className="grid grid-cols-4 gap-1">
-                          {symbolsToShow.map((symbol, index) => (
-                            <button
-                              key={index}
-                              onClick={() => insertSymbol(symbol.latex)}
-                              className="p-1 border border-gray-200 bg-white rounded hover:bg-blue-50 hover:border-blue-300 text-center transition-all h-10 flex items-center justify-center shadow-sm"
-                              title={`${symbol.name}`}
-                            >
-                              <span className="text-base text-gray-800">{symbol.symbol}</span>
-                            </button>
-                          ))}
-                        </div>
-                        {showButton && (
-                          <button onClick={() => toggleCategoryExpansion(category)} className="w-full mt-1 py-1 text-[10px] text-blue-600 hover:bg-blue-50 rounded">
-                            {isExpanded ? "Show Less" : `Show All (${categorySymbols.length})`}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
 
         {/* SAVED TAB (Kept mostly same structure) */}
         {activeTab === "saved" && (
