@@ -762,7 +762,7 @@ const NavBar = () => {
             </div>
           ) : (
             <div>
-              <img src={dociereLogo} alt="" className="w-[5.2vw] mt-2" />
+              <img src={dociereLogo} alt="" className="w-[70px] mt-2" />
             </div>
           )}
 
