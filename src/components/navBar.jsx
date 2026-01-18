@@ -5,6 +5,7 @@ import MenuDropdown from "./menuDropdown";
 import ShortcutsModal from "./shortcutsModal";
 import { projectContext } from "../context/useProject";
 import EditIcon from "../assets/icons/edit.svg?react";
+import TickIcon from "../assets/icons/tickIcon.svg?react";
 import dociereLogo from "../../public/dociere.png";
 import ToMaxIcon from "../assets/icons/minmaxIcon.svg?react";
 import ToMinIcon from "../assets/icons/minmaxIcon1.svg?react";
@@ -19,6 +20,8 @@ const NavBar = () => {
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [renameProject, setRenameProject] = useState(false);
+  const [updatetitle, setUpdateTitle] = useState("");
   const menuRefs = useRef({});
 
   const hasProject = projectDetails.currentProject !== null;
@@ -679,12 +682,15 @@ const NavBar = () => {
       >
         <div className="bg-[#F9F9F9] h-11 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex">
           {/* Left Part - Title bar Menus */}
-          <div className="flex flex-1 gap-7 text-sm pl-5 text-[#212121]">
+          <div
+            className="flex flex-1 gap-7 text-sm pl-5 text-[#212121]"
+            style={{ WebkitAppRegion: "no-drag" }}
+          >
             <button
               ref={(el) => (menuRefs.current.file = el)}
               onClick={(e) => handleMenuClick("file", e)}
               className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "file" ? "font-semibold" : ""
+                activeMenu === "file" ? "font-medium" : ""
               }`}
             >
               File
@@ -693,7 +699,7 @@ const NavBar = () => {
               ref={(el) => (menuRefs.current.edit = el)}
               onClick={(e) => handleMenuClick("edit", e)}
               className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "edit" ? "font-semibold" : ""
+                activeMenu === "edit" ? "font-medium" : ""
               }`}
             >
               Edit
@@ -702,7 +708,7 @@ const NavBar = () => {
               ref={(el) => (menuRefs.current.view = el)}
               onClick={(e) => handleMenuClick("view", e)}
               className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "view" ? "font-semibold" : ""
+                activeMenu === "view" ? "font-medium" : ""
               }`}
             >
               View
@@ -711,7 +717,7 @@ const NavBar = () => {
               ref={(el) => (menuRefs.current.help = el)}
               onClick={(e) => handleMenuClick("help", e)}
               className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "help" ? "font-semibold" : ""
+                activeMenu === "help" ? "font-medium" : ""
               }`}
             >
               Help
@@ -722,7 +728,34 @@ const NavBar = () => {
           {projectDetails?.currentProject?.title ? (
             <div className="flex flex-1 py-0 text-sm font-inter font-medium flex-row justify-center items-center">
               {projectDetails?.currentProject?.title}
-              <EditIcon style={{ fill: "#585858" }} className="ml-2 w-3 h-3" />
+              <EditIcon
+                onClick={() => setRenameProject((prev) => !prev)}
+                style={{ fill: "#585858", WebkitAppRegion: "no-drag" }}
+                className="ml-2 w-3 h-3 relative select-none"
+              />
+              {renameProject && (
+                <div className="absolute mt-20 bg-[#EAEAEA] px-2 py-2 border-2 border-[#CFCFCF] select-none rounded-md flex flex-row">
+                  <input
+                    className="pl-2 bg-white w-96"
+                    type="text"
+                    placeholder="Enter"
+                    value={updatetitle}
+                    onChange={(e) => setUpdateTitle(e.target.value)}
+                  />{" "}
+                  <TickIcon
+                    style={{ fill: "#585858", WebkitAppRegion: "no-drag" }}
+                    className="w-4 h-4 ml-2"
+                    onClick={() =>
+                      updateProjectDetails({
+                        currentProject: {
+                          ...projectDetails.currentProject,
+                          title: updatetitle,
+                        },
+                      })
+                    }
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div>

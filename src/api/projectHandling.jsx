@@ -16,7 +16,7 @@ export const createProject = async (
   userIdea,
   isGenChecked,
   Owner,
-  e
+  e,
 ) => {
   e.preventDefault();
   if (!title) return;
@@ -32,7 +32,7 @@ export const createProject = async (
 
     const response = await axios.post(
       `${API_URL}/api/projects/create`,
-      payload
+      payload,
     );
     console.log(`Project Successfully Created - ${title}`);
     return response.data.project.id; // Return project ID for navigation
@@ -110,7 +110,7 @@ export const saveProject = async (
   compilationStatus,
   compilationMessage,
   isServerConnected,
-  isAuthenticated
+  isAuthenticated,
 ) => {
   if (!currentProject) return;
   console.log("From saveProject", currentProject);
@@ -120,6 +120,7 @@ export const saveProject = async (
       files: currentProject.files,
       owner: currentProject.owner,
       activeFile: activeFile,
+      title: currentProject.title,
     });
 
     if (isServerConnected && isAuthenticated) {
@@ -133,7 +134,7 @@ export const saveProject = async (
             owner: currentProject.owner,
             title: currentProject.title,
             activeFile: activeFile,
-          }
+          },
         );
       } catch (error) {
         console.log("Failed to save project to DB: " + error.message);
@@ -160,7 +161,7 @@ export const compileDocument = async (
   pdfUrl,
   latexContent,
   isServerConnected,
-  isAuthenticated
+  isAuthenticated,
 ) => {
   if (!currentProject || !activeFile) return;
 
@@ -193,7 +194,7 @@ export const compileDocument = async (
     if (response.data.success) {
       const pdfBlob = new Blob(
         [Uint8Array.from(atob(response.data.pdf), (c) => c.charCodeAt(0))],
-        { type: "application/pdf" }
+        { type: "application/pdf" },
       );
       const newPdfUrl = URL.createObjectURL(pdfBlob);
 
@@ -220,7 +221,7 @@ export const compileDocument = async (
         compilationStatus,
         compilationMessage,
         isServerConnected,
-        isAuthenticated
+        isAuthenticated,
       );
     } else {
       compilationStatus = "error";

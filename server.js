@@ -22,7 +22,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -54,7 +54,7 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
       {
         cwd: path.dirname(texFilePath),
         stdio: ["ignore", "pipe", "pipe"], // Ignore stdin, capture stdout/stderr
-      }
+      },
     );
 
     let stdout = "";
@@ -117,7 +117,7 @@ const detectLaTeX = () => {
     "C:\\Program Files (x86)\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
     path.join(
       process.env.USERPROFILE || "",
-      "AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe"
+      "AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
     ),
     "/usr/bin/pdflatex",
     "/usr/local/bin/pdflatex",
@@ -444,7 +444,7 @@ app.post("/api/projects/create", async (req, res) => {
             title,
             templateType: req.body.templateType || "Blank Document",
             authorDetails,
-          }
+          },
         );
 
         if (aiResponse.data.success) {
@@ -559,12 +559,12 @@ app.get("/api/projects/:id", async (req, res) => {
 app.put("/api/projects/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { files, owner, activeFile } = req.body;
+    const { files, owner, activeFile, title } = req.body;
     const projectDir = path.join(PROJECTS_DIR, id);
     const projectPath = path.join(projectDir, "project.json");
 
     // console.log("✅ owner ✅", owner);
-    // console.log("✅ files ✅", files);
+    console.log("✅ title ✅", title);
 
     if (!(await fs.pathExists(projectPath))) {
       return res
@@ -578,6 +578,7 @@ app.put("/api/projects/:id", async (req, res) => {
     // Update project data
     projectData.files = files;
     projectData.owner = owner;
+    projectData.title = title;
     projectData.activeFile = activeFile || projectData.activeFile;
     projectData.modified = new Date().toISOString();
 
@@ -723,7 +724,7 @@ app.post("/api/compile", async (req, res) => {
         const lines = logContent.split("\n");
         errors = lines
           .filter(
-            (line) => line.trim().startsWith("!") && !line.includes("****")
+            (line) => line.trim().startsWith("!") && !line.includes("****"),
           )
           .slice(0, 20);
 
@@ -733,7 +734,7 @@ app.post("/api/compile", async (req, res) => {
           .slice(0, 20);
 
         console.log(
-          `📊 Extracted ${errors.length} errors and ${warnings.length} warnings from log`
+          `📊 Extracted ${errors.length} errors and ${warnings.length} warnings from log`,
         );
       } catch (logError) {
         console.log(`⚠️ Could not read log file: ${logError.message}`);
@@ -751,8 +752,8 @@ app.post("/api/compile", async (req, res) => {
           errors.length > 0
             ? `Compiled successfully despite ${errors.length} error(s)`
             : warnings.length > 0
-            ? `Compiled with ${warnings.length} warning(s)`
-            : "Document compiled successfully",
+              ? `Compiled with ${warnings.length} warning(s)`
+              : "Document compiled successfully",
         log: logContent || result1.stdout,
         errors: errors.length > 0 ? errors : null,
         warnings: warnings.length > 0 ? warnings : null,
@@ -803,7 +804,7 @@ app.post("/api/compile", async (req, res) => {
         const relevantFiles = outputFiles.filter((f) => f.includes(filename));
         console.log(
           `📁 Files in output directory for this compilation:`,
-          relevantFiles
+          relevantFiles,
         );
       } catch (e) {
         console.log(`⚠️ Could not list output directory`);
@@ -916,8 +917,8 @@ ${latex.replace(/[‹›]/g, "")}
       console.error("❌ Equation compilation failed - no PDF");
       throw new Error(
         `PDF was not generated. Check LaTeX syntax. Last 500 chars of log:\n${logContent.slice(
-          -500
-        )}`
+          -500,
+        )}`,
       );
     }
 
@@ -933,7 +934,7 @@ ${latex.replace(/[‹›]/g, "")}
         const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
         const croppedImagePath = path.join(
           OUTPUT_DIR,
-          `cropped_${imgFileName}`
+          `cropped_${imgFileName}`,
         );
         console.log("✂️ Cropping to content...");
         await cropImageToContent(rawImagePath, croppedImagePath);
@@ -943,7 +944,7 @@ ${latex.replace(/[‹›]/g, "")}
       } catch (imageError) {
         console.error(
           "⚠️ Image conversion failed, using PDF:",
-          imageError.message
+          imageError.message,
         );
       }
     }
@@ -1019,11 +1020,11 @@ app.get("/api/equations/list", async (req, res) => {
           lastModified: stats.mtime,
           fileSize: stats.size,
         };
-      })
+      }),
     );
 
     equations.sort(
-      (a, b) => new Date(b.lastModified) - new Date(a.lastModified)
+      (a, b) => new Date(b.lastModified) - new Date(a.lastModified),
     );
     res.json(equations);
   } catch (error) {
@@ -1091,7 +1092,7 @@ app.delete("/api/equations/:filename", async (req, res) => {
     if (error.code === "ENOENT") {
       console.log(
         "❌ Equation file not found for deletion:",
-        req.params.filename
+        req.params.filename,
       );
       return res.status(404).json({ error: "Equation file not found" });
     }
@@ -1335,7 +1336,7 @@ app.post("/api/citation/save", async (req, res) => {
     await fs.writeFile(
       filePath,
       JSON.stringify(citationRecord, null, 2),
-      "utf8"
+      "utf8",
     );
 
     res.json({
@@ -1362,7 +1363,7 @@ app.get("/api/citation/list", async (req, res) => {
         const content = await fs.readFile(filePath, "utf8");
         const data = JSON.parse(content);
         return data;
-      })
+      }),
     );
 
     citations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -1467,7 +1468,7 @@ app.use(
         res.setHeader("Cache-Control", "no-cache");
       }
     },
-  })
+  }),
 );
 
 // Health check endpoint
@@ -1546,7 +1547,7 @@ async function startServer() {
       console.log(`📁 Temp: ${TEMP_DIR}`);
       console.log(`📁 Output: ${OUTPUT_DIR}`);
       console.log(
-        `🔧 pdfLaTeX: ${PDFLATEX_PATH ? "✅ Ready" : "❌ Not found"}`
+        `🔧 pdfLaTeX: ${PDFLATEX_PATH ? "✅ Ready" : "❌ Not found"}`,
       );
       console.log("=".repeat(60));
       console.log("✨ All routes from both servers merged successfully!");
