@@ -851,12 +851,44 @@ app.post("/api/compile", async (req, res) => {
 
 // ==================== LATEX MATH EQUATION ROUTES ====================
 
+// Test endpoint for pdflatex
+app.get("/api/test-pdflatex", async (req, res) => {
+  try {
+    const testLatex = `\\documentclass{article}
+\\begin{document}
+Hello World
+\\end{document}`;
+    
+    const testFile = path.join(TEMP_DIR, "test.tex");
+    await fs.writeFile(testFile, testLatex);
+    
+    console.log("Testing pdflatex...");
+    const result = await runPdfLatexPermissive(testFile, OUTPUT_DIR);
+    
+    const pdfExists = await fs.pathExists(path.join(OUTPUT_DIR, "test.pdf"));
+    
+    res.json({
+      success: pdfExists,
+      exitCode: result.code,
+      pdfExists,
+      stdoutLength: result.stdout?.length,
+      stderrLength: result.stderr?.length,
+      stdout: result.stdout?.slice(0, 500),
+      stderr: result.stderr?.slice(0, 500)
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+
 // API: Compile LaTeX (for math equations)
 app.post("/api/latex/compile", async (req, res) => {
-  console.log("\n" + "=".repeat(60));
-  console.log("📐 EQUATION COMPILATION REQUEST");
-  console.log("=".repeat(60));
-
+  console.log("📝 Received LaTeX compilation request");
   try {
     const {
       latex,
@@ -878,6 +910,7 @@ app.post("/api/latex/compile", async (req, res) => {
     const pdfFilePath = path.join(OUTPUT_DIR, pdfFileName);
     const imgFilePath = path.join(OUTPUT_DIR, imgFileName);
 
+    // This is the original, simple template that worked for you
     const minimalLatexDocument = `\\documentclass[border=2pt,varwidth=true]{standalone}
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
@@ -891,67 +924,54 @@ ${latex.replace(/[‹›]/g, "")}
 \\end{document}`;
 
     await fs.writeFile(texFilePath, minimalLatexDocument, "utf8");
-    console.log("📄 LaTeX equation file written:", texFileName);
+    console.log("📄 Writing LaTeX file:", texFileName);
 
-    // Delete old PDF if exists
-    try {
-      await fs.remove(pdfFilePath);
-    } catch (e) {}
+    // Run the permissive compiler (resolves even on warnings)
+    await runPdfLatexPermissive(texFilePath, OUTPUT_DIR);
 
-    // Run pdflatex
-    console.log("🔄 Compiling equation...");
-    const result = await runPdfLatexPermissive(texFilePath, OUTPUT_DIR);
-    console.log(`📊 Compilation exit code: ${result.code}`);
-
-    // Check if PDF was generated
+    // Verify PDF exists
     const pdfExists = await fs.pathExists(pdfFilePath);
-    console.log(`📄 PDF exists: ${pdfExists}`);
-
-    if (!pdfExists) {
-      const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
-      let logContent = "";
-      try {
+if (!pdfExists) {
+    console.error("❌ PDF file was not created");
+    // Read the log file for errors
+    const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
+    let logContent = "";
+    try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch {}
-
-      console.error("❌ Equation compilation failed - no PDF");
-      throw new Error(
-        `PDF was not generated. Check LaTeX syntax. Last 500 chars of log:\n${logContent.slice(
-          -500,
-        )}`,
-      );
+        console.error("📄 LaTeX Log:", logContent.slice(-1000));
+    } catch (logErr) {
+        console.error("Could not read log file");
     }
-
-    console.log("✅ Equation PDF created successfully");
+    
+    throw new Error(`PDF compilation failed. Check LaTeX syntax. Log: ${logContent.slice(-500)}`);
+}
+    console.log("✅ PDF file created successfully:", pdfFileName);
 
     let finalUrl = `/output/${pdfFileName}`;
     let finalFileName = pdfFileName;
 
-    // Convert to image if requested
     if (format === "image" || format === "png") {
       try {
-        console.log("🖼️ Converting to image...");
+        console.log("🖼️ Converting PDF to image...");
         const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
         const croppedImagePath = path.join(
           OUTPUT_DIR,
           `cropped_${imgFileName}`,
         );
-        console.log("✂️ Cropping to content...");
+        console.log("✂️ Cropping image to content...");
         await cropImageToContent(rawImagePath, croppedImagePath);
         finalUrl = `/output/cropped_${imgFileName}`;
         finalFileName = `cropped_${imgFileName}`;
-        console.log("✅ Image created successfully");
+        console.log("✅ Image created and cropped successfully");
       } catch (imageError) {
         console.error(
-          "⚠️ Image conversion failed, using PDF:",
-          imageError.message,
+          "⚠️ Image conversion failed, falling back to PDF:",
+          imageError.message
         );
       }
     }
 
     await cleanupFiles(baseFileName, OUTPUT_DIR);
-
-    console.log("✅ Equation compilation complete\n");
 
     res.json({
       success: true,
@@ -961,7 +981,7 @@ ${latex.replace(/[‹›]/g, "")}
       format: finalUrl.endsWith(".png") ? "image" : "pdf",
     });
   } catch (error) {
-    console.error("❌ Equation compilation error:", error.message);
+    console.error("❌ Compilation error:", error.message);
     res.status(500).json({
       error: `Compilation failed: ${error.message}`,
       details: error.stack,
