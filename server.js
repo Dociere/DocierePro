@@ -363,6 +363,43 @@ function generateHarvardCitation({
   return citation;
 }
 
+// ==================== EQUATION GENERATION USING AI ROUTE ====================
+
+app.post("/api/generate-equation", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: "Prompt is required" });
+    }
+
+    console.log(`🤖 Generating equation for prompt: "${prompt}"`);
+
+    // Call Python AI Service
+    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/generate-equation`, {
+      prompt: prompt
+    });
+
+    if (aiResponse.data && aiResponse.data.success) {
+      console.log("✅ AI Equation generated successfully");
+      res.json({
+        success: true,
+        latexEquation: aiResponse.data.latexEquation
+      });
+    } else {
+      throw new Error(aiResponse.data.error || "AI service failed");
+    }
+
+  } catch (error) {
+    console.error("❌ AI Equation Generation Error:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "Failed to generate equation",
+      details: error.message
+    });
+  }
+});
+
 // ==================== PROJECT MANAGEMENT ROUTES ====================
 
 // API: Health check
@@ -870,7 +907,6 @@ ${latex.replace(/[‹›]/g, "")}
     console.log(`📄 PDF exists: ${pdfExists}`);
 
     if (!pdfExists) {
-      // Try to get error details from log
       const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
       let logContent = "";
       try {
