@@ -89,12 +89,14 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
       localStorage.setItem(`project_${projectId}_server`, serverUrl);
       localStorage.setItem(`project_${projectId}_ws`, wsUrl);
 
-      // Handle based on user type
+      // Save guest token if guest user
       if (data.userType === "guest") {
-        localStorage.setItem(`project_${projectId}_guest`, "true");
-        setMessage(
-          "Joined as guest! Session ends when you close the tab or leave."
+        localStorage.setItem(
+          `project_${projectId}_guest_token`,
+          data.guestToken
         );
+        localStorage.setItem(`project_${projectId}_guest`, "true");
+        setMessage("Joined as guest!");
       } else {
         localStorage.setItem(`project_${projectId}_guest`, "false");
         setMessage("Successfully joined project!");
