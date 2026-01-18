@@ -62,10 +62,10 @@ const EditorPage = () => {
     ]); // Keep last 50 logs
   };
 
-  useEffect(() => {
-    fetchData();
-    // checkServerHealth();
-  }, []);
+  // useEffect(() => {
+  //   fetchData();
+  //   // checkServerHealth();
+  // }, []);
 
   const fetchData = async () => {
     const { Projects, Loading, CurrentProject, ActiveFile } =
@@ -98,13 +98,13 @@ const EditorPage = () => {
 
     if (projectIdFromUrl) {
       console.log("Loading remote project...");
+      // Set loading state BEFORE starting
+      updateProjectDetails({ isLoading: true });
       loadRemoteProject(projectIdFromUrl);
     } else {
       console.log("Loading local projects...");
       fetchData();
     }
-
-    // checkServerHealth();
   }, [searchParams]);
 
   const loadRemoteProject = async (projectId) => {
@@ -122,30 +122,39 @@ const EditorPage = () => {
       return;
     }
 
+    // Keep loading state true while fetching
+    updateProjectDetails({ isLoading: true });
+
     try {
       console.log(
         "Fetching project from:",
-        `${serverUrl}/api/projects/${projectId}`
+        `${serverUrl}/api/projects/${projectId}`,
       );
 
       const { project, error } = await loadProjectFromServer(
         projectId,
-        serverUrl
+        serverUrl,
       );
 
       console.log("Load result:", { project, error });
 
       if (error) {
-        updateProjectDetails({ error, isLoading: false });
+        updateProjectDetails({
+          error,
+          isLoading: false,
+          currentProject: null,
+        });
         return;
       }
+
+      console.log("Project data received:", project);
 
       updateProjectDetails({
         currentProject: project,
         activeFile: project.activeFile || "main.tex",
         latexContent:
           project.files[project.activeFile || "main.tex"]?.content || "",
-        isLoading: false,
+        isLoading: false, // NOW set to false
         isRemoteProject: true,
         serverUrl: serverUrl,
       });
@@ -156,6 +165,7 @@ const EditorPage = () => {
       updateProjectDetails({
         error: "Failed to load project from server",
         isLoading: false,
+        currentProject: null,
       });
     }
   };
@@ -356,11 +366,11 @@ const EditorPage = () => {
               // Check what's in the rich text
               const hasPreambleMarker = content.includes("<!--LATEX_PREAMBLE:");
               const hasPostambleMarker = content.includes(
-                "<!--LATEX_POSTAMBLE:"
+                "<!--LATEX_POSTAMBLE:",
               );
               addDebugLog(
                 `Rich text markers: Preamble=${hasPreambleMarker}, Postamble=${hasPostambleMarker}`,
-                hasPreambleMarker && hasPostambleMarker ? "success" : "warning"
+                hasPreambleMarker && hasPostambleMarker ? "success" : "warning",
               );
 
               const bodyContent = richTextToLatex(content);
@@ -371,12 +381,12 @@ const EditorPage = () => {
               addDebugLog(
                 `After richTextToLatex: \\begin=${hasBegin}, \\end=${hasEnd}`,
                 hasBegin && hasEnd ? "success" : "error",
-                `Length: ${bodyContent.length} chars`
+                `Length: ${bodyContent.length} chars`,
               );
 
               newLatexContent = reconstructLatexDocument(
                 projectDetails.latexContent || lastSyncedLatex.current,
-                bodyContent
+                bodyContent,
               );
 
               const finalHasBegin =
@@ -386,7 +396,7 @@ const EditorPage = () => {
               addDebugLog(
                 `Final LaTeX: \\begin=${finalHasBegin}, \\end=${finalHasEnd}`,
                 finalHasBegin && finalHasEnd ? "success" : "error",
-                `Length: ${newLatexContent.length} chars`
+                `Length: ${newLatexContent.length} chars`,
               );
               break;
 
@@ -394,7 +404,7 @@ const EditorPage = () => {
               addDebugLog("🔄 Converting Sections → LaTeX");
               newLatexContent = sectionsToLatex(
                 content,
-                projectDetails.latexContent || lastSyncedLatex.current
+                projectDetails.latexContent || lastSyncedLatex.current,
               );
               addDebugLog("✅ Sections conversion complete");
               break;
@@ -440,7 +450,7 @@ const EditorPage = () => {
 
             addDebugLog(
               `Rich text generated: Preamble=${hasPreamble}, Postamble=${hasPostamble}`,
-              hasPreamble && hasPostamble ? "success" : "warning"
+              hasPreamble && hasPostamble ? "success" : "warning",
             );
 
             updateProjectDetails({
@@ -464,10 +474,10 @@ const EditorPage = () => {
 
           addDebugLog("✅ Update complete", "success");
         },
-        source === "monaco" ? 300 : source === "richText" ? 500 : 300
+        source === "monaco" ? 300 : source === "richText" ? 500 : 300,
       );
     },
-    [projectDetails, updateProjectDetails]
+    [projectDetails, updateProjectDetails],
   );
 
   // ============ EDITOR HANDLERS ============
@@ -478,7 +488,7 @@ const EditorPage = () => {
       updateProjectDetails({ latexContent: value });
       updateAllEditors("monaco", value);
     },
-    [updateAllEditors]
+    [updateAllEditors],
   );
 
   const handleRichTextChange = useCallback(
@@ -487,7 +497,7 @@ const EditorPage = () => {
       updateProjectDetails({ richTextContent: value });
       updateAllEditors("richText", value);
     },
-    [updateAllEditors]
+    [updateAllEditors],
   );
 
   const handleSectionsChange = useCallback(
@@ -496,7 +506,7 @@ const EditorPage = () => {
       setSections([...updatedSections]);
       updateAllEditors("sections", updatedSections);
     },
-    [updateAllEditors]
+    [updateAllEditors],
   );
 
   const saveProjectToServer = async (updatedProject, activeFile) => {
@@ -510,13 +520,36 @@ const EditorPage = () => {
         updatedProject,
         activeFile,
         compilationStatus,
-        compilationMessage
+        compilationMessage,
       );
       console.log("Auto-saved to server");
     } catch (error) {
       console.error("Auto-save failed:", error);
     }
   };
+
+  const getCollaborationToken = () => {
+    // Try auth token first
+    const authToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("uid="))
+      ?.split("=")[1];
+
+    if (authToken) return authToken;
+
+    // Try guest token
+    const projectId = projectDetails.currentProject?.id;
+    if (projectId) {
+      const guestToken = localStorage.getItem(
+        `project_${projectId}_guest_token`,
+      );
+      if (guestToken) return guestToken;
+    }
+
+    return null;
+  };
+
+  const collaborationToken = getCollaborationToken();
 
   //updatedProject, projectDetails.activeFile
 
@@ -615,7 +648,7 @@ const EditorPage = () => {
                 handleLatexChange={handleLatexChange}
                 monacoEditorRef={monacoEditorRef}
                 projectId={projectDetails.currentProject?.id}
-                token={token}
+                token={collaborationToken}
                 isOnline={isOnline}
               />
             </div>

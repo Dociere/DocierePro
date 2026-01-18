@@ -11,13 +11,14 @@ const MonacoEditorPanel = ({
   isOnline = null,
 }) => {
   const editorInstanceRef = useRef(null);
+  const [editorReady, setEditorReady] = useState(false);
 
-  const { users, syncStatus } = useYjsMonaco(
-    projectId,
-    token,
-    isOnline,
-    editorInstanceRef.current
-  );
+  // const { users, syncStatus } = useYjsMonaco(
+  //   projectId,
+  //   token,
+  //   isOnline,
+  //   editorInstanceRef.current,
+  // );
 
   const handleEditorMount = (editor, monaco) => {
     monacoEditorRef.current = editor;
@@ -33,10 +34,26 @@ const MonacoEditorPanel = ({
       },
     });
     monaco.editor.setTheme("customLight");
+
+    // Mark editor as ready AFTER mount
+    console.log("✅ Monaco editor mounted and ready");
+    setEditorReady(true);
   };
 
-  // Initialize Yjs collaboration only if projectId and token exist
-  useYjsMonaco(projectId, token, isOnline, editorInstanceRef.current);
+  // Only initialize Yjs AFTER editor is ready
+  const { users, syncStatus } = useYjsMonaco(
+    projectId,
+    token,
+    isOnline,
+    editorReady ? editorInstanceRef.current : null, // Pass null until ready
+  );
+
+  console.log("Monaco render:", {
+    projectId,
+    token: !!token,
+    editorReady,
+    isOnline,
+  });
 
   return (
     <div className="h-full w-full flex-1 flex flex-col">
@@ -62,6 +79,19 @@ const MonacoEditorPanel = ({
           ))}
         </div>
       )}
+
+      {/* Sync Status Indicator */}
+      <div className="bg-gray-100 px-4 py-1 border-b text-xs">
+        Status:{" "}
+        <span
+          className={
+            syncStatus === "synced" ? "text-green-600" : "text-orange-600"
+          }
+        >
+          {syncStatus}
+        </span>
+      </div>
+
       {/* Monaco Editor Container */}
       <div className="flex-1 h-full">
         <MonacoEditor
