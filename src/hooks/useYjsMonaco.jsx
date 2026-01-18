@@ -125,7 +125,8 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
 
     const ytext = ydoc.current.getText("monaco");
     const wsUrl =
-      localStorage.getItem(`project_${projectId}_ws`) || "ws://localhost:5001";
+      localStorage.getItem(`project_${projectId}_ws`) ||
+      `${import.meta.env.VITE_ws_server}`;
     const guestToken = localStorage.getItem(`project_${projectId}_guest_token`);
 
     console.log("📡 WebSocket URL:", wsUrl);
