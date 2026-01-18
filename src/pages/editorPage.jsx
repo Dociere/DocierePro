@@ -529,23 +529,30 @@ const EditorPage = () => {
   };
 
   const getCollaborationToken = () => {
-    // Try auth token first
+    // For owners - get their auth token
     const authToken = document.cookie
       .split("; ")
       .find((row) => row.startsWith("uid="))
       ?.split("=")[1];
 
-    if (authToken) return authToken;
+    if (authToken) {
+      console.log("Using auth token for collaboration");
+      return authToken;
+    }
 
-    // Try guest token
+    // For guests/collaborators - get guest token
     const projectId = projectDetails.currentProject?.id;
     if (projectId) {
       const guestToken = localStorage.getItem(
         `project_${projectId}_guest_token`,
       );
-      if (guestToken) return guestToken;
+      if (guestToken) {
+        console.log("Using guest token for collaboration");
+        return guestToken;
+      }
     }
 
+    console.warn("No collaboration token found");
     return null;
   };
 

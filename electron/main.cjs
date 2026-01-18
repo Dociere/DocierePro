@@ -33,7 +33,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     icon: path.join(__dirname, "../public/dociereLogo9.png"),
-    frame: true,
+    frame: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -51,6 +51,13 @@ function createWindow() {
   }
 
   mainWindow.setMenu(null);
+
+  mainWindow.on("maximize", () => {
+    mainWindow.webContents.send("window-is-maximized");
+  });
+  mainWindow.on("unmaximize", () => {
+    mainWindow.webContents.send("window-is-unmaximized");
+  });
 }
 
 app.whenReady().then(() => {
@@ -85,6 +92,6 @@ app.on("activate", () => {
 
 ipcMain.on("window-minimize", () => mainWindow.minimize());
 ipcMain.on("window-maximize", () =>
-  mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize()
+  mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize(),
 );
 ipcMain.on("window-close", () => mainWindow.close());

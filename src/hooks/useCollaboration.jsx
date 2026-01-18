@@ -22,7 +22,7 @@ export const useCollaboration = (projectId, token, isOnline) => {
     // Setup IndexedDB for offline persistence
     indexeddbProvider.current = new IndexeddbPersistence(
       `project-${projectId}`,
-      ydoc
+      ydoc,
     );
 
     indexeddbProvider.current.on("synced", () => {
@@ -32,12 +32,12 @@ export const useCollaboration = (projectId, token, isOnline) => {
     // Setup WebSocket provider for real-time sync (only when online)
     if (isOnline) {
       wsProvider.current = new WebsocketProvider(
-        "ws://localhost:5001",
+        `${import.meta.env.VITE_ws_server}`,
         `project:${projectId}`,
         ydoc,
         {
           params: { token },
-        }
+        },
       );
 
       wsProvider.current.on("status", (event) => {
