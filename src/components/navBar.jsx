@@ -6,6 +6,8 @@ import ShortcutsModal from "./shortcutsModal";
 import { projectContext } from "../context/useProject";
 import EditIcon from "../assets/icons/edit.svg?react";
 import dociereLogo from "../../public/dociere.png";
+import ToMaxIcon from "../assets/icons/minmaxIcon.svg?react";
+import ToMinIcon from "../assets/icons/minmaxIcon1.svg?react";
 import axios from "axios";
 
 const API_URL = "http://localhost:5000";
@@ -16,6 +18,7 @@ const NavBar = () => {
   const [activeMenu, setActiveMenu] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const menuRefs = useRef({});
 
   const hasProject = projectDetails.currentProject !== null;
@@ -27,6 +30,14 @@ const NavBar = () => {
   const handleOpenProject = () => {
     navigate("/");
   };
+
+  // Listen for maximize/unmaximize events (Specific to Electron)
+  useEffect(() => {
+    if (window.electronAPI) {
+      window.electronAPI.onMaximize(() => setIsMaximized(true));
+      window.electronAPI.onUnmaximize(() => setIsMaximized(false));
+    }
+  }, []);
 
   const handleSaveProject = async () => {
     if (!projectDetails.currentProject || !projectDetails.activeFile) {
@@ -40,7 +51,7 @@ const NavBar = () => {
         {
           files: projectDetails.currentProject.files,
           activeFile: projectDetails.activeFile,
-        }
+        },
       );
 
       updateProjectDetails({
@@ -78,7 +89,7 @@ const NavBar = () => {
 
     const newTitle = prompt(
       "Enter new project title:",
-      `${projectDetails.currentProject.title} - Copy`
+      `${projectDetails.currentProject.title} - Copy`,
     );
 
     if (!newTitle || newTitle.trim() === "") {
@@ -240,7 +251,7 @@ const NavBar = () => {
   const handleCloseProject = () => {
     if (
       window.confirm(
-        "Are you sure you want to close this project? Unsaved changes will be lost."
+        "Are you sure you want to close this project? Unsaved changes will be lost.",
       )
     ) {
       updateProjectDetails({
@@ -288,7 +299,7 @@ const NavBar = () => {
         "• Full Code View with Monaco Editor\n" +
         "• Rich Text Editor for WYSIWYG editing\n" +
         "• Section-based editing for structured documents\n\n" +
-        "Created with ❤️ for seamless document creation"
+        "Created with ❤️ for seamless document creation",
     );
   };
 
@@ -523,7 +534,7 @@ const NavBar = () => {
       action: () => {
         // Apply zoom to editor content
         const editorElement = document.querySelector(
-          ".monaco-editor, .text-editor"
+          ".monaco-editor, .text-editor",
         );
         if (editorElement) {
           const currentZoom = parseFloat(editorElement.style.zoom || "1");
@@ -537,13 +548,13 @@ const NavBar = () => {
       shortcut: "Ctrl+-",
       action: () => {
         const editorElement = document.querySelector(
-          ".monaco-editor, .text-editor"
+          ".monaco-editor, .text-editor",
         );
         if (editorElement) {
           const currentZoom = parseFloat(editorElement.style.zoom || "1");
           editorElement.style.zoom = Math.max(
             0.5,
-            currentZoom - 0.1
+            currentZoom - 0.1,
           ).toString();
         }
       },
@@ -554,7 +565,7 @@ const NavBar = () => {
       shortcut: "Ctrl+0",
       action: () => {
         const editorElement = document.querySelector(
-          ".monaco-editor, .text-editor"
+          ".monaco-editor, .text-editor",
         );
         if (editorElement) {
           editorElement.style.zoom = "1";
@@ -606,7 +617,7 @@ const NavBar = () => {
       action: () =>
         window.open(
           "https://www.dociere.com/learn/latex/List_of_Greek_letters_and_math_symbols",
-          "_blank"
+          "_blank",
         ),
     },
     {
@@ -660,8 +671,14 @@ const NavBar = () => {
 
   return (
     <>
-      <div className="z-50 fixed w-full top-0">
+      <div
+        className="z-50 fixed w-full top-0 "
+        style={{
+          WebkitAppRegion: "drag",
+        }}
+      >
         <div className="bg-[#F9F9F9] h-11 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex">
+          {/* Left Part - Title bar Menus */}
           <div className="flex flex-1 gap-7 text-sm pl-5 text-[#212121]">
             <button
               ref={(el) => (menuRefs.current.file = el)}
@@ -699,6 +716,8 @@ const NavBar = () => {
             >
               Help
             </button>
+
+            {/* Center Part - Branding and Project name */}
           </div>
           {projectDetails?.currentProject?.title ? (
             <div className="flex flex-1 py-0 text-sm font-inter font-medium flex-row justify-center items-center">
@@ -711,8 +730,41 @@ const NavBar = () => {
             </div>
           )}
 
-          {/* Right Spacer */}
-          <div className="flex-1" />
+          {/* Title Bar Control Options */}
+          <div
+            className="flex flex-1 justify-end"
+            style={{ WebkitAppRegion: "no-drag" }}
+          >
+            <button
+              className="hover:bg-gray-200 my-2 rounded-md px-3"
+              onClick={() => window.electronAPI.minimize()}
+            >
+              _
+            </button>
+
+            <button
+              className="hover:bg-gray-200 my-2 rounded-md px-3"
+              onClick={() => window.electronAPI.maximize()}
+            >
+              {isMaximized ? (
+                <ToMaxIcon
+                  style={{ fill: "#000000" }}
+                  className="w-4 h-4 rotate-180"
+                />
+              ) : (
+                <ToMinIcon
+                  style={{ fill: "#000000" }}
+                  className="w-4 h-4 rotate-180"
+                />
+              )}
+            </button>
+            <button
+              className="hover:bg-gray-200 my-2 rounded-md px-3 text-[#0a0a0a]"
+              onClick={() => window.electronAPI.close()}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Dropdown Menus */}
