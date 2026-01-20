@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
-import { IndexeddbPersistence } from "y-indexeddb";
 import { MonacoBinding } from "y-monaco";
 
 // export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
@@ -106,7 +105,6 @@ import { MonacoBinding } from "y-monaco";
 export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
   const ydoc = useRef(new Y.Doc());
   const wsProvider = useRef(null);
-  const indexeddbProvider = useRef(null);
   const binding = useRef(null);
   const [users, setUsers] = useState([]);
   const [syncStatus, setSyncStatus] = useState("loading");
@@ -258,7 +256,6 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
       console.log("🧹 Cleaning up Yjs");
       binding.current?.destroy();
       wsProvider.current?.destroy();
-      indexeddbProvider.current?.destroy();
     };
   }, [projectId, token, isOnline, monacoEditor]);
 
