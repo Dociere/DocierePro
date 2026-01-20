@@ -27,6 +27,7 @@ import {
 import { projectContext } from "../context/useProject.jsx";
 import PdfViewer from "../components/pdfViewer.jsx";
 import { useOutletContext, useSearchParams } from "react-router-dom";
+import { useAuth } from "../context/useAuth.jsx";
 import axios from "axios";
 
 // const API_URL = "http://localhost:5025";
@@ -38,6 +39,7 @@ const EditorPage = () => {
   const [remoteProject, setRemoteProject] = useState(null);
   const effectiveProjectDetails = remoteProject || projectDetails;
   const [collaborationToken, setCollaborationToken] = useState(null);
+  const { user } = useAuth();
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -731,6 +733,7 @@ const EditorPage = () => {
                 projectId={projectDetails.currentProject?.id}
                 token={collaborationToken}
                 isOnline={isOnline}
+                user={user}
               />
             </div>
           )}

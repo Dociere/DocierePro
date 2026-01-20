@@ -9,6 +9,7 @@ const MonacoEditorPanel = ({
   projectId = null,
   token = null,
   isOnline = null,
+  user = null,
 }) => {
   const editorInstanceRef = useRef(null);
   const [editorReady, setEditorReady] = useState(false);
@@ -56,6 +57,7 @@ const MonacoEditorPanel = ({
     token,
     isOnline,
     editorReady ? editorInstanceRef.current : null, // Pass null until ready
+    user
   );
 
   console.log("Monaco render:", {
