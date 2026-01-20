@@ -20,6 +20,16 @@ const MonacoEditorPanel = ({
   //   editorInstanceRef.current,
   // );
 
+  useEffect(() => {
+    if (editorInstanceRef.current && value !== undefined) {
+      const currentValue = editorInstanceRef.current.getValue();
+      if (currentValue !== value) {
+        console.log("📝 Updating Monaco editor with new content");
+        editorInstanceRef.current.setValue(value);
+      }
+    }
+  }, [value]);
+
   const handleEditorMount = (editor, monaco) => {
     monacoEditorRef.current = editor;
     editorInstanceRef.current = editor;
