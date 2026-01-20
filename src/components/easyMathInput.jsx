@@ -1,1208 +1,3 @@
-// import React, { useState, useEffect } from "react";
-// import {
-//   TbX,
-//   TbCopy,
-//   TbSearch,
-//   TbPlayerPlay,
-//   TbDeviceFloppy,
-//   TbFolder,
-//   TbChevronDown,
-//   TbRobot,
-//   TbArrowUp,
-//   TbLoader,
-// } from "react-icons/tb";
-
-// const API_BASE_URL = "http://localhost:5000";
-
-// // Utility to wrap placeholder parts
-// const wrapPlaceholder = (latex) => latex.replace(/⟨([^⟩]+)⟩/g, "‹$1›");
-
-// const EasyMathInput = ({ onClose }) => {
-//   const [activeTab, setActiveTab] = useState("editor");
-//   const [leftPanelMode, setLeftPanelMode] = useState("symbols"); // 'symbols' or 'equations'
-//   const [latexCode, setLatexCode] = useState("");
-//   const [aiPrompt, setAiPrompt] = useState("");
-//   const [isAiMode, setIsAiMode] = useState(false);
-//   const [isGenerating, setIsGenerating] = useState(false);
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [showDropdown, setShowDropdown] = useState(false);
-//   const [previewUrl, setPreviewUrl] = useState("");
-//   const [isCompiling, setIsCompiling] = useState(false);
-//   const [savedEquations, setSavedEquations] = useState([]);
-//   const [savedEquationSearch, setSavedEquationSearch] = useState("");
-//   const [selectedSavedEquation, setSelectedSavedEquation] = useState("");
-//   const [showSaveDialog, setShowSaveDialog] = useState(false);
-//   const [saveFileName, setSaveFileName] = useState("");
-//   const [showSavedDropdown, setShowSavedDropdown] = useState(false);
-//   const [expandedCategories, setExpandedCategories] = useState(new Set());
-
-//   const toggleCategoryExpansion = (category) => {
-//     setExpandedCategories((prev) => {
-//       const newSet = new Set(prev);
-//       if (newSet.has(category)) {
-//         newSet.delete(category);
-//       } else {
-//         newSet.add(category);
-//       }
-//       return newSet;
-//     });
-//   };
-
-//   useEffect(() => {
-//     loadSavedEquations();
-//   }, []);
-
-//   const loadSavedEquations = async () => {
-//     try {
-//       const response = await fetch(`${API_BASE_URL}/api/equations/list`);
-//       if (response.ok) {
-//         const equations = await response.json();
-//         setSavedEquations(equations);
-//       }
-//     } catch (error) {
-//       console.error("Failed to load saved equations:", error);
-//     }
-//   };
-
-//   const compileLatex = async (latex, isTemp = true, fileName = "temp") => {
-//     setIsCompiling(true);
-//     try {
-//       const cleanLatex = latex.replace(/[‹›]/g, "");
-
-//       console.log("🔄 Sending compilation request...", {
-//         latex: cleanLatex.substring(0, 100),
-//         isTemp,
-//         fileName,
-//       });
-
-//       const response = await fetch(`${API_BASE_URL}/api/latex/compile`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({
-//           latex: cleanLatex,
-//           isTemp,
-//           fileName,
-//           format: "image",
-//         }),
-//       });
-
-//       if (!response.ok) {
-//         const errorText = await response.text();
-//         console.error("❌ Server response not OK:", response.status, errorText);
-//         throw new Error(`Server error (${response.status}): ${errorText}`);
-//       }
-
-//       const result = await response.json();
-
-//       console.log("✅ Compilation result:", result);
-
-//       if (result.success && result.pdfUrl) {
-//         return `${API_BASE_URL}${result.pdfUrl}`;
-//       } else {
-//         throw new Error(result.error || "Compilation failed - no URL returned");
-//       }
-//     } catch (error) {
-//       console.error("❌ Compilation error:", error);
-//       alert(`Compilation failed: ${error.message}`);
-//       return null;
-//     } finally {
-//       setIsCompiling(false);
-//     }
-//   };
-
-//   const handleCompile = async () => {
-//     console.log("🔘 Compile button clicked!");
-//     console.log("📝 Current latexCode:", latexCode?.substring(0, 50));
-
-//     if (!latexCode.trim()) {
-//       alert("Please enter some LaTeX code first");
-//       return;
-//     }
-
-//     console.log("✅ Starting compilation...");
-//     setIsCompiling(true);
-//     setPreviewUrl(""); // Clear previous preview
-
-//     try {
-//       const pdfUrl = await compileLatex(latexCode);
-//       console.log("📄 Received PDF URL:", pdfUrl);
-
-//       if (pdfUrl) {
-//         setPreviewUrl(`${pdfUrl}?t=${Date.now()}`);
-//         console.log("✅ Preview URL set!");
-//       } else {
-//         console.error("❌ No PDF URL returned");
-//         alert("Compilation failed - no output generated");
-//       }
-//     } catch (error) {
-//       console.error("❌ Compilation error:", error);
-//       alert(`Compilation failed: ${error.message}`);
-//     } finally {
-//       setIsCompiling(false);
-//     }
-//   };
-
-//   const handleAiGenerate = async () => {
-//     if (!aiPrompt.trim()) return;
-
-//     console.log("🤖 AI Generate button clicked!");
-//     setIsGenerating(true);
-
-//     try {
-//       const response = await fetch(`${API_BASE_URL}/api/generate-equation`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ prompt: aiPrompt }),
-//       });
-
-//       const data = await response.json();
-//       console.log("🤖 AI Response:", data);
-
-//       if (data.success && data.latexEquation) {
-//         console.log("✅ Setting LaTeX code:", data.latexEquation);
-//         setLatexCode(data.latexEquation); // Update text area
-//         setIsAiMode(false); // Switch back to manual mode
-//         setAiPrompt(""); // Clear prompt
-
-//         // Auto-compile the result immediately
-//         console.log("🔄 Auto-compiling AI result...");
-
-//         // Small delay to ensure state is updated
-//         setTimeout(async () => {
-//           setIsCompiling(true);
-//           const pdfUrl = await compileLatex(data.latexEquation);
-//           if (pdfUrl) {
-//             setPreviewUrl(`${pdfUrl}?t=${Date.now()}`);
-//           }
-//           setIsCompiling(false);
-//         }, 100);
-//       } else {
-//         alert("Failed to generate: " + (data.error || "Unknown error"));
-//       }
-//     } catch (error) {
-//       console.error("❌ AI Generation Error:", error);
-//       alert("Error connecting to AI service");
-//     } finally {
-//       setIsGenerating(false);
-//     }
-//   };
-
-//   const handleSaveEquation = async () => {
-//     if (!saveFileName.trim()) return alert("Please enter a filename");
-//     if (!latexCode.trim()) return alert("Please enter some LaTeX code first");
-
-//     try {
-//       const cleanLatex = latexCode.replace(/[‹›]/g, "");
-//       const response = await fetch(`${API_BASE_URL}/api/equations/save`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ fileName: saveFileName, latex: cleanLatex }),
-//       });
-
-//       if (response.ok) {
-//         alert("Equation saved successfully!");
-//         setShowSaveDialog(false);
-//         setSaveFileName("");
-//         loadSavedEquations();
-//       } else {
-//         throw new Error(await response.text());
-//       }
-//     } catch (error) {
-//       alert(`Save failed: ${error.message}`);
-//     }
-//   };
-
-//   const loadSavedEquation = async (fileName) => {
-//     try {
-//       const response = await fetch(
-//         `${API_BASE_URL}/api/equations/load/${fileName}`,
-//       );
-//       if (response.ok) {
-//         const data = await response.json();
-//         setLatexCode(data.latex);
-//         setActiveTab("editor");
-//       }
-//     } catch (error) {
-//       console.error("Failed to load equation:", error);
-//     }
-//   };
-
-//   const insertSymbol = (latex) => {
-//     const highlighted = wrapPlaceholder(latex);
-//     setLatexCode((prev) => prev + highlighted + " ");
-//     setShowDropdown(false);
-//     setSearchTerm("");
-//   };
-
-//   const copyToClipboard = async () => {
-//     try {
-//       const cleanLatex = latexCode.replace(/[‹›]/g, "");
-//       await navigator.clipboard.writeText(cleanLatex);
-//       alert("LaTeX code copied to clipboard!");
-//     } catch (err) {
-//       console.error("Failed to copy: ", err);
-//     }
-//   };
-
-//   // ==========================================
-//   // DATA COLLECTIONS
-//   // ==========================================
-
-// const commonEquations = [
-//   {
-//     name: "Quadratic Formula",
-//     latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
-//     symbol: "x=...",
-//   },
-//   { name: "Pythagorean Thm", latex: "a^2 + b^2 = c^2", symbol: "a²+b²" },
-//   { name: "Area of Circle", latex: "A = \\pi r^2", symbol: "πr²" },
-//   {
-//     name: "Calculus Limit",
-//     latex: "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1",
-//     symbol: "lim",
-//   },
-//   { name: "Newton's 2nd Law", latex: "F = ma", symbol: "F=ma" },
-//   { name: "Mass-Energy", latex: "E = mc^2", symbol: "E=mc²" },
-//   { name: "Ohm's Law", latex: "V = IR", symbol: "V=IR" },
-//   { name: "Ideal Gas Law", latex: "PV = nRT", symbol: "PV=nRT" },
-//   { name: "Euler's Identity", latex: "e^{i\\pi} + 1 = 0", symbol: "eⁱπ" },
-//   {
-//     name: "Wave Equation",
-//     latex: "\\frac{\\partial^2 u}{\\partial t^2} = c^2 \\nabla^2 u",
-//     symbol: "∇²u",
-//   },
-//   {
-//     name: "Schrödinger Eq",
-//     latex: "i\\hbar\\frac{\\partial}{\\partial t}\\Psi = \\hat{H}\\Psi",
-//     symbol: "Ψ",
-//   },
-//   {
-//     name: "Maxwell (Gauss)",
-//     latex: "\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\epsilon_0}",
-//     symbol: "∇·E",
-//   },
-//   {
-//     name: "Bayes' Theorem",
-//     latex: "P(A|B) = \\frac{P(B|A)P(A)}{P(B)}",
-//     symbol: "P(A|B)",
-//   },
-//   {
-//     name: "Standard Deviation",
-//     latex: "\\sigma = \\sqrt{\\frac{\\sum(x_i - \\mu)^2}{N}}",
-//     symbol: "σ",
-//   },
-//   {
-//     name: "Photosynthesis",
-//     latex: "6CO_2 + 6H_2O \\xrightarrow{h\\nu} C_6H_{12}O_6 + 6O_2",
-//     symbol: "Bio",
-//   },
-//   {
-//     name: "Thermodynamics",
-//     latex: "\\Delta G = \\Delta H - T\\Delta S",
-//     symbol: "ΔG",
-//   },
-//   {
-//     name: "Complex Number",
-//     latex: "z = a + bi = re^{i\\theta}",
-//     symbol: "a+bi",
-//   },
-//   {
-//     name: "Definition of e",
-//     latex: "e = \\lim_{n \\to \\infty} \\left(1 + \\frac{1}{n}\\right)^n",
-//     symbol: "e",
-//   },
-//   {
-//     name: "Log Change Base",
-//     latex: "\\log_b x = \\frac{\\ln x}{\\ln b}",
-//     symbol: "log",
-//   },
-//   {
-//     name: "Chem Equilibrium",
-//     latex: "K_c = \\frac{[C]^c[D]^d}{[A]^a[B]^b}",
-//     symbol: "K_c",
-//   },
-// ];
-
-// const commonSymbols = [
-//   {
-//     symbol: "∫",
-//     latex: "\\int ⟨integrand⟩ \\, \\mathrm{d}⟨variable⟩",
-//     name: "Integral",
-//   },
-//   { symbol: "∑", latex: "\\sum_{⟨start⟩}^{⟨end⟩}", name: "Summation" },
-//   { symbol: "√", latex: "\\sqrt{⟨arg⟩}", name: "Square Root" },
-//   { symbol: "a/b", latex: "\\frac{⟨num⟩}{⟨den⟩}", name: "Fraction" },
-//   { symbol: "x²", latex: "^{⟨exp⟩}", name: "Power" },
-//   { symbol: "x₁", latex: "_{⟨sub⟩}", name: "Subscript" },
-//   { symbol: "lim", latex: "\\lim_{⟨x⟩ \\to ⟨val⟩}", name: "Limit" },
-//   { symbol: "α", latex: "\\alpha", name: "Alpha" },
-//   { symbol: "π", latex: "\\pi", name: "Pi" },
-//   { symbol: "∞", latex: "\\infty", name: "Infinity" },
-//   { symbol: "≠", latex: "\\neq", name: "Not Equal" },
-//   { symbol: "≤", latex: "\\leq", name: "Less or Equal" },
-//   { symbol: "→", latex: "\\to", name: "Right Arrow" },
-//   { symbol: "±", latex: "\\pm", name: "Plus Minus" },
-// ];
-
-// const mathSymbols = [
-//   // --- BASIC ARITHMETIC ---
-//   { symbol: "+", latex: "+", name: "Plus", category: "Basic" },
-//   { symbol: "-", latex: "-", name: "Minus", category: "Basic" },
-//   {
-//     symbol: "×",
-//     latex: "\\times",
-//     name: "Multiplication",
-//     category: "Basic",
-//   },
-//   { symbol: "⋅", latex: "\\cdot", name: "Dot Product", category: "Basic" },
-//   { symbol: "÷", latex: "\\div", name: "Division", category: "Basic" },
-//   { symbol: "=", latex: "=", name: "Equals", category: "Basic" },
-//   { symbol: "≠", latex: "\\neq", name: "Not Equal", category: "Basic" },
-//   { symbol: "±", latex: "\\pm", name: "Plus-Minus", category: "Basic" },
-//   { symbol: "∓", latex: "\\mp", name: "Minus-Plus", category: "Basic" },
-
-//   // --- FRACTIONS & ROOTS ---
-//   {
-//     symbol: "a/b",
-//     latex: "\\frac{⟨num⟩}{⟨den⟩}",
-//     name: "Fraction",
-//     category: "Fractions",
-//   },
-//   {
-//     symbol: "∂f/∂x",
-//     latex: "\\frac{\\partial ⟨f⟩}{\\partial ⟨x⟩}",
-//     name: "Partial Frac",
-//     category: "Fractions",
-//   },
-//   {
-//     symbol: "df/dx",
-//     latex: "\\frac{d ⟨f⟩}{d ⟨x⟩}",
-//     name: "Derivative",
-//     category: "Fractions",
-//   },
-//   {
-//     symbol: "√",
-//     latex: "\\sqrt{⟨arg⟩}",
-//     name: "Square Root",
-//     category: "Roots",
-//   },
-//   {
-//     symbol: "∛",
-//     latex: "\\sqrt[3]{⟨arg⟩}",
-//     name: "Cube Root",
-//     category: "Roots",
-//   },
-//   {
-//     symbol: "ⁿ√",
-//     latex: "\\sqrt[⟨n⟩]{⟨arg⟩}",
-//     name: "Nth Root",
-//     category: "Roots",
-//   },
-
-//   // --- PHYSICS & CHEMISTRY ---
-//   { symbol: "ℏ", latex: "\\hbar", name: "H-bar", category: "Physics" },
-//   { symbol: "Å", latex: "\\AA", name: "Angstrom", category: "Physics" },
-//   {
-//     symbol: "vec",
-//     latex: "\\vec{⟨v⟩}",
-//     name: "Vector Arrow",
-//     category: "Physics",
-//   },
-//   {
-//     symbol: "hat",
-//     latex: "\\hat{⟨x⟩}",
-//     name: "Unit Vector",
-//     category: "Physics",
-//   },
-//   { symbol: "∇", latex: "\\nabla", name: "Nabla/Del", category: "Physics" },
-//   {
-//     symbol: "Δ",
-//     latex: "\\Delta",
-//     name: "Delta (Change)",
-//     category: "Physics",
-//   },
-//   { symbol: "Ω", latex: "\\Omega", name: "Ohm", category: "Physics" },
-//   {
-//     symbol: "μ₀",
-//     latex: "\\mu_0",
-//     name: "Permeability",
-//     category: "Physics",
-//   },
-//   {
-//     symbol: "ε₀",
-//     latex: "\\epsilon_0",
-//     name: "Permittivity",
-//     category: "Physics",
-//   },
-//   { symbol: "°", latex: "^{\\circ}", name: "Degree", category: "Physics" },
-
-//   {
-//     symbol: "→",
-//     latex: "\\rightarrow",
-//     name: "Reaction",
-//     category: "Chemistry",
-//   },
-//   {
-//     symbol: "⇌",
-//     latex: "\\rightleftharpoons",
-//     name: "Equilibrium",
-//     category: "Chemistry",
-//   },
-//   {
-//     symbol: "↑",
-//     latex: "\\uparrow",
-//     name: "Gas Evolved",
-//     category: "Chemistry",
-//   },
-//   {
-//     symbol: "↓",
-//     latex: "\\downarrow",
-//     name: "Precipitate",
-//     category: "Chemistry",
-//   },
-//   {
-//     symbol: "Δ",
-//     latex: "\\Delta",
-//     name: "Heat/Change",
-//     category: "Chemistry",
-//   },
-//   {
-//     symbol: "Iso",
-//     latex: "^{⟨A⟩}_{⟨Z⟩}\\text{⟨El⟩}",
-//     name: "Isotope",
-//     category: "Chemistry",
-//   },
-//   {
-//     symbol: "⦵",
-//     latex: "^{\\ominus}",
-//     name: "Standard State",
-//     category: "Chemistry",
-//   },
-//   { symbol: "M", latex: "\\text{M}", name: "Molar", category: "Chemistry" },
-
-//   // --- BIOLOGY & STATISTICS ---
-//   {
-//     symbol: "χ²",
-//     latex: "\\chi^2",
-//     name: "Chi-Squared",
-//     category: "Stats/Bio",
-//   },
-//   { symbol: "μ", latex: "\\mu", name: "Mean", category: "Stats/Bio" },
-//   { symbol: "σ", latex: "\\sigma", name: "Std Dev", category: "Stats/Bio" },
-//   {
-//     symbol: "x̄",
-//     latex: "\\bar{x}",
-//     name: "Sample Mean",
-//     category: "Stats/Bio",
-//   },
-//   { symbol: "p̂", latex: "\\hat{p}", name: "P-hat", category: "Stats/Bio" },
-//   { symbol: "H₀", latex: "H_0", name: "Null Hyp", category: "Stats/Bio" },
-//   { symbol: "H₁", latex: "H_1", name: "Alt Hyp", category: "Stats/Bio" },
-//   { symbol: "♂", latex: "\\mars", name: "Male", category: "Stats/Bio" }, // Requires wasysym package usually, using text fallback often better or standard symbol
-//   { symbol: "♀", latex: "\\venus", name: "Female", category: "Stats/Bio" },
-
-//   // --- GREEK ---
-//   { symbol: "α", latex: "\\alpha", name: "Alpha", category: "Greek" },
-//   { symbol: "β", latex: "\\beta", name: "Beta", category: "Greek" },
-//   { symbol: "γ", latex: "\\gamma", name: "Gamma", category: "Greek" },
-//   { symbol: "δ", latex: "\\delta", name: "Delta", category: "Greek" },
-//   { symbol: "ε", latex: "\\epsilon", name: "Epsilon", category: "Greek" },
-//   { symbol: "θ", latex: "\\theta", name: "Theta", category: "Greek" },
-//   { symbol: "λ", latex: "\\lambda", name: "Lambda", category: "Greek" },
-//   { symbol: "μ", latex: "\\mu", name: "Mu", category: "Greek" },
-//   { symbol: "π", latex: "\\pi", name: "Pi", category: "Greek" },
-//   { symbol: "ρ", latex: "\\rho", name: "Rho", category: "Greek" },
-//   { symbol: "σ", latex: "\\sigma", name: "Sigma", category: "Greek" },
-//   { symbol: "φ", latex: "\\phi", name: "Phi", category: "Greek" },
-//   { symbol: "ω", latex: "\\omega", name: "Omega", category: "Greek" },
-//   { symbol: "Γ", latex: "\\Gamma", name: "Gamma (U)", category: "Greek" },
-//   { symbol: "Δ", latex: "\\Delta", name: "Delta (U)", category: "Greek" },
-//   { symbol: "Θ", latex: "\\Theta", name: "Theta (U)", category: "Greek" },
-//   { symbol: "Λ", latex: "\\Lambda", name: "Lambda (U)", category: "Greek" },
-//   { symbol: "Σ", latex: "\\Sigma", name: "Sigma (U)", category: "Greek" },
-//   { symbol: "Φ", latex: "\\Phi", name: "Phi (U)", category: "Greek" },
-//   { symbol: "Ω", latex: "\\Omega", name: "Omega (U)", category: "Greek" },
-
-//   // --- CALCULUS ---
-//   {
-//     symbol: "∫",
-//     latex: "\\int_{⟨a⟩}^{⟨b⟩}",
-//     name: "Definite Int",
-//     category: "Calculus",
-//   },
-//   { symbol: "∫", latex: "\\int", name: "Integral", category: "Calculus" },
-//   { symbol: "∮", latex: "\\oint", name: "Contour Int", category: "Calculus" },
-//   { symbol: "∂", latex: "\\partial", name: "Partial", category: "Calculus" },
-//   {
-//     symbol: "lim",
-//     latex: "\\lim_{⟨x⟩ \\to ⟨a⟩}",
-//     name: "Limit",
-//     category: "Calculus",
-//   },
-//   {
-//     symbol: "∑",
-//     latex: "\\sum_{⟨i⟩=⟨0⟩}^{⟨n⟩}",
-//     name: "Summation",
-//     category: "Calculus",
-//   },
-//   {
-//     symbol: "∏",
-//     latex: "\\prod_{⟨i⟩=⟨0⟩}^{⟨n⟩}",
-//     name: "Product",
-//     category: "Calculus",
-//   },
-//   { symbol: "′", latex: "'", name: "Prime", category: "Calculus" },
-//   { symbol: "∞", latex: "\\infty", name: "Infinity", category: "Calculus" },
-
-//   // --- LOGIC & SETS ---
-//   { symbol: "∀", latex: "\\forall", name: "For All", category: "Logic/Sets" },
-//   { symbol: "∃", latex: "\\exists", name: "Exists", category: "Logic/Sets" },
-//   { symbol: "∈", latex: "\\in", name: "Element Of", category: "Logic/Sets" },
-//   {
-//     symbol: "∉",
-//     latex: "\\notin",
-//     name: "Not Element",
-//     category: "Logic/Sets",
-//   },
-//   { symbol: "⊂", latex: "\\subset", name: "Subset", category: "Logic/Sets" },
-//   { symbol: "∪", latex: "\\cup", name: "Union", category: "Logic/Sets" },
-//   {
-//     symbol: "∩",
-//     latex: "\\cap",
-//     name: "Intersection",
-//     category: "Logic/Sets",
-//   },
-//   {
-//     symbol: "∅",
-//     latex: "\\emptyset",
-//     name: "Empty Set",
-//     category: "Logic/Sets",
-//   },
-//   {
-//     symbol: "⇒",
-//     latex: "\\implies",
-//     name: "Implies",
-//     category: "Logic/Sets",
-//   },
-//   {
-//     symbol: "⇔",
-//     latex: "\\iff",
-//     name: "If and only if",
-//     category: "Logic/Sets",
-//   },
-//   {
-//     symbol: "ℝ",
-//     latex: "\\mathbb{R}",
-//     name: "Reals",
-//     category: "Logic/Sets",
-//   },
-//   {
-//     symbol: "ℤ",
-//     latex: "\\mathbb{Z}",
-//     name: "Integers",
-//     category: "Logic/Sets",
-//   },
-//   {
-//     symbol: "ℕ",
-//     latex: "\\mathbb{N}",
-//     name: "Naturals",
-//     category: "Logic/Sets",
-//   },
-
-//   // --- MATRICES ---
-//   {
-//     symbol: "[ ]",
-//     latex: "\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}",
-//     name: "B-Matrix",
-//     category: "Matrices",
-//   },
-//   {
-//     symbol: "( )",
-//     latex: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
-//     name: "P-Matrix",
-//     category: "Matrices",
-//   },
-//   {
-//     symbol: "| |",
-//     latex: "\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}",
-//     name: "Determinant",
-//     category: "Matrices",
-//   },
-//   {
-//     symbol: "vec",
-//     latex: "\\begin{pmatrix} x \\\\ y \\\\ z \\end{pmatrix}",
-//     name: "Col Vector",
-//     category: "Matrices",
-//   },
-
-//   // --- FUNCTIONS ---
-//   { symbol: "sin", latex: "\\sin(⟨x⟩)", name: "Sine", category: "Functions" },
-//   {
-//     symbol: "cos",
-//     latex: "\\cos(⟨x⟩)",
-//     name: "Cosine",
-//     category: "Functions",
-//   },
-//   {
-//     symbol: "tan",
-//     latex: "\\tan(⟨x⟩)",
-//     name: "Tangent",
-//     category: "Functions",
-//   },
-//   { symbol: "ln", latex: "\\ln(⟨x⟩)", name: "Ln", category: "Functions" },
-//   {
-//     symbol: "log",
-//     latex: "\\log_{⟨b⟩}(⟨x⟩)",
-//     name: "Log",
-//     category: "Functions",
-//   },
-//   { symbol: "exp", latex: "\\exp(⟨x⟩)", name: "Exp", category: "Functions" },
-
-//   // --- LAYOUT ---
-//   {
-//     symbol: "txt",
-//     latex: "\\text{⟨text⟩}",
-//     name: "Text",
-//     category: "Layout",
-//   },
-//   { symbol: "spc", latex: "\\quad", name: "Space", category: "Layout" },
-//   {
-//     symbol: "{ }",
-//     latex: "\\{ ⟨content⟩ \\}",
-//     name: "Braces",
-//     category: "Layout",
-//   },
-//   {
-//     symbol: "cases",
-//     latex: "\\begin{cases} ⟨expr⟩ & \\text{if } ⟨cond⟩ \\end{cases}",
-//     name: "Cases",
-//     category: "Layout",
-//   },
-// ];
-
-//   // Helper to filter saved equations
-//   const filteredSavedEquations = savedEquations.filter((equation) => {
-//     if (!savedEquationSearch && !selectedSavedEquation) return true;
-//     if (selectedSavedEquation)
-//       return equation.fileName === selectedSavedEquation;
-//     return (
-//       equation.fileName
-//         .toLowerCase()
-//         .includes(savedEquationSearch.toLowerCase()) ||
-//       equation.latex.toLowerCase().includes(savedEquationSearch.toLowerCase())
-//     );
-//   });
-
-//   const filteredSymbols = mathSymbols.filter(
-//     (symbol) =>
-//       symbol.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//       symbol.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//       symbol.latex.toLowerCase().includes(searchTerm.toLowerCase()),
-//   );
-
-//   const categories = [...new Set(mathSymbols.map((symbol) => symbol.category))];
-
-//   return (
-//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-//       <div className="bg-white rounded-lg shadow-xl border border-gray-300 w-[95vw] max-w-7xl h-[90vh] flex flex-col">
-//         {/* Header */}
-//         <div className="flex justify-between items-center p-4 border-b border-gray-200">
-//           <div className="flex items-center gap-4">
-//             <h2 className="text-xl font-semibold text-gray-800">
-//               Easy Math Input
-//             </h2>
-//             <div className="flex border-b">
-//               <button
-//                 onClick={() => setActiveTab("editor")}
-//                 className={`px-4 py-2 font-medium text-sm ${activeTab === "editor" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-//               >
-//                 Editor
-//               </button>
-//               <button
-//                 onClick={() => setActiveTab("saved")}
-//                 className={`px-4 py-2 font-medium text-sm ${activeTab === "saved" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-//               >
-//                 Saved Equations
-//               </button>
-//             </div>
-//           </div>
-//           <button
-//             onClick={onClose}
-//             className="text-gray-500 hover:text-gray-700 p-1"
-//           >
-//             <TbX size={24} />
-//           </button>
-//         </div>
-
-//         {activeTab === "editor" && (
-//           <>
-//             <div className="px-4 py-2 bg-blue-50 text-sm text-blue-800 border-b border-gray-200">
-//               <strong>Tip:</strong> Placeholders are shown as ‹like this›.
-//               Replace them with your values.
-//             </div>
-
-//             <div className="flex flex-1 overflow-hidden">
-//               {/* LEFT PANEL: Common Symbols / Equations Dropdown */}
-//               <div className="w-1/5 border-r border-gray-200 p-4 overflow-y-auto bg-gray-50/30">
-//                 {/* Dropdown Header */}
-//                 <div className="relative mb-3">
-//                   <select
-//                     value={leftPanelMode}
-//                     onChange={(e) => setLeftPanelMode(e.target.value)}
-//                     className="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-blue-500 font-semibold cursor-pointer"
-//                   >
-//                     <option value="symbols">Common Symbols</option>
-//                     <option value="equations">Common Equations</option>
-//                   </select>
-//                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-//                     <TbChevronDown size={16} />
-//                   </div>
-//                 </div>
-
-//                 {/* Left Panel Content */}
-//                 <div
-//                   className={
-//                     leftPanelMode === "symbols"
-//                       ? "grid grid-cols-2 gap-2"
-//                       : "flex flex-col gap-2"
-//                   }
-//                 >
-//                   {leftPanelMode === "symbols"
-//                     ? commonSymbols.map((symbol, index) => (
-//                         <button
-//                           key={index}
-//                           onClick={() => insertSymbol(symbol.latex)}
-//                           className="p-2 border border-gray-300 bg-white rounded hover:bg-gray-100 transition-colors text-sm flex flex-col items-center justify-center min-h-[50px] shadow-sm"
-//                           title={`${symbol.name}: ${symbol.latex}`}
-//                         >
-//                           <span className="text-lg mb-1">{symbol.symbol}</span>
-//                           <span className="text-xs text-gray-600 truncate w-full text-center">
-//                             {symbol.name}
-//                           </span>
-//                         </button>
-//                       ))
-//                     : commonEquations.map((eq, index) => (
-//                         <button
-//                           key={index}
-//                           onClick={() => insertSymbol(eq.latex)}
-//                           className="p-2 border border-gray-300 bg-white rounded hover:bg-gray-100 transition-colors text-sm flex flex-col items-start justify-center min-h-[50px] shadow-sm px-3"
-//                           title={eq.latex}
-//                         >
-//                           <span className="text-xs font-bold text-gray-700 mb-1">
-//                             {eq.name}
-//                           </span>
-//                           <span className="text-sm font-mono text-blue-600 truncate w-full text-left">
-//                             {eq.symbol}
-//                           </span>
-//                         </button>
-//                       ))}
-//                 </div>
-//               </div>
-
-//               {/* CENTER PANEL: Editor */}
-//               <div className="flex-1 flex flex-col p-4">
-//                 <div className="flex flex-col mb-4">
-//                   <div className="flex justify-between items-center mb-2">
-//                     <label className="font-semibold text-gray-700">
-//                       {isAiMode ? "Describe Equation" : "LaTeX Code"}
-//                     </label>
-//                     <div className="flex gap-2">
-//                       <button
-//                         onClick={() => setIsAiMode(!isAiMode)}
-//                         className={`flex items-center gap-1 px-3 py-1 rounded transition-colors text-sm border ${
-//                           isAiMode
-//                             ? "bg-purple-100 text-purple-700 border-purple-300"
-//                             : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-//                         }`}
-//                         title={
-//                           isAiMode
-//                             ? "Switch to Manual Editor"
-//                             : "Switch to AI Generator"
-//                         }
-//                       >
-//                         <TbRobot size={16} />{" "}
-//                         {isAiMode ? "Manual Mode" : "AI Mode"}
-//                       </button>
-
-//                       <button
-//                         onClick={() => setShowSaveDialog(true)}
-//                         className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm disabled:opacity-50"
-//                         disabled={!latexCode.trim()}
-//                       >
-//                         <TbDeviceFloppy size={16} /> Save
-//                       </button>
-
-//                       <button
-//                         onClick={copyToClipboard}
-//                         className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm disabled:opacity-50"
-//                         disabled={!latexCode.trim()}
-//                       >
-//                         <TbCopy size={16} /> Copy
-//                       </button>
-
-//                       <button
-//                         onClick={() => handleCompile()}
-//                         disabled={isCompiling || !latexCode.trim()}
-//                         className="flex items-center gap-1 px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-//                       >
-//                         <TbPlayerPlay size={16} />
-//                         {isCompiling ? "Compiling..." : "Compile"}
-//                       </button>
-//                     </div>
-//                   </div>
-
-//                   {isAiMode ? (
-//                     <div className="relative h-32 w-full">
-//                       <textarea
-//                         value={aiPrompt}
-//                         onChange={(e) => setAiPrompt(e.target.value)}
-//                         onKeyDown={(e) => {
-//                           if (e.key === "Enter" && !e.shiftKey) {
-//                             e.preventDefault();
-//                             handleAiGenerate();
-//                           }
-//                         }}
-//                         className="h-full w-full p-3 border border-purple-300 rounded resize-none font-sans text-sm leading-relaxed focus:ring-2 focus:ring-purple-100 outline-none pr-12"
-//                         placeholder="e.g., 'Schrodinger equation for a free particle' or 'Determinant of a 3x3 matrix'"
-//                         autoFocus
-//                       />
-//                       <button
-//                         onClick={handleAiGenerate}
-//                         disabled={isGenerating || !aiPrompt.trim()}
-//                         className="absolute bottom-3 right-3 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 disabled:bg-purple-300 transition-colors shadow-sm"
-//                         title="Generate Equation"
-//                       >
-//                         {isGenerating ? (
-//                           <TbLoader className="animate-spin" />
-//                         ) : (
-//                           <TbArrowUp size={20} />
-//                         )}
-//                       </button>
-//                     </div>
-//                   ) : (
-//                     <textarea
-//                       value={latexCode}
-//                       onChange={(e) => setLatexCode(e.target.value)}
-//                       className="h-32 w-full p-3 border border-gray-300 rounded resize-none font-mono text-sm leading-relaxed focus:ring-2 focus:ring-blue-100 outline-none"
-//                       placeholder="Type LaTeX here or click symbols to insert..."
-//                     />
-//                   )}
-//                 </div>
-
-//                 <div className="flex-1 flex flex-col">
-//                   <label className="font-semibold text-gray-700 mb-2">
-//                     Preview
-//                   </label>
-//                   <div className="flex-1 border border-gray-300 rounded bg-white overflow-hidden flex items-center justify-center p-4">
-//                     {isCompiling || isGenerating ? (
-//                       <div className="flex flex-col items-center text-gray-500 animate-pulse">
-//                         <TbLoader size={32} className="animate-spin mb-2" />
-//                         <p>{isGenerating ? "Generating..." : "Compiling..."}</p>
-//                       </div>
-//                     ) : previewUrl ? (
-//                       previewUrl.toLowerCase().endsWith(".pdf") ? (
-//                         <iframe
-//                           src={previewUrl}
-//                           className="w-full h-full border-none"
-//                           title="PDF Preview"
-//                         />
-//                       ) : (
-//                         <img
-//                           src={previewUrl}
-//                           className="max-w-full max-h-full object-contain"
-//                           alt="LaTeX Preview"
-//                         />
-//                       )
-//                     ) : (
-//                       <div className="text-center text-gray-400">
-//                         <TbPlayerPlay
-//                           size={48}
-//                           className="mx-auto mb-2 opacity-50"
-//                         />
-//                         <p>Click "Compile" or generate via AI to preview</p>
-//                       </div>
-//                     )}
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {/* RIGHT PANEL: Search & Library */}
-//               <div className="w-1/4 border-l border-gray-200 p-4 flex flex-col bg-gray-50/30">
-//                 <div className="relative mb-3">
-//                   <div className="flex items-center border border-gray-300 rounded bg-white">
-//                     <TbSearch
-//                       className="absolute left-2 text-gray-400"
-//                       size={20}
-//                     />
-//                     <input
-//                       type="text"
-//                       value={searchTerm}
-//                       onChange={(e) => setSearchTerm(e.target.value)}
-//                       onFocus={() => setShowDropdown(true)}
-//                       placeholder="Search..."
-//                       className="w-full pl-9 pr-3 py-2 outline-none rounded bg-transparent"
-//                     />
-//                   </div>
-//                   {showDropdown && searchTerm && (
-//                     <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto z-10">
-//                       {filteredSymbols.slice(0, 50).map((symbol, index) => (
-//                         <button
-//                           key={index}
-//                           onClick={() => insertSymbol(symbol.latex)}
-//                           className="w-full p-2 text-left hover:bg-gray-100 flex items-center gap-3 border-b border-gray-100"
-//                         >
-//                           <span className="text-lg w-8 text-center">
-//                             {symbol.symbol}
-//                           </span>
-//                           <div className="flex-1 min-w-0">
-//                             <div className="text-xs text-gray-600 truncate">
-//                               {symbol.name}
-//                             </div>
-//                           </div>
-//                         </button>
-//                       ))}
-//                     </div>
-//                   )}
-//                 </div>
-
-//                 <div className="mb-3 flex gap-2">
-//                   <button
-//                     onClick={() => setExpandedCategories(new Set(categories))}
-//                     className="flex-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-//                   >
-//                     Expand All
-//                   </button>
-//                   <button
-//                     onClick={() => setExpandedCategories(new Set())}
-//                     className="flex-1 px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-//                   >
-//                     Collapse All
-//                   </button>
-//                 </div>
-
-//                 <div className="overflow-y-auto flex-1 pr-1">
-//                   {categories.map((category) => {
-//                     const categorySymbols = mathSymbols.filter(
-//                       (s) => s.category === category,
-//                     );
-//                     const isExpanded = expandedCategories.has(category);
-//                     const showButton = categorySymbols.length > 12;
-//                     const symbolsToShow = isExpanded
-//                       ? categorySymbols
-//                       : categorySymbols.slice(0, 12);
-
-//                     return (
-//                       <div key={category} className="mb-4">
-//                         <h4 className="font-semibold text-xs text-gray-500 uppercase tracking-wider mb-2 sticky top-0 bg-gray-50 py-1 border-b border-gray-200">
-//                           {category}
-//                         </h4>
-//                         <div className="grid grid-cols-4 gap-1">
-//                           {symbolsToShow.map((symbol, index) => (
-//                             <button
-//                               key={index}
-//                               onClick={() => insertSymbol(symbol.latex)}
-//                               className="p-1 border border-gray-200 bg-white rounded hover:bg-blue-50 hover:border-blue-300 text-center transition-all h-10 flex items-center justify-center shadow-sm"
-//                               title={`${symbol.name}`}
-//                             >
-//                               <span className="text-base text-gray-800">
-//                                 {symbol.symbol}
-//                               </span>
-//                             </button>
-//                           ))}
-//                         </div>
-//                         {showButton && (
-//                           <button
-//                             onClick={() => toggleCategoryExpansion(category)}
-//                             className="w-full mt-1 py-1 text-[10px] text-blue-600 hover:bg-blue-50 rounded"
-//                           >
-//                             {isExpanded
-//                               ? "Show Less"
-//                               : `Show All (${categorySymbols.length})`}
-//                           </button>
-//                         )}
-//                       </div>
-//                     );
-//                   })}
-//                 </div>
-//               </div>
-//             </div>
-//           </>
-//         )}
-
-//         {/* SAVED TAB (Kept mostly same structure) */}
-//         {activeTab === "saved" && (
-//           <div className="flex-1 flex flex-col p-4 overflow-hidden">
-//             <div className="mb-4 flex-shrink-0">
-//               <label className="block text-sm font-medium text-gray-700 mb-2">
-//                 Search Saved Equations
-//               </label>
-//               <div className="relative">
-//                 <div className="flex items-center border border-gray-300 rounded">
-//                   <TbSearch
-//                     className="absolute left-2 text-gray-400"
-//                     size={20}
-//                   />
-//                   <input
-//                     type="text"
-//                     value={savedEquationSearch}
-//                     onChange={(e) => setSavedEquationSearch(e.target.value)}
-//                     onFocus={() => setShowSavedDropdown(true)}
-//                     placeholder="Search saved files..."
-//                     className="w-full pl-9 pr-10 py-2 outline-none"
-//                   />
-//                 </div>
-//                 {/* Saved Dropdown Logic... */}
-//                 {showSavedDropdown && (
-//                   <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto z-10">
-//                     {/* ... (Existing dropdown mapping) ... */}
-//                     {filteredSavedEquations.map((eq) => (
-//                       <button
-//                         key={eq.fileName}
-//                         onClick={() => {
-//                           setSavedEquationSearch(eq.fileName);
-//                           setShowSavedDropdown(false);
-//                         }}
-//                         className="w-full p-2 text-left hover:bg-gray-100 border-b border-gray-100"
-//                       >
-//                         {eq.fileName}
-//                       </button>
-//                     ))}
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-
-//             <div className="flex-1 overflow-auto border border-gray-300 rounded">
-//               <table className="w-full border-collapse">
-//                 <thead className="sticky top-0 bg-gray-50 z-10">
-//                   <tr>
-//                     <th className="border border-gray-300 px-4 py-2 text-left w-1/6">
-//                       File Name
-//                     </th>
-//                     <th className="border border-gray-300 px-4 py-2 text-left w-2/6">
-//                       LaTeX
-//                     </th>
-//                     <th className="border border-gray-300 px-4 py-2 text-left w-1/6">
-//                       Actions
-//                     </th>
-//                     <th className="border border-gray-300 px-4 py-2 text-left w-2/6">
-//                       Preview
-//                     </th>
-//                   </tr>
-//                 </thead>
-//                 <tbody>
-//                   {filteredSavedEquations.map((equation) => (
-//                     <SavedEquationRow
-//                       key={equation.fileName}
-//                       equation={equation}
-//                       onCopy={copyToClipboard} // Fixed this prop to use local wrapper if needed or direct
-//                       onLoad={loadSavedEquation}
-//                       onCompile={(name, tex) => compileLatex(tex, false, name)}
-//                     />
-//                   ))}
-//                 </tbody>
-//               </table>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Save Dialog */}
-//         {showSaveDialog && (
-//           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-//             <div className="bg-white rounded-lg p-6 w-96 shadow-2xl">
-//               <h3 className="text-lg font-semibold mb-4">Save Equation</h3>
-//               <input
-//                 type="text"
-//                 value={saveFileName}
-//                 onChange={(e) => setSaveFileName(e.target.value)}
-//                 className="w-full p-2 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
-//                 placeholder="Filename (e.g. quadratic_eq)"
-//                 autoFocus
-//               />
-//               <div className="flex justify-end gap-2">
-//                 <button
-//                   onClick={() => setShowSaveDialog(false)}
-//                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-//                 >
-//                   Cancel
-//                 </button>
-//                 <button
-//                   onClick={handleSaveEquation}
-//                   className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-//                 >
-//                   Save
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
-// const SavedEquationRow = ({ equation, onCopy, onLoad, onCompile }) => {
-//   const [previewUrl, setPreviewUrl] = useState("");
-//   const [isCompiling, setIsCompiling] = useState(false);
-
-//   const handleCompile = async () => {
-//     setIsCompiling(true);
-//     const url = await onCompile(equation.fileName, equation.latex);
-//     if (url) setPreviewUrl(url);
-//     setIsCompiling(false);
-//   };
-
-//   return (
-//     <tr>
-//       <td className="border border-gray-300 px-4 py-2 font-medium">
-//         {equation.fileName}
-//       </td>
-//       <td className="border border-gray-300 px-4 py-2">
-//         <div className="font-mono text-sm bg-gray-50 p-2 rounded max-w-xs overflow-x-auto whitespace-nowrap">
-//           {equation.latex}
-//         </div>
-//       </td>
-//       <td className="border border-gray-300 px-4 py-2">
-//         <div className="flex gap-2">
-//           <button
-//             onClick={() => navigator.clipboard.writeText(equation.latex)}
-//             className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-//             title="Copy"
-//           >
-//             <TbCopy size={16} />
-//           </button>
-//           <button
-//             onClick={() => onLoad(equation.fileName)}
-//             className="p-1 text-green-600 hover:bg-green-50 rounded"
-//             title="Load"
-//           >
-//             <TbFolder size={16} />
-//           </button>
-//         </div>
-//       </td>
-//       <td className="border border-gray-300 px-4 py-2">
-//         <div className="flex items-center gap-2">
-//           <button
-//             onClick={handleCompile}
-//             disabled={isCompiling}
-//             className="p-1 text-orange-600 hover:bg-orange-50 rounded disabled:opacity-50"
-//           >
-//             <TbPlayerPlay size={16} />
-//           </button>
-//           {previewUrl && (
-//             <img
-//               src={previewUrl}
-//               alt="Preview"
-//               className="h-12 object-contain border bg-white rounded"
-//             />
-//           )}
-//         </div>
-//       </td>
-//     </tr>
-//   );
-// };
-
-// export default EasyMathInput;
 import React, { useState, useEffect, useRef } from "react";
 import {
   TbX,
@@ -1210,109 +5,126 @@ import {
   TbSearch,
   TbPlayerPlay,
   TbDeviceFloppy,
-  TbFolder,
   TbChevronDown,
   TbRobot,
   TbArrowUp,
   TbLoader,
-  TbCheck,
-  TbArrowBackUp,
-  TbPencil,
+  TbMathFunction,
+  TbCode,
+  TbTrash,
+  TbFolder,
 } from "react-icons/tb";
 
 const API_BASE_URL = "http://localhost:5000";
 
-// --- UTILS ---
-
-// 1. Helper to extract placeholders like ⟨num⟩ from string
-const extractPlaceholders = (latex) => {
-  const regex = /⟨([^⟩]+)⟩/g;
-  const matches = [];
-  let match;
-  while ((match = regex.exec(latex)) !== null) {
-    matches.push(match[1]); // returns "num", "den", etc.
-  }
-  return matches;
-};
-
-// 2. Helper to visually wrap placeholders in the text area (fallback view)
-const wrapPlaceholder = (latex) => latex.replace(/⟨([^⟩]+)⟩/g, "‹$1›");
-
 const EasyMathInput = ({ onClose }) => {
   // --- STATE ---
   const [activeTab, setActiveTab] = useState("editor");
-  const [leftPanelMode, setLeftPanelMode] = useState("symbols");
-
-  // Content State
   const [latexCode, setLatexCode] = useState("");
 
-  // AI Mode State
+  // AI Mode
   const [aiPrompt, setAiPrompt] = useState("");
   const [isAiMode, setIsAiMode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // BUILDER MODE STATE (New Feature)
-  const [builderMode, setBuilderMode] = useState(false);
-  const [currentTemplate, setCurrentTemplate] = useState("");
-  const [templateFields, setTemplateFields] = useState([]); // e.g. ["num", "den"]
-  const [templateValues, setTemplateValues] = useState({}); // e.g. { num: "1", den: "2" }
-
-  // General UI State
+  // UI State
+  const [leftPanelMode, setLeftPanelMode] = useState("symbols"); // 'symbols' | 'equations'
   const [searchTerm, setSearchTerm] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [isCompiling, setIsCompiling] = useState(false);
 
-  // Saved Equations State
+  // Saved Data
   const [savedEquations, setSavedEquations] = useState([]);
   const [savedEquationSearch, setSavedEquationSearch] = useState("");
-  const [selectedSavedEquation, setSelectedSavedEquation] = useState("");
-  const [showSavedDropdown, setShowSavedDropdown] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveFileName, setSaveFileName] = useState("");
 
-  // Category Expansion
-  const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const [cardPreviewUrl, setCardPreviewUrl] = useState(null);
+  const [cardPreviewLoading, setCardPreviewLoading] = useState(null); // fileName
 
-  // Refs for UX
-  const firstInputRef = useRef(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Default expanded categories
+  const [expandedCategories, setExpandedCategories] = useState(
+    new Set([
+      "Basic Arithmetic",
+      "Fractions & Roots",
+      "Calculus",
+      "Greek Lowercase",
+    ]),
+  );
+
+  const textareaRef = useRef(null);
 
   // --- EFFECTS ---
   useEffect(() => {
     loadSavedEquations();
   }, []);
-
-  useEffect(() => {
-    // Auto-focus the first input when Builder Mode opens
-    if (builderMode && firstInputRef.current) {
-      firstInputRef.current.focus();
-    }
-  }, [builderMode]);
-
   useEffect(() => {
     if (activeTab !== "editor") setPreviewUrl("");
+    if (activeTab !== "saved") {
+      setCardPreviewUrl(null);
+      setCardPreviewLoading(null);
+    }
   }, [activeTab]);
 
-  // --- API HANDLERS ---
+  // --- SMART INSERTION LOGIC (Enables Nesting) ---
+  const insertAtCursor = (template) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = latexCode;
+
+    // 1. Insert the text (replacing selection if any)
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    const newText = before + template + after;
+
+    setLatexCode(newText);
+    setIsAiMode(false);
+
+    // 2. Auto-select the first placeholder ⟨x⟩
+    const placeholderRegex = /⟨([^⟩]+)⟩/;
+    const match = placeholderRegex.exec(template);
+
+    setTimeout(() => {
+      textarea.focus();
+      if (match) {
+        // Select the placeholder content so next click replaces it (Nesting!)
+        const placeholderStart = start + match.index;
+        const placeholderEnd = placeholderStart + match[0].length;
+        textarea.setSelectionRange(placeholderStart, placeholderEnd);
+      } else {
+        // Place cursor at end if no placeholder
+        const newCursorPos = start + template.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  // --- API HANDLERS ---
   const loadSavedEquations = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/equations/list`);
-      if (response.ok) {
-        setSavedEquations(await response.json());
+      const res = await fetch(`${API_BASE_URL}/api/equations/list`);
+      if (res.ok) {
+        const data = await res.json();
+        // Ensure we set an array, otherwise default to empty []
+        setSavedEquations(Array.isArray(data) ? data : []);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
+      console.error(e);
+      setSavedEquations([]); // Fallback to empty to prevent crash
     }
   };
 
   const compileLatex = async (latex, isTemp = true, fileName = "temp") => {
     setIsCompiling(true);
     try {
-      // Strip placeholders before sending to server
+      // Strip placeholders for compilation
       const cleanLatex = latex.replace(/[‹›]/g, "").replace(/⟨[^⟩]+⟩/g, "");
-
-      const response = await fetch(`${API_BASE_URL}/api/latex/compile`, {
+      const res = await fetch(`${API_BASE_URL}/api/latex/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1322,29 +134,37 @@ const EasyMathInput = ({ onClose }) => {
           format: "image",
         }),
       });
-
-      if (!response.ok) throw new Error(await response.text());
-      const result = await response.json();
-
-      if (result.success && result.pdfUrl) {
-        return `${API_BASE_URL}${result.pdfUrl}`;
-      }
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      if (data.success && data.pdfUrl) return `${API_BASE_URL}${data.pdfUrl}`;
       throw new Error("No URL returned");
-    } catch (error) {
-      console.error(error);
-      alert(`Compilation failed: ${error.message}`);
+    } catch (e) {
+      alert(`Error: ${e.message}`);
       return null;
     } finally {
       setIsCompiling(false);
     }
   };
 
-  const handleCompile = async (codeOverride) => {
-    const code = codeOverride || latexCode;
-    if (!code.trim()) return alert("Enter LaTeX first");
+  const handleCardPreview = async (eq) => {
+    setCardPreviewLoading(eq.fileName);
+    setCardPreviewUrl(null);
 
+    const url = await compileLatex(eq.latex, true, `preview-${eq.fileName}`);
+    if (url) {
+      setCardPreviewUrl({
+        fileName: eq.fileName,
+        url: `${url}?t=${Date.now()}`,
+      });
+    }
+
+    setCardPreviewLoading(null);
+  };
+
+  const handleCompile = async () => {
+    if (!latexCode.trim()) return;
     setPreviewUrl("");
-    const url = await compileLatex(code);
+    const url = await compileLatex(latexCode);
     if (url) setPreviewUrl(`${url}?t=${Date.now()}`);
   };
 
@@ -1352,22 +172,27 @@ const EasyMathInput = ({ onClose }) => {
     if (!aiPrompt.trim()) return;
     setIsGenerating(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/generate-equation`, {
+      const res = await fetch(`${API_BASE_URL}/api/generate-equation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: aiPrompt }),
       });
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
         setLatexCode(data.latexEquation);
         setIsAiMode(false);
         setAiPrompt("");
-        handleCompile(data.latexEquation);
+        setTimeout(async () => {
+          setIsCompiling(true);
+          const url = await compileLatex(data.latexEquation);
+          if (url) setPreviewUrl(`${url}?t=${Date.now()}`);
+          setIsCompiling(false);
+        }, 100);
       } else {
         alert("AI Error: " + data.error);
       }
-    } catch (error) {
-      alert("AI Connection Error");
+    } catch (e) {
+      alert("Connection Error");
     } finally {
       setIsGenerating(false);
     }
@@ -1376,1019 +201,811 @@ const EasyMathInput = ({ onClose }) => {
   const handleSaveEquation = async () => {
     if (!saveFileName.trim()) return alert("Enter filename");
     try {
-      const response = await fetch(`${API_BASE_URL}/api/equations/save`, {
+      await fetch(`${API_BASE_URL}/api/equations/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileName: saveFileName, latex: latexCode }),
       });
-      if (response.ok) {
-        alert("Saved!");
-        setShowSaveDialog(false);
-        setSaveFileName("");
+      setShowSaveDialog(false);
+      loadSavedEquations();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+  const handleDeleteEquation = async (fileName) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/equations/${fileName}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
         loadSavedEquations();
-      } else throw new Error(await response.text());
-    } catch (error) {
-      alert(`Save failed: ${error.message}`);
+      } else {
+        throw new Error("Failed to delete");
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // --- EDITOR / BUILDER LOGIC ---
-
-  const handleSymbolClick = (latex) => {
-    const placeholders = extractPlaceholders(latex);
-
-    if (placeholders.length > 0) {
-      // 1. Enter Builder Mode
-      setCurrentTemplate(latex);
-      setTemplateFields(placeholders);
-
-      // Reset values
-      const initVals = {};
-      placeholders.forEach((p) => (initVals[p] = ""));
-      setTemplateValues(initVals);
-
-      setBuilderMode(true);
-      setIsAiMode(false); // Ensure we aren't in AI mode
-    } else {
-      // 2. Direct Insert
-      setLatexCode((prev) => prev + latex + " ");
-    }
-
-    setShowDropdown(false);
-    setSearchTerm("");
-  };
-
-  const confirmBuilder = () => {
-    let finalString = currentTemplate;
-
-    // Replace ⟨key⟩ with user value
-    templateFields.forEach((field) => {
-      const val = templateValues[field] || "";
-      finalString = finalString.replace(`⟨${field}⟩`, val);
-    });
-
-    setLatexCode((prev) => prev + finalString + " ");
-    setBuilderMode(false);
-    setTemplateValues({});
-  };
-
-  const cancelBuilder = () => {
-    setBuilderMode(false);
-    setTemplateValues({});
+  const handleDeleteClick = (fileName) => {
+    setDeleteTarget(fileName);
   };
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(latexCode);
-    alert("Copied!");
+    alert("Copied to clipboard!");
   };
 
-  const toggleCategoryExpansion = (category) => {
+  // --- EXTENSIVE DATA LIBRARY ---
+  const allEquations = [
+    {
+      name: "Quadratic Formula",
+      latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+    },
+    { name: "Pythagorean Theorem", latex: "a^2 + b^2 = c^2" },
+    { name: "Euler's Identity", latex: "e^{i\\pi} + 1 = 0" },
+    {
+      name: "Calculus: Definition of Limit",
+      latex: "\\lim_{x \\to a} f(x) = L",
+    },
+    {
+      name: "Calculus: Derivative Definition",
+      latex: "f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}",
+    },
+    {
+      name: "Calculus: Fundamental Thm",
+      latex: "\\int_{a}^{b} f(x) \\,dx = F(b) - F(a)",
+    },
+    {
+      name: "Physics: Newton's 2nd Law",
+      latex: "\\vec{F} = \\frac{d\\vec{p}}{dt} = m\\vec{a}",
+    },
+    { name: "Physics: Mass-Energy", latex: "E = mc^2" },
+    {
+      name: "Physics: Schrödinger Eq",
+      latex: "i\\hbar\\frac{\\partial}{\\partial t}\\Psi = \\hat{H}\\Psi",
+    },
+    {
+      name: "Physics: Maxwell (Gauss)",
+      latex: "\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\epsilon_0}",
+    },
+    {
+      name: "Physics: Maxwell (Faraday)",
+      latex:
+        "\\nabla \\times \\mathbf{E} = -\\frac{\\partial \\mathbf{B}}{\\partial t}",
+    },
+    {
+      name: "Physics: Heisenberg Uncertainty",
+      latex: "\\Delta x \\Delta p \\geq \\frac{\\hbar}{2}",
+    },
+    {
+      name: "Stats: Normal Distribution",
+      latex:
+        "f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{1}{2}\\left(\\frac{x-\\mu}{\\sigma}\\right)^2}",
+    },
+    {
+      name: "Stats: Bayes' Theorem",
+      latex: "P(A|B) = \\frac{P(B|A)P(A)}{P(B)}",
+    },
+    {
+      name: "Stats: Standard Deviation",
+      latex: "\\sigma = \\sqrt{\\frac{\\sum(x_i - \\mu)^2}{N}}",
+    },
+    { name: "Chem: Ideal Gas Law", latex: "PV = nRT" },
+    {
+      name: "Chem: Gibbs Free Energy",
+      latex: "\\Delta G = \\Delta H - T\\Delta S",
+    },
+    {
+      name: "Chem: Equilibrium Constant",
+      latex: "K_c = \\frac{[C]^c[D]^d}{[A]^a[B]^b}",
+    },
+    {
+      name: "Chem: Photosynthesis",
+      latex: "6CO_2 + 6H_2O \\xrightarrow{h\\nu} C_6H_{12}O_6 + 6O_2",
+    },
+    {
+      name: "Algebra: Binomial Thm",
+      latex: "(x+y)^n = \\sum_{k=0}^{n} \\binom{n}{k} x^{n-k} y^k",
+    },
+    { name: "Algebra: Diff of Squares", latex: "a^2 - b^2 = (a-b)(a+b)" },
+    { name: "Trig: Identity", latex: "\\sin^2\\theta + \\cos^2\\theta = 1" },
+    {
+      name: "Trig: Law of Cosines",
+      latex: "c^2 = a^2 + b^2 - 2ab\\cos\\gamma",
+    },
+    {
+      name: "Fourier Transform",
+      latex:
+        "\\hat{f}(\\xi) = \\int_{-\\infty}^{\\infty} f(x) e^{-2\\pi i x \\xi} \\,dx",
+    },
+    {
+      name: "Navier-Stokes (Momentum)",
+      latex:
+        "\\rho \\left(\\frac{\\partial \\mathbf{v}}{\\partial t} + \\mathbf{v} \\cdot \\nabla \\mathbf{v}\\right) = -\\nabla p + \\mu \\nabla^2 \\mathbf{v} + \\mathbf{f}",
+    },
+    {
+      name: "Black-Scholes Equation",
+      latex:
+        "\\frac{\\partial V}{\\partial t} + \\frac{1}{2}\\sigma^2 S^2 \\frac{\\partial^2 V}{\\partial S^2} + rS \\frac{\\partial V}{\\partial S} - rV = 0",
+    },
+    {
+      name: "Information Entropy",
+      latex: "H(X) = -\\sum_{i=1}^{n} P(x_i) \\log P(x_i)",
+    },
+    {
+      name: "Relativity: Time Dilation",
+      latex: "\\Delta t' = \\frac{\\Delta t}{\\sqrt{1 - v^2/c^2}}",
+    },
+    { name: "Complex: Roots of Unity", latex: "z_k = e^{2\\pi i k / n}" },
+    {
+      name: "Series: Taylor",
+      latex: "f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!} (x-a)^n",
+    },
+  ];
+
+  const allSymbols = [
+    {
+      category: "Basic Arithmetic",
+      items: [
+        { symbol: "+", latex: "+" },
+        { symbol: "-", latex: "-" },
+        { symbol: "×", latex: "\\times" },
+        { symbol: "⋅", latex: "\\cdot" },
+        { symbol: "÷", latex: "\\div" },
+        { symbol: "=", latex: "=" },
+        { symbol: "≠", latex: "\\neq" },
+        { symbol: "≈", latex: "\\approx" },
+        { symbol: "±", latex: "\\pm" },
+        { symbol: "∓", latex: "\\mp" },
+        { symbol: "∞", latex: "\\infty" },
+        { symbol: "∝", latex: "\\propto" },
+      ],
+    },
+    {
+      category: "Fractions & Roots",
+      items: [
+        { symbol: "a/b", latex: "\\frac{⟨num⟩}{⟨den⟩}", name: "Fraction" },
+        {
+          symbol: "∂f/∂x",
+          latex: "\\frac{\\partial ⟨f⟩}{\\partial ⟨x⟩}",
+          name: "Partial Frac",
+        },
+        { symbol: "dy/dx", latex: "\\frac{d⟨y⟩}{d⟨x⟩}", name: "Derivative" },
+        { symbol: "√", latex: "\\sqrt{⟨x⟩}", name: "Sqrt" },
+        { symbol: "∛", latex: "\\sqrt[3]{⟨x⟩}", name: "Cube Rt" },
+        { symbol: "ⁿ√", latex: "\\sqrt[⟨n⟩]{⟨x⟩}", name: "N-th Rt" },
+        { symbol: "x²", latex: "^{⟨2⟩}", name: "Superscript" },
+        { symbol: "x₁", latex: "_{⟨1⟩}", name: "Subscript" },
+        { symbol: "x₁²", latex: "_{⟨sub⟩}^{⟨sup⟩}", name: "Sub+Sup" },
+      ],
+    },
+    {
+      category: "Calculus",
+      items: [
+        { symbol: "∫", latex: "\\int_{⟨a⟩}^{⟨b⟩}", name: "Definite Int" },
+        { symbol: "∫", latex: "\\int", name: "Indefinite Int" },
+        { symbol: "∮", latex: "\\oint", name: "Contour Int" },
+        { symbol: "∑", latex: "\\sum_{⟨i⟩=⟨0⟩}^{⟨n⟩}", name: "Sum" },
+        { symbol: "∏", latex: "\\prod_{⟨i⟩=⟨1⟩}^{⟨n⟩}", name: "Product" },
+        { symbol: "lim", latex: "\\lim_{⟨x⟩ \\to ⟨a⟩}", name: "Limit" },
+        { symbol: "∇", latex: "\\nabla", name: "Nabla/Del" },
+        { symbol: "∂", latex: "\\partial", name: "Partial" },
+        { symbol: "′", latex: "'", name: "Prime" },
+        { symbol: "″", latex: "''", name: "Double Prime" },
+      ],
+    },
+    {
+      category: "Greek Lowercase",
+      items: [
+        { symbol: "α", latex: "\\alpha" },
+        { symbol: "β", latex: "\\beta" },
+        { symbol: "γ", latex: "\\gamma" },
+        { symbol: "δ", latex: "\\delta" },
+        { symbol: "ε", latex: "\\epsilon" },
+        { symbol: "ζ", latex: "\\zeta" },
+        { symbol: "η", latex: "\\eta" },
+        { symbol: "θ", latex: "\\theta" },
+        { symbol: "ι", latex: "\\iota" },
+        { symbol: "κ", latex: "\\kappa" },
+        { symbol: "λ", latex: "\\lambda" },
+        { symbol: "μ", latex: "\\mu" },
+        { symbol: "ν", latex: "\\nu" },
+        { symbol: "ξ", latex: "\\xi" },
+        { symbol: "π", latex: "\\pi" },
+        { symbol: "ρ", latex: "\\rho" },
+        { symbol: "σ", latex: "\\sigma" },
+        { symbol: "τ", latex: "\\tau" },
+        { symbol: "υ", latex: "\\upsilon" },
+        { symbol: "φ", latex: "\\phi" },
+        { symbol: "χ", latex: "\\chi" },
+        { symbol: "ψ", latex: "\\psi" },
+        { symbol: "ω", latex: "\\omega" },
+      ],
+    },
+    {
+      category: "Greek Uppercase",
+      items: [
+        { symbol: "Γ", latex: "\\Gamma" },
+        { symbol: "Δ", latex: "\\Delta" },
+        { symbol: "Θ", latex: "\\Theta" },
+        { symbol: "Λ", latex: "\\Lambda" },
+        { symbol: "Ξ", latex: "\\Xi" },
+        { symbol: "Π", latex: "\\Pi" },
+        { symbol: "Σ", latex: "\\Sigma" },
+        { symbol: "Φ", latex: "\\Phi" },
+        { symbol: "Ψ", latex: "\\Psi" },
+        { symbol: "Ω", latex: "\\Omega" },
+      ],
+    },
+    {
+      category: "Geometry & Trig",
+      items: [
+        { symbol: "sin", latex: "\\sin(⟨x⟩)" },
+        { symbol: "cos", latex: "\\cos(⟨x⟩)" },
+        { symbol: "tan", latex: "\\tan(⟨x⟩)" },
+        { symbol: "csc", latex: "\\csc(⟨x⟩)" },
+        { symbol: "sec", latex: "\\sec(⟨x⟩)" },
+        { symbol: "cot", latex: "\\cot(⟨x⟩)" },
+        { symbol: "∠", latex: "\\angle" },
+        { symbol: "°", latex: "^{\\circ}" },
+        { symbol: "⊥", latex: "\\perp" },
+        { symbol: "∥", latex: "\\parallel" },
+        { symbol: "△", latex: "\\triangle" },
+        { symbol: "≅", latex: "\\cong" },
+        { symbol: "∼", latex: "\\sim" },
+      ],
+    },
+    {
+      category: "Matrices & Brackets",
+      items: [
+        {
+          symbol: "[ ]",
+          latex: "\\begin{bmatrix} ⟨a⟩ & ⟨b⟩ \\\\ ⟨c⟩ & ⟨d⟩ \\end{bmatrix}",
+          name: "Bracket Mat",
+        },
+        {
+          symbol: "( )",
+          latex: "\\begin{pmatrix} ⟨a⟩ & ⟨b⟩ \\\\ ⟨c⟩ & ⟨d⟩ \\end{pmatrix}",
+          name: "Paren Mat",
+        },
+        {
+          symbol: "| |",
+          latex: "\\begin{vmatrix} ⟨a⟩ & ⟨b⟩ \\\\ ⟨c⟩ & ⟨d⟩ \\end{vmatrix}",
+          name: "Determinant",
+        },
+        { symbol: "{ }", latex: "\\{ ⟨x⟩ \\}", name: "Curly" },
+        { symbol: "⟨ ⟩", latex: "\\langle ⟨x⟩ \\rangle", name: "Angle" },
+        {
+          symbol: "cases",
+          latex:
+            "\\begin{cases} ⟨exp1⟩ & \\text{if } ⟨c1⟩ \\\\ ⟨exp2⟩ & \\text{if } ⟨c2⟩ \\end{cases}",
+          name: "Cases",
+        },
+      ],
+    },
+    {
+      category: "Sets & Logic",
+      items: [
+        { symbol: "∀", latex: "\\forall" },
+        { symbol: "∃", latex: "\\exists" },
+        { symbol: "∄", latex: "\\nexists" },
+        { symbol: "∈", latex: "\\in" },
+        { symbol: "∉", latex: "\\notin" },
+        { symbol: "⊂", latex: "\\subset" },
+        { symbol: "⊆", latex: "\\subseteq" },
+        { symbol: "∪", latex: "\\cup" },
+        { symbol: "∩", latex: "\\cap" },
+        { symbol: "∅", latex: "\\emptyset" },
+        { symbol: "⇒", latex: "\\implies" },
+        { symbol: "⇔", latex: "\\iff" },
+        { symbol: "∧", latex: "\\land" },
+        { symbol: "∨", latex: "\\lor" },
+        { symbol: "¬", latex: "\\neg" },
+        { symbol: "∴", latex: "\\therefore" },
+        { symbol: "ℝ", latex: "\\mathbb{R}" },
+        { symbol: "ℤ", latex: "\\mathbb{Z}" },
+        { symbol: "ℕ", latex: "\\mathbb{N}" },
+        { symbol: "ℚ", latex: "\\mathbb{Q}" },
+        { symbol: "ℂ", latex: "\\mathbb{C}" },
+      ],
+    },
+    {
+      category: "Physics & Chemistry",
+      items: [
+        { symbol: "ℏ", latex: "\\hbar" },
+        { symbol: "Å", latex: "\\AA" },
+        { symbol: "vec", latex: "\\vec{⟨v⟩}" },
+        { symbol: "hat", latex: "\\hat{⟨n⟩}" },
+        { symbol: "dot", latex: "\\dot{⟨x⟩}" },
+        { symbol: "ddot", latex: "\\ddot{⟨x⟩}" },
+        { symbol: "bar", latex: "\\bar{⟨x⟩}" },
+        { symbol: "Ω", latex: "\\Omega" },
+        { symbol: "μ₀", latex: "\\mu_0" },
+        { symbol: "ε₀", latex: "\\epsilon_0" },
+        { symbol: "→", latex: "\\rightarrow" },
+        { symbol: "⇌", latex: "\\rightleftharpoons" },
+        { symbol: "↑", latex: "\\uparrow" },
+        { symbol: "↓", latex: "\\downarrow" },
+        { symbol: "Δ", latex: "\\Delta" },
+        { symbol: "Iso", latex: "^{⟨A⟩}_{⟨Z⟩}\\text{⟨El⟩}" },
+        { symbol: "M", latex: "\\text{M}" },
+        { symbol: "⦵", latex: "^{\\ominus}" },
+      ],
+    },
+  ];
+
+  // Filtering Logic
+  const filteredSymbols = allSymbols
+    .map((cat) => ({
+      ...cat,
+      items: cat.items.filter(
+        (item) =>
+          item.latex.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.name &&
+            item.name.toLowerCase().includes(searchTerm.toLowerCase())),
+      ),
+    }))
+    .filter((cat) => cat.items.length > 0);
+
+  const filteredEquations = allEquations.filter(
+    (eq) =>
+      eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      eq.latex.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const toggleCategory = (cat) => {
     setExpandedCategories((prev) => {
       const next = new Set(prev);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
       return next;
     });
   };
 
-  // --- DATA ---
-  const commonEquations = [
-    {
-      name: "Quadratic Formula",
-      latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
-      symbol: "x=...",
-    },
-    { name: "Pythagorean Thm", latex: "a^2 + b^2 = c^2", symbol: "a²+b²" },
-    { name: "Area of Circle", latex: "A = \\pi r^2", symbol: "πr²" },
-    {
-      name: "Calculus Limit",
-      latex: "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1",
-      symbol: "lim",
-    },
-    { name: "Newton's 2nd Law", latex: "F = ma", symbol: "F=ma" },
-    { name: "Mass-Energy", latex: "E = mc^2", symbol: "E=mc²" },
-    { name: "Ohm's Law", latex: "V = IR", symbol: "V=IR" },
-    { name: "Ideal Gas Law", latex: "PV = nRT", symbol: "PV=nRT" },
-    { name: "Euler's Identity", latex: "e^{i\\pi} + 1 = 0", symbol: "eⁱπ" },
-    {
-      name: "Wave Equation",
-      latex: "\\frac{\\partial^2 u}{\\partial t^2} = c^2 \\nabla^2 u",
-      symbol: "∇²u",
-    },
-    {
-      name: "Schrödinger Eq",
-      latex: "i\\hbar\\frac{\\partial}{\\partial t}\\Psi = \\hat{H}\\Psi",
-      symbol: "Ψ",
-    },
-    {
-      name: "Maxwell (Gauss)",
-      latex: "\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\epsilon_0}",
-      symbol: "∇·E",
-    },
-    {
-      name: "Bayes' Theorem",
-      latex: "P(A|B) = \\frac{P(B|A)P(A)}{P(B)}",
-      symbol: "P(A|B)",
-    },
-    {
-      name: "Standard Deviation",
-      latex: "\\sigma = \\sqrt{\\frac{\\sum(x_i - \\mu)^2}{N}}",
-      symbol: "σ",
-    },
-    {
-      name: "Photosynthesis",
-      latex: "6CO_2 + 6H_2O \\xrightarrow{h\\nu} C_6H_{12}O_6 + 6O_2",
-      symbol: "Bio",
-    },
-    {
-      name: "Thermodynamics",
-      latex: "\\Delta G = \\Delta H - T\\Delta S",
-      symbol: "ΔG",
-    },
-    {
-      name: "Complex Number",
-      latex: "z = a + bi = re^{i\\theta}",
-      symbol: "a+bi",
-    },
-    {
-      name: "Definition of e",
-      latex: "e = \\lim_{n \\to \\infty} \\left(1 + \\frac{1}{n}\\right)^n",
-      symbol: "e",
-    },
-    {
-      name: "Log Change Base",
-      latex: "\\log_b x = \\frac{\\ln x}{\\ln b}",
-      symbol: "log",
-    },
-    {
-      name: "Chem Equilibrium",
-      latex: "K_c = \\frac{[C]^c[D]^d}{[A]^a[B]^b}",
-      symbol: "K_c",
-    },
-  ];
-
-  const commonSymbols = [
-    {
-      symbol: "∫",
-      latex: "\\int ⟨integrand⟩ \\, \\mathrm{d}⟨variable⟩",
-      name: "Integral",
-    },
-    { symbol: "∑", latex: "\\sum_{⟨start⟩}^{⟨end⟩}", name: "Summation" },
-    { symbol: "√", latex: "\\sqrt{⟨arg⟩}", name: "Square Root" },
-    { symbol: "a/b", latex: "\\frac{⟨num⟩}{⟨den⟩}", name: "Fraction" },
-    { symbol: "x²", latex: "^{⟨exp⟩}", name: "Power" },
-    { symbol: "x₁", latex: "_{⟨sub⟩}", name: "Subscript" },
-    { symbol: "lim", latex: "\\lim_{⟨x⟩ \\to ⟨val⟩}", name: "Limit" },
-    { symbol: "α", latex: "\\alpha", name: "Alpha" },
-    { symbol: "π", latex: "\\pi", name: "Pi" },
-    { symbol: "∞", latex: "\\infty", name: "Infinity" },
-    { symbol: "≠", latex: "\\neq", name: "Not Equal" },
-    { symbol: "≤", latex: "\\leq", name: "Less or Equal" },
-    { symbol: "→", latex: "\\to", name: "Right Arrow" },
-    { symbol: "±", latex: "\\pm", name: "Plus Minus" },
-  ];
-
-  const mathSymbols = [
-    // --- BASIC ARITHMETIC ---
-    { symbol: "+", latex: "+", name: "Plus", category: "Basic" },
-    { symbol: "-", latex: "-", name: "Minus", category: "Basic" },
-    {
-      symbol: "×",
-      latex: "\\times",
-      name: "Multiplication",
-      category: "Basic",
-    },
-    { symbol: "⋅", latex: "\\cdot", name: "Dot Product", category: "Basic" },
-    { symbol: "÷", latex: "\\div", name: "Division", category: "Basic" },
-    { symbol: "=", latex: "=", name: "Equals", category: "Basic" },
-    { symbol: "≠", latex: "\\neq", name: "Not Equal", category: "Basic" },
-    { symbol: "±", latex: "\\pm", name: "Plus-Minus", category: "Basic" },
-    { symbol: "∓", latex: "\\mp", name: "Minus-Plus", category: "Basic" },
-
-    // --- FRACTIONS & ROOTS ---
-    {
-      symbol: "a/b",
-      latex: "\\frac{⟨num⟩}{⟨den⟩}",
-      name: "Fraction",
-      category: "Fractions",
-    },
-    {
-      symbol: "∂f/∂x",
-      latex: "\\frac{\\partial ⟨f⟩}{\\partial ⟨x⟩}",
-      name: "Partial Frac",
-      category: "Fractions",
-    },
-    {
-      symbol: "df/dx",
-      latex: "\\frac{d ⟨f⟩}{d ⟨x⟩}",
-      name: "Derivative",
-      category: "Fractions",
-    },
-    {
-      symbol: "√",
-      latex: "\\sqrt{⟨arg⟩}",
-      name: "Square Root",
-      category: "Roots",
-    },
-    {
-      symbol: "∛",
-      latex: "\\sqrt[3]{⟨arg⟩}",
-      name: "Cube Root",
-      category: "Roots",
-    },
-    {
-      symbol: "ⁿ√",
-      latex: "\\sqrt[⟨n⟩]{⟨arg⟩}",
-      name: "Nth Root",
-      category: "Roots",
-    },
-
-    // --- PHYSICS & CHEMISTRY ---
-    { symbol: "ℏ", latex: "\\hbar", name: "H-bar", category: "Physics" },
-    { symbol: "Å", latex: "\\AA", name: "Angstrom", category: "Physics" },
-    {
-      symbol: "vec",
-      latex: "\\vec{⟨v⟩}",
-      name: "Vector Arrow",
-      category: "Physics",
-    },
-    {
-      symbol: "hat",
-      latex: "\\hat{⟨x⟩}",
-      name: "Unit Vector",
-      category: "Physics",
-    },
-    { symbol: "∇", latex: "\\nabla", name: "Nabla/Del", category: "Physics" },
-    {
-      symbol: "Δ",
-      latex: "\\Delta",
-      name: "Delta (Change)",
-      category: "Physics",
-    },
-    { symbol: "Ω", latex: "\\Omega", name: "Ohm", category: "Physics" },
-    {
-      symbol: "μ₀",
-      latex: "\\mu_0",
-      name: "Permeability",
-      category: "Physics",
-    },
-    {
-      symbol: "ε₀",
-      latex: "\\epsilon_0",
-      name: "Permittivity",
-      category: "Physics",
-    },
-    { symbol: "°", latex: "^{\\circ}", name: "Degree", category: "Physics" },
-
-    {
-      symbol: "→",
-      latex: "\\rightarrow",
-      name: "Reaction",
-      category: "Chemistry",
-    },
-    {
-      symbol: "⇌",
-      latex: "\\rightleftharpoons",
-      name: "Equilibrium",
-      category: "Chemistry",
-    },
-    {
-      symbol: "↑",
-      latex: "\\uparrow",
-      name: "Gas Evolved",
-      category: "Chemistry",
-    },
-    {
-      symbol: "↓",
-      latex: "\\downarrow",
-      name: "Precipitate",
-      category: "Chemistry",
-    },
-    {
-      symbol: "Δ",
-      latex: "\\Delta",
-      name: "Heat/Change",
-      category: "Chemistry",
-    },
-    {
-      symbol: "Iso",
-      latex: "^{⟨A⟩}_{⟨Z⟩}\\text{⟨El⟩}",
-      name: "Isotope",
-      category: "Chemistry",
-    },
-    {
-      symbol: "⦵",
-      latex: "^{\\ominus}",
-      name: "Standard State",
-      category: "Chemistry",
-    },
-    { symbol: "M", latex: "\\text{M}", name: "Molar", category: "Chemistry" },
-
-    // --- BIOLOGY & STATISTICS ---
-    {
-      symbol: "χ²",
-      latex: "\\chi^2",
-      name: "Chi-Squared",
-      category: "Stats/Bio",
-    },
-    { symbol: "μ", latex: "\\mu", name: "Mean", category: "Stats/Bio" },
-    { symbol: "σ", latex: "\\sigma", name: "Std Dev", category: "Stats/Bio" },
-    {
-      symbol: "x̄",
-      latex: "\\bar{x}",
-      name: "Sample Mean",
-      category: "Stats/Bio",
-    },
-    { symbol: "p̂", latex: "\\hat{p}", name: "P-hat", category: "Stats/Bio" },
-    { symbol: "H₀", latex: "H_0", name: "Null Hyp", category: "Stats/Bio" },
-    { symbol: "H₁", latex: "H_1", name: "Alt Hyp", category: "Stats/Bio" },
-    { symbol: "♂", latex: "\\mars", name: "Male", category: "Stats/Bio" }, // Requires wasysym package usually, using text fallback often better or standard symbol
-    { symbol: "♀", latex: "\\venus", name: "Female", category: "Stats/Bio" },
-
-    // --- GREEK ---
-    { symbol: "α", latex: "\\alpha", name: "Alpha", category: "Greek" },
-    { symbol: "β", latex: "\\beta", name: "Beta", category: "Greek" },
-    { symbol: "γ", latex: "\\gamma", name: "Gamma", category: "Greek" },
-    { symbol: "δ", latex: "\\delta", name: "Delta", category: "Greek" },
-    { symbol: "ε", latex: "\\epsilon", name: "Epsilon", category: "Greek" },
-    { symbol: "θ", latex: "\\theta", name: "Theta", category: "Greek" },
-    { symbol: "λ", latex: "\\lambda", name: "Lambda", category: "Greek" },
-    { symbol: "μ", latex: "\\mu", name: "Mu", category: "Greek" },
-    { symbol: "π", latex: "\\pi", name: "Pi", category: "Greek" },
-    { symbol: "ρ", latex: "\\rho", name: "Rho", category: "Greek" },
-    { symbol: "σ", latex: "\\sigma", name: "Sigma", category: "Greek" },
-    { symbol: "φ", latex: "\\phi", name: "Phi", category: "Greek" },
-    { symbol: "ω", latex: "\\omega", name: "Omega", category: "Greek" },
-    { symbol: "Γ", latex: "\\Gamma", name: "Gamma (U)", category: "Greek" },
-    { symbol: "Δ", latex: "\\Delta", name: "Delta (U)", category: "Greek" },
-    { symbol: "Θ", latex: "\\Theta", name: "Theta (U)", category: "Greek" },
-    { symbol: "Λ", latex: "\\Lambda", name: "Lambda (U)", category: "Greek" },
-    { symbol: "Σ", latex: "\\Sigma", name: "Sigma (U)", category: "Greek" },
-    { symbol: "Φ", latex: "\\Phi", name: "Phi (U)", category: "Greek" },
-    { symbol: "Ω", latex: "\\Omega", name: "Omega (U)", category: "Greek" },
-
-    // --- CALCULUS ---
-    {
-      symbol: "∫",
-      latex: "\\int_{⟨a⟩}^{⟨b⟩}",
-      name: "Definite Int",
-      category: "Calculus",
-    },
-    { symbol: "∫", latex: "\\int", name: "Integral", category: "Calculus" },
-    { symbol: "∮", latex: "\\oint", name: "Contour Int", category: "Calculus" },
-    { symbol: "∂", latex: "\\partial", name: "Partial", category: "Calculus" },
-    {
-      symbol: "lim",
-      latex: "\\lim_{⟨x⟩ \\to ⟨a⟩}",
-      name: "Limit",
-      category: "Calculus",
-    },
-    {
-      symbol: "∑",
-      latex: "\\sum_{⟨i⟩=⟨0⟩}^{⟨n⟩}",
-      name: "Summation",
-      category: "Calculus",
-    },
-    {
-      symbol: "∏",
-      latex: "\\prod_{⟨i⟩=⟨0⟩}^{⟨n⟩}",
-      name: "Product",
-      category: "Calculus",
-    },
-    { symbol: "′", latex: "'", name: "Prime", category: "Calculus" },
-    { symbol: "∞", latex: "\\infty", name: "Infinity", category: "Calculus" },
-
-    // --- LOGIC & SETS ---
-    { symbol: "∀", latex: "\\forall", name: "For All", category: "Logic/Sets" },
-    { symbol: "∃", latex: "\\exists", name: "Exists", category: "Logic/Sets" },
-    { symbol: "∈", latex: "\\in", name: "Element Of", category: "Logic/Sets" },
-    {
-      symbol: "∉",
-      latex: "\\notin",
-      name: "Not Element",
-      category: "Logic/Sets",
-    },
-    { symbol: "⊂", latex: "\\subset", name: "Subset", category: "Logic/Sets" },
-    { symbol: "∪", latex: "\\cup", name: "Union", category: "Logic/Sets" },
-    {
-      symbol: "∩",
-      latex: "\\cap",
-      name: "Intersection",
-      category: "Logic/Sets",
-    },
-    {
-      symbol: "∅",
-      latex: "\\emptyset",
-      name: "Empty Set",
-      category: "Logic/Sets",
-    },
-    {
-      symbol: "⇒",
-      latex: "\\implies",
-      name: "Implies",
-      category: "Logic/Sets",
-    },
-    {
-      symbol: "⇔",
-      latex: "\\iff",
-      name: "If and only if",
-      category: "Logic/Sets",
-    },
-    {
-      symbol: "ℝ",
-      latex: "\\mathbb{R}",
-      name: "Reals",
-      category: "Logic/Sets",
-    },
-    {
-      symbol: "ℤ",
-      latex: "\\mathbb{Z}",
-      name: "Integers",
-      category: "Logic/Sets",
-    },
-    {
-      symbol: "ℕ",
-      latex: "\\mathbb{N}",
-      name: "Naturals",
-      category: "Logic/Sets",
-    },
-
-    // --- MATRICES ---
-    {
-      symbol: "[ ]",
-      latex: "\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}",
-      name: "B-Matrix",
-      category: "Matrices",
-    },
-    {
-      symbol: "( )",
-      latex: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
-      name: "P-Matrix",
-      category: "Matrices",
-    },
-    {
-      symbol: "| |",
-      latex: "\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}",
-      name: "Determinant",
-      category: "Matrices",
-    },
-    {
-      symbol: "vec",
-      latex: "\\begin{pmatrix} x \\\\ y \\\\ z \\end{pmatrix}",
-      name: "Col Vector",
-      category: "Matrices",
-    },
-
-    // --- FUNCTIONS ---
-    { symbol: "sin", latex: "\\sin(⟨x⟩)", name: "Sine", category: "Functions" },
-    {
-      symbol: "cos",
-      latex: "\\cos(⟨x⟩)",
-      name: "Cosine",
-      category: "Functions",
-    },
-    {
-      symbol: "tan",
-      latex: "\\tan(⟨x⟩)",
-      name: "Tangent",
-      category: "Functions",
-    },
-    { symbol: "ln", latex: "\\ln(⟨x⟩)", name: "Ln", category: "Functions" },
-    {
-      symbol: "log",
-      latex: "\\log_{⟨b⟩}(⟨x⟩)",
-      name: "Log",
-      category: "Functions",
-    },
-    { symbol: "exp", latex: "\\exp(⟨x⟩)", name: "Exp", category: "Functions" },
-
-    // --- LAYOUT ---
-    {
-      symbol: "txt",
-      latex: "\\text{⟨text⟩}",
-      name: "Text",
-      category: "Layout",
-    },
-    { symbol: "spc", latex: "\\quad", name: "Space", category: "Layout" },
-    {
-      symbol: "{ }",
-      latex: "\\{ ⟨content⟩ \\}",
-      name: "Braces",
-      category: "Layout",
-    },
-    {
-      symbol: "cases",
-      latex: "\\begin{cases} ⟨expr⟩ & \\text{if } ⟨cond⟩ \\end{cases}",
-      name: "Cases",
-      category: "Layout",
-    },
-  ];
-
-  const filteredSymbols = mathSymbols.filter(
-    (s) =>
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.latex.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const categories = [...new Set(mathSymbols.map((s) => s.category))];
-
-  const filteredSavedEquations = savedEquations.filter((eq) => {
-    if (!savedEquationSearch) return true;
-    return eq.fileName
-      .toLowerCase()
-      .includes(savedEquationSearch.toLowerCase());
-  });
+  const filteredSavedEquations = Array.isArray(savedEquations)
+    ? savedEquations.filter((eq) => {
+        if (!savedEquationSearch) return true;
+        const name = eq.fileName || "";
+        return name.toLowerCase().includes(savedEquationSearch.toLowerCase());
+      })
+    : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl border border-gray-300 w-[95vw] max-w-7xl h-[90vh] flex flex-col">
-        {/* HEADER */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Easy Math Input
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-7xl h-[90vh] flex flex-col overflow-hidden">
+        {/* --- HEADER --- */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white">
+          <div className="flex items-center gap-6">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <TbMathFunction className="text-gray-700" /> Easy Math Input
             </h2>
-            <div className="flex border-b">
+            <div className="flex bg-gray-100 p-1 rounded-lg">
               <button
                 onClick={() => setActiveTab("editor")}
-                className={`px-4 py-2 font-medium text-sm ${activeTab === "editor" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === "editor" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
               >
                 Editor
               </button>
               <button
                 onClick={() => setActiveTab("saved")}
-                className={`px-4 py-2 font-medium text-sm ${activeTab === "saved" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === "saved" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
               >
-                Saved Equations
+                Saved Library
               </button>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 p-1"
+            className="text-gray-400 hover:text-gray-900 transition-colors p-1 rounded-full hover:bg-gray-100"
           >
             <TbX size={24} />
           </button>
         </div>
 
-        {/* --- EDITOR TAB --- */}
-        {activeTab === "editor" && (
-          <div className="flex flex-1 overflow-hidden">
-            {/* LEFT PANEL: Quick Insert */}
-            <div className="w-1/5 border-r border-gray-200 p-4 bg-gray-50/30 flex flex-col">
-              <div className="relative mb-3">
-                <select
-                  value={leftPanelMode}
-                  onChange={(e) => setLeftPanelMode(e.target.value)}
-                  className="w-full bg-white border border-gray-300 py-2 px-3 rounded font-semibold cursor-pointer outline-none focus:border-blue-500"
-                >
-                  <option value="symbols">Common Symbols</option>
-                  <option value="equations">Common Equations</option>
-                </select>
-              </div>
-              <div className="overflow-y-auto flex-1 grid grid-cols-2 gap-2 content-start">
-                {(leftPanelMode === "symbols"
-                  ? commonSymbols
-                  : commonEquations
-                ).map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSymbolClick(item.latex)}
-                    className="p-2 border border-gray-300 bg-white rounded hover:bg-gray-100 flex flex-col items-center justify-center min-h-[50px] shadow-sm text-sm transition-colors"
-                    title={item.name}
+        {/* --- MAIN CONTENT --- */}
+        <div
+          className={`flex flex-1 overflow-hidden ${activeTab === "saved" ? "bg-gray-50" : ""}`}
+        >
+          {/* --- LEFT PANEL (Library) --- */}
+          {activeTab === "editor" && (
+            <div className="w-[280px] flex-shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col">
+              {/* Mode Selector */}
+              <div className="p-4 pb-2">
+                <div className="relative">
+                  <select
+                    value={leftPanelMode}
+                    onChange={(e) => setLeftPanelMode(e.target.value)}
+                    className="w-full appearance-none bg-white border border-gray-300 text-gray-900 py-2.5 px-4 pr-8 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-gray-400 cursor-pointer shadow-sm"
                   >
-                    <span className="text-lg mb-1">{item.symbol}</span>
-                    <span className="text-xs text-gray-600 truncate w-full text-center">
-                      {item.name}
-                    </span>
-                  </button>
-                ))}
+                    <option value="symbols">Math Symbols</option>
+                    <option value="equations">Common Equations</option>
+                  </select>
+                  <TbChevronDown className="absolute right-3 top-3 text-gray-500 pointer-events-none" />
+                </div>
+
+                {/* Search */}
+                <div className="relative mt-3">
+                  <TbSearch className="absolute left-3 top-2.5 text-gray-400" />
+                  <input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={
+                      leftPanelMode === "symbols"
+                        ? "Search symbols..."
+                        : "Search equations..."
+                    }
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  />
+                </div>
+              </div>
+
+              {/* Content List */}
+              <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
+                {leftPanelMode === "symbols" ? (
+                  <div className="space-y-4">
+                    {filteredSymbols.map((cat, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm"
+                      >
+                        <button
+                          onClick={() => toggleCategory(cat.category)}
+                          className="w-full flex justify-between items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-600 uppercase transition-colors"
+                        >
+                          {cat.category}
+                          <TbChevronDown
+                            className={`transition-transform duration-200 ${expandedCategories.has(cat.category) ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        {expandedCategories.has(cat.category) && (
+                          <div className="grid grid-cols-4 gap-1 p-2">
+                            {cat.items.map((item, i) => (
+                              <button
+                                key={i}
+                                onClick={() => insertAtCursor(item.latex)}
+                                className="aspect-square flex flex-col items-center justify-center p-1 rounded hover:bg-gray-100 hover:text-black border border-transparent transition-all group"
+                                title={item.name || item.latex}
+                              >
+                                <span className="text-lg leading-none font-serif">
+                                  {item.symbol}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredEquations.map((eq, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => insertAtCursor(eq.latex)}
+                        className="w-full text-left p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-md transition-all group"
+                      >
+                        <div className="text-xs font-bold text-gray-500 group-hover:text-black mb-1">
+                          {eq.name}
+                        </div>
+                        <div className="font-mono text-sm text-gray-800 truncate">
+                          {eq.latex}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            {/* CENTER PANEL: Workspace */}
-            <div className="flex-1 flex flex-col p-4 relative">
-              {/* TOOLBAR */}
-              <div className="flex justify-between items-center mb-2">
-                <label className="font-semibold text-gray-700 flex items-center gap-2">
-                  {builderMode && <TbPencil className="text-blue-500" />}
-                  {builderMode
-                    ? "Fill in the Blanks"
-                    : isAiMode
-                      ? "Describe Equation (AI)"
-                      : "LaTeX Code"}
-                </label>
-                <div className="flex gap-2">
-                  {!builderMode && (
+          {/* --- RIGHT PANEL (Editor + Preview) --- */}
+          {activeTab === "editor" ? (
+            <div className="flex-1 flex flex-col bg-white">
+              {/* 1. UPPER SECTION: EDITOR TOOLBAR + TEXTAREA */}
+              <div className="flex-grow flex flex-col p-6 min-h-[50%]">
+                {/* Toolbar */}
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-sm font-bold px-3 py-1 rounded-full flex items-center gap-2 transition-colors ${isAiMode ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"}`}
+                    >
+                      {isAiMode ? (
+                        <TbRobot className="text-purple-600" />
+                      ) : (
+                        <TbCode className="text-gray-600" />
+                      )}
+                      {isAiMode ? "AI Mode" : "LaTeX Builder"}
+                    </span>
                     <button
                       onClick={() => setIsAiMode(!isAiMode)}
-                      className={`flex items-center gap-1 px-3 py-1 rounded text-sm border transition-colors ${isAiMode ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
+                      className={`text-xs font-medium hover:underline ${isAiMode ? "text-purple-600" : "text-gray-500"}`}
                     >
-                      <TbRobot size={16} />{" "}
-                      {isAiMode ? "Manual Mode" : "AI Mode"}
+                      Switch to {isAiMode ? "Manual Builder" : "AI Assistant"}
                     </button>
-                  )}
-                  <button
-                    onClick={() => setShowSaveDialog(true)}
-                    className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm transition-colors"
-                  >
-                    <TbDeviceFloppy size={16} /> Save
-                  </button>
-                  <button
-                    onClick={copyToClipboard}
-                    className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm transition-colors"
-                  >
-                    <TbCopy size={16} /> Copy
-                  </button>
-                  {!isAiMode && !builderMode && (
+                  </div>
+
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => handleCompile()}
-                      disabled={isCompiling}
-                      className="flex items-center gap-1 px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm disabled:opacity-50 transition-colors"
+                      onClick={copyToClipboard}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
+                      title="Copy Code"
                     >
-                      <TbPlayerPlay size={16} /> Compile
+                      <TbCopy size={18} />
                     </button>
+                    <button
+                      onClick={() => setShowSaveDialog(true)}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
+                      title="Save to Library"
+                    >
+                      <TbDeviceFloppy size={18} />
+                    </button>
+                    {!isAiMode && (
+                      <button
+                        onClick={() => handleCompile()}
+                        disabled={isCompiling}
+                        className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isCompiling ? (
+                          <TbLoader className="animate-spin" />
+                        ) : (
+                          <TbPlayerPlay />
+                        )}
+                        Compile
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Main Editor Input */}
+                <div
+                  className={`relative flex-grow rounded-xl border shadow-inner overflow-hidden focus-within:ring-2 focus-within:ring-opacity-50 transition-all ${isAiMode ? "border-purple-200 focus-within:ring-purple-500 bg-purple-50/20" : "border-gray-300 bg-gray-50 focus-within:ring-gray-400"}`}
+                >
+                  {isAiMode ? (
+                    <div className="h-full w-full relative">
+                      <textarea
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAiGenerate();
+                          }
+                        }}
+                        className="h-full w-full p-5 bg-transparent resize-none outline-none text-base text-gray-800 placeholder-purple-300"
+                        placeholder="Describe your equation (e.g. 'Schrodinger equation for a free particle')..."
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleAiGenerate}
+                        disabled={isGenerating || !aiPrompt.trim()}
+                        className="absolute bottom-4 right-4 bg-purple-600 text-white p-3 rounded-xl shadow-lg hover:bg-purple-700 disabled:opacity-50 transition-all hover:scale-105 flex items-center gap-2 font-medium"
+                      >
+                        {isGenerating ? (
+                          <TbLoader className="animate-spin" />
+                        ) : (
+                          <>
+                            <TbRobot /> Generate
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <textarea
+                      ref={textareaRef}
+                      value={latexCode}
+                      onChange={(e) => setLatexCode(e.target.value)}
+                      className="h-full w-full p-5 bg-transparent resize-none outline-none font-mono text-sm leading-relaxed text-gray-900 placeholder-gray-400"
+                      placeholder="Click symbols on the left to insert. Placeholders ⟨x⟩ allow smart nesting..."
+                      spellCheck={false}
+                    />
                   )}
                 </div>
               </div>
 
-              {/* INPUT AREA CONTAINER */}
-              <div className="h-48 w-full border border-gray-300 rounded overflow-hidden relative bg-white shadow-inner">
-                {/* MODE 1: BUILDER MODE */}
-                {builderMode ? (
-                  <div className="absolute inset-0 bg-blue-50/90 flex flex-col p-4 z-20 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4 border-b border-blue-200 pb-2">
-                      <span className="text-sm font-bold text-blue-800 font-mono bg-blue-100 px-2 py-1 rounded">
-                        {currentTemplate}
-                      </span>
-                      <button
-                        onClick={cancelBuilder}
-                        className="text-gray-500 hover:text-gray-700 text-xs flex items-center gap-1 font-bold"
-                      >
-                        <TbArrowBackUp /> Cancel
-                      </button>
-                    </div>
+              {/* 2. LOWER SECTION: PREVIEW AREA */}
+              <div className="h-[35%] bg-white border-t border-gray-200 flex flex-col p-6 pt-0">
+                <div className="flex items-center gap-2 mb-2 pt-4">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Live Preview
+                  </span>
+                  <div className="flex-1 h-px bg-gray-100"></div>
+                </div>
 
-                    <div className="flex-1 overflow-y-auto flex flex-wrap gap-4 items-start content-start">
-                      {templateFields.map((field, idx) => (
-                        <div
-                          key={idx}
-                          className="flex flex-col flex-grow min-w-[120px] max-w-[200px]"
-                        >
-                          <label className="text-[10px] font-bold text-blue-600 mb-1 uppercase tracking-wider">
-                            {field}
-                          </label>
-                          <input
-                            ref={idx === 0 ? firstInputRef : null}
-                            value={templateValues[field] || ""}
-                            onChange={(e) =>
-                              setTemplateValues({
-                                ...templateValues,
-                                [field]: e.target.value,
-                              })
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") confirmBuilder();
-                              if (e.key === "Escape") cancelBuilder();
-                            }}
-                            className="p-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono bg-white shadow-sm"
-                            placeholder="..."
-                            autoComplete="off"
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        onClick={confirmBuilder}
-                        className="bg-blue-600 text-white px-5 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2 font-medium transition-transform active:scale-95"
-                      >
-                        <TbCheck /> Insert Equation
-                      </button>
-                    </div>
-                  </div>
-                ) : isAiMode ? (
-                  // MODE 2: AI PROMPT
-                  <div className="h-full w-full relative">
-                    <textarea
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      className="h-full w-full p-3 border border-purple-300 rounded resize-none font-sans text-sm leading-relaxed focus:ring-2 focus:ring-purple-100 outline-none pr-12"
-                      placeholder="e.g., 'Schrodinger equation for a free particle' or 'Determinant of a 3x3 matrix'..."
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleAiGenerate();
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleAiGenerate}
-                      disabled={isGenerating || !aiPrompt.trim()}
-                      className="absolute bottom-3 right-3 bg-purple-600 text-white p-2 rounded-full shadow-lg hover:bg-purple-700 disabled:opacity-50 transition-all hover:scale-110"
-                    >
-                      {isGenerating ? (
-                        <TbLoader className="animate-spin" />
-                      ) : (
-                        <TbArrowUp size={20} />
-                      )}
-                    </button>
-                  </div>
-                ) : (
-                  // MODE 3: STANDARD EDITOR
-                  <textarea
-                    value={latexCode}
-                    onChange={(e) => setLatexCode(e.target.value)}
-                    className="h-full w-full p-4 resize-none outline-none font-mono text-sm leading-relaxed"
-                    placeholder="Type LaTeX here or click symbols to insert..."
-                  />
-                )}
-              </div>
-
-              {/* PREVIEW AREA */}
-              <div className="flex-1 flex flex-col mt-4">
-                <label className="font-semibold text-gray-700 mb-2">
-                  Preview
-                </label>
-                <div className="flex-1 border border-gray-300 rounded bg-white overflow-hidden flex items-center justify-center p-4 relative shadow-sm">
+                <div className="flex-1 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/30 flex items-center justify-center relative overflow-hidden">
                   {isCompiling || isGenerating ? (
-                    <div className="flex flex-col items-center text-gray-500 animate-pulse">
-                      <TbLoader
-                        size={32}
-                        className="animate-spin mb-2 text-blue-500"
-                      />
-                      <p className="text-sm font-medium">
+                    <div className="flex flex-col items-center text-gray-400 animate-pulse">
+                      <TbLoader size={32} className="animate-spin mb-2" />
+                      <span className="text-sm font-medium">
                         {isGenerating
-                          ? "AI Generating..."
-                          : "Compiling LaTeX..."}
-                      </p>
+                          ? "AI is thinking..."
+                          : "Rendering LaTeX..."}
+                      </span>
                     </div>
                   ) : previewUrl ? (
-                    // Smart handling of PDF vs Image
-                    previewUrl.toLowerCase().includes(".pdf") ? (
+                    previewUrl.includes(".pdf") ? (
                       <iframe
                         src={previewUrl}
                         className="w-full h-full border-none"
-                        title="Preview"
+                        title="PDF Preview"
                       />
                     ) : (
                       <img
                         src={previewUrl}
-                        className="max-w-full max-h-full object-contain"
-                        alt="Preview"
+                        className="max-w-[90%] max-h-[90%] object-contain"
+                        alt="Equation Preview"
                       />
                     )
                   ) : (
                     <div className="text-center text-gray-400">
-                      <TbPlayerPlay
-                        size={48}
-                        className="mx-auto mb-2 opacity-50"
+                      <TbMathFunction
+                        size={40}
+                        className="mx-auto mb-2 opacity-20"
                       />
-                      <p>Click "Compile" or generate via AI to preview</p>
+                      <p className="text-sm opacity-50">
+                        Preview will appear here
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-
-            {/* RIGHT PANEL: Search & Library */}
-            <div className="w-1/4 border-l border-gray-200 p-4 bg-gray-50/30 flex flex-col">
-              <div className="relative mb-3">
-                <div className="flex items-center border border-gray-300 rounded bg-white px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
-                  <TbSearch className="text-gray-400" size={20} />
-                  <input
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onFocus={() => setShowDropdown(true)}
-                    placeholder="Search symbols..."
-                    className="w-full pl-2 pr-2 py-2 outline-none rounded bg-transparent text-sm"
-                  />
+          ) : (
+            // --- SAVED TAB CONTENT ---
+            <div className="flex-1 p-8 overflow-y-auto overflow-x-hidden">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex-1 relative">
+                    <TbSearch className="absolute left-3 top-3 text-gray-400" />
+                    <input
+                      value={savedEquationSearch}
+                      onChange={(e) => setSavedEquationSearch(e.target.value)}
+                      placeholder="Search your library..."
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 outline-none"
+                    />
+                  </div>
                 </div>
 
-                {/* Dropdown Results */}
-                {showDropdown && searchTerm && (
-                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto z-10 mt-1">
-                    {filteredSymbols.slice(0, 30).map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSymbolClick(s.latex)}
-                        className="w-full p-2 text-left hover:bg-gray-100 flex items-center gap-2 border-b last:border-0"
-                      >
-                        <span className="w-8 text-center text-lg">
-                          {s.symbol}
-                        </span>
-                        <span className="text-xs truncate text-gray-600">
-                          {s.name}
-                        </span>
-                      </button>
-                    ))}
-                    {filteredSymbols.length === 0 && (
-                      <div className="p-2 text-center text-gray-500 text-xs">
-                        No results
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-3 flex gap-2">
-                <button
-                  onClick={() => setExpandedCategories(new Set(categories))}
-                  className="flex-1 px-2 py-1 text-[10px] uppercase font-bold bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                >
-                  Expand All
-                </button>
-                <button
-                  onClick={() => setExpandedCategories(new Set())}
-                  className="flex-1 px-2 py-1 text-[10px] uppercase font-bold bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                >
-                  Collapse
-                </button>
-              </div>
-
-              <div className="overflow-y-auto flex-1 pr-1 custom-scrollbar">
-                {categories.map((category) => {
-                  const syms = mathSymbols.filter(
-                    (s) => s.category === category,
-                  );
-                  const isExpanded = expandedCategories.has(category);
-                  return (
+                <div className="grid gap-4 max-w-4xl mx-auto">
+                  {filteredSavedEquations.map((eq, i) => (
                     <div
-                      key={category}
-                      className="mb-3 bg-white rounded border border-gray-200 overflow-hidden"
+                      key={i}
+                      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:shadow-md transition-shadow group min-w-0"
                     >
-                      <button
-                        onClick={() => toggleCategoryExpansion(category)}
-                        className="w-full flex justify-between items-center px-3 py-2 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-600 uppercase border-b border-gray-100"
-                      >
-                        {category}
-                        <TbChevronDown
-                          className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
-                      </button>
+                      <div className="flex-1 min-w-0 mr-6">
+                        <h4 className="font-bold text-gray-800 mb-1">
+                          {eq.fileName}
+                        </h4>
 
-                      {isExpanded && (
-                        <div className="grid grid-cols-4 gap-1 p-2 bg-white">
-                          {syms.map((s, i) => (
-                            <button
-                              key={i}
-                              onClick={() => handleSymbolClick(s.latex)}
-                              className="p-1 border border-gray-100 bg-white hover:bg-blue-50 hover:border-blue-300 text-center rounded h-9 flex items-center justify-center transition-colors"
-                              title={s.name}
-                            >
-                              <span className="text-base">{s.symbol}</span>
-                            </button>
-                          ))}
+                        <div className="font-mono text-xs text-gray-500 bg-gray-50 p-1.5 rounded border border-gray-100 overflow-hidden whitespace-nowrap text-ellipsis max-w-full">
+                          {eq.latex}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* --- SAVED TAB --- */}
-        {activeTab === "saved" && (
-          <div className="flex-1 flex flex-col p-4 overflow-hidden">
-            <div className="mb-4">
-              <div className="relative">
-                <div className="flex items-center border border-gray-300 rounded bg-white px-3 py-2">
-                  <TbSearch className="text-gray-400" />
-                  <input
-                    className="ml-2 w-full outline-none text-sm"
-                    placeholder="Search saved equations..."
-                    value={savedEquationSearch}
-                    onChange={(e) => setSavedEquationSearch(e.target.value)}
-                    onFocus={() => setShowSavedDropdown(true)}
-                  />
-                </div>
-                {showSavedDropdown && (
-                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto z-10 mt-1">
-                    {filteredSavedEquations.map((eq) => (
-                      <button
-                        key={eq.fileName}
-                        onClick={() => {
-                          setSavedEquationSearch(eq.fileName);
-                          setShowSavedDropdown(false);
-                        }}
-                        className="w-full p-2 text-left hover:bg-gray-100 text-sm border-b"
-                      >
-                        {eq.fileName}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+                        {/* Inline Preview */}
+                        {cardPreviewUrl?.fileName === eq.fileName && (
+                          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-center">
+                            <img
+                              src={cardPreviewUrl.url}
+                              alt="Equation Preview"
+                              className="max-h-24 object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
 
-            <div className="flex-1 overflow-auto border border-gray-300 rounded">
-              <table className="w-full border-collapse">
-                <thead className="bg-gray-50 sticky top-0 shadow-sm">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase border-b">
-                      File Name
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase border-b w-1/3">
-                      LaTeX
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase border-b">
-                      Actions
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase border-b">
-                      Preview
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredSavedEquations.map((eq) => (
-                    <tr key={eq.fileName} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-800">
-                        {eq.fileName}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-mono text-gray-500 truncate max-w-xs">
-                        {eq.latex}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(eq.latex);
-                              alert("Copied");
-                            }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                            title="Copy"
-                          >
-                            <TbCopy />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setLatexCode(eq.latex);
-                              setActiveTab("editor");
-                              setIsAiMode(false);
-                            }}
-                            className="p-1.5 text-green-600 hover:bg-green-50 rounded"
-                            title="Load"
-                          >
-                            <TbFolder />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      <div className="flex gap-2 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => handleCompile(eq.latex)}
-                          className="p-1.5 text-orange-500 hover:bg-orange-50 rounded"
+                          onClick={() => handleCardPreview(eq)}
+                          className="p-2 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg border border-transparent hover:border-orange-200"
+                          title="Preview"
                         >
-                          <TbPlayerPlay />
+                          {cardPreviewLoading === eq.fileName ? (
+                            <TbLoader className="animate-spin" size={18} />
+                          ) : (
+                            <TbPlayerPlay size={18} />
+                          )}
                         </button>
-                      </td>
-                    </tr>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(eq.latex);
+                            alert("Copied");
+                          }}
+                          className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg border border-transparent hover:border-gray-200"
+                        >
+                          <TbCopy size={18} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLatexCode(eq.latex);
+                            setActiveTab("editor");
+                            setIsAiMode(false);
+                          }}
+                          className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg border border-transparent hover:border-gray-200"
+                        >
+                          <TbFolder size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(eq.fileName)}
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-100"
+                          title="Delete"
+                        >
+                          <TbTrash size={18} />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                   {filteredSavedEquations.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan="4"
-                        className="text-center py-8 text-gray-400"
-                      >
-                        No equations found
-                      </td>
-                    </tr>
+                    <div className="text-center py-10 text-gray-400">
+                      Library is empty
+                    </div>
                   )}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* --- SAVE DIALOG --- */}
+        {/* --- SAVE DIALOG MODAL --- */}
         {showSaveDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[60] backdrop-blur-sm">
-            <div className="bg-white rounded-lg p-6 w-96 shadow-2xl animate-in fade-in zoom-in duration-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">
-                Save Equation
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] backdrop-blur-sm">
+            <div className="bg-white rounded-xl p-6 w-96 shadow-2xl transform transition-all scale-100 border border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                Save to Library
               </h3>
               <input
                 value={saveFileName}
                 onChange={(e) => setSaveFileName(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-green-500 outline-none"
-                placeholder="Enter filename..."
+                className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-gray-500 outline-none"
+                placeholder="Name your equation..."
                 autoFocus
               />
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setShowSaveDialog(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEquation}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-medium shadow-sm"
                 >
-                  Save
+                  Save Equation
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {deleteTarget && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] backdrop-blur-sm">
+            <div className="bg-white rounded-xl p-6 w-96 shadow-2xl border border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">
+                Delete Equation
+              </h3>
+
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to delete
+                <span className="font-semibold"> "{deleteTarget}"</span>? This
+                action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={async () => {
+                    await handleDeleteEquation(deleteTarget);
+                    setDeleteTarget(null);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+                >
+                  Delete
                 </button>
               </div>
             </div>
