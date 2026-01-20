@@ -128,9 +128,23 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
       localStorage.getItem(`project_${projectId}_ws`) ||
       `${import.meta.env.VITE_ws_server}`;
     const guestToken = localStorage.getItem(`project_${projectId}_guest_token`);
-
+    const effectiveToken = guestToken || token;
+    if (
+      !projectId ||
+      !monacoEditor ||
+      !effectiveToken ||
+      effectiveToken === "null" ||
+      effectiveToken === "undefined"
+    ) {
+      console.log("⏸️ Yjs: Waiting for valid token...");
+      return;
+    }
+    console.log(
+      "🚀 Initializing Yjs with token:",
+      effectiveToken.substring(0, 10) + "...",
+    );
     console.log("📡 WebSocket URL:", wsUrl);
-    console.log("🎫 Guest token:", guestToken ? "present" : "none");
+    // console.log("🎫 Guest token:", guestToken ? "present" : "none");
 
     // IndexedDB
     // indexeddbProvider.current = new IndexeddbPersistence(
@@ -153,7 +167,7 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
         ydoc.current,
         {
           params: {
-            token: guestToken || token,
+            token: effectiveToken,
             projectId: projectId,
           },
         },

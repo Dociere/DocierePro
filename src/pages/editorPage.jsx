@@ -27,6 +27,7 @@ import {
 import { projectContext } from "../context/useProject.jsx";
 import PdfViewer from "../components/pdfViewer.jsx";
 import { useOutletContext, useSearchParams } from "react-router-dom";
+import axios from "axios";
 
 // const API_URL = "http://localhost:5025";
 
@@ -202,11 +203,20 @@ const EditorPage = () => {
 
       // Owner/authenticated user - fetch collaboration token
       try {
+        const apiBase =
+          effectiveProjectDetails.serverUrl || "http://localhost:5025";
         const response = await axios.post(
-          `http://localhost:5025/api/projects/${projectId}/get-collab-token`,
+          `
+          ${apiBase}/api/projects/${projectId}/get-collab-token`,
           {},
           { withCredentials: true }, // Sends httpOnly cookie
         );
+
+        // const response = await axios.post(
+        //   `http://localhost:5025/api/projects/${projectId}/get-collab-token`,
+        //   {},
+        //   { withCredentials: true }, // Sends httpOnly cookie
+        // );
 
         const token = response.data.collaborationToken;
         console.log("✓ Got collaboration token for owner");
