@@ -102,7 +102,7 @@ import { MonacoBinding } from "y-monaco";
 //   return { ydoc: ydoc.current, users, syncStatus };
 // };
 
-export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
+export const useYjsMonaco = (projectId, token, isOnline, monacoEditor, user) => {
   const ydoc = useRef(new Y.Doc());
   const wsProvider = useRef(null);
   const binding = useRef(null);
@@ -199,6 +199,16 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
       const getUserInfo = () => {
         const isGuest =
           localStorage.getItem(`project_${projectId}_guest`) === "true";
+        
+        // Priority 1: Use passed user object (Owner/Authenticated)
+        if (user && !isGuest) {
+             return {
+                name: user.userName || user.emailId || "Authenticated User",
+                color: "#" + Math.floor(Math.random() * 16777215).toString(16), 
+                isGuest: false
+             };
+        }
+
         const userStr = localStorage.getItem("user");
 
         if (isGuest) {
@@ -208,12 +218,16 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
             isGuest: true,
           };
         } else if (userStr) {
-          const user = JSON.parse(userStr);
-          return {
-            name: user.userName || user.emailId,
-            color: "#" + Math.floor(Math.random() * 16777215).toString(16),
-            isGuest: false,
-          };
+          try {
+             const localUser = JSON.parse(userStr);
+             return {
+                name: localUser.userName || localUser.emailId,
+                color: "#" + Math.floor(Math.random() * 16777215).toString(16),
+                isGuest: false,
+             };
+          } catch(e) {
+              console.error("Error parsing local user", e);
+          }
         }
         return {
           name: "Anonymous",
@@ -257,7 +271,7 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
       binding.current?.destroy();
       wsProvider.current?.destroy();
     };
-  }, [projectId, token, isOnline, monacoEditor]);
+  }, [projectId, token, isOnline, monacoEditor, user]);
 
   return { ydoc: ydoc.current, users, syncStatus };
 };
