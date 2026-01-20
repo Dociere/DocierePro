@@ -18,11 +18,14 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     console.log("Project ID:", projectId);
     console.log("User:", user);
     console.log("All cookies:", document.cookie);
+
+    //Below code to be deleted
     const token = document.cookie
       .split("; ")
       .find((row) => row.startsWith("uid="))
       ?.split("=")[1];
     console.log("UID token:", token);
+
     if (!collaboratorEmail) {
       setMessage("Please enter collaborator email");
       return;
@@ -35,14 +38,14 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
       const response = await axios.post(
         `http://localhost:5025/api/projects/${projectId}/share`,
         { collaboratorEmail, permissions: "edit" },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       setShareLink(response.data.shareLink);
       setMessage("Share link generated!");
     } catch (error) {
       setMessage(
-        error.response?.data?.error || "Failed to generate share link"
+        error.response?.data?.error || "Failed to generate share link",
       );
     } finally {
       setLoading(false);
@@ -67,7 +70,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
       const base64 = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
       const padded = base64.padEnd(
         base64.length + ((4 - (base64.length % 4)) % 4),
-        "="
+        "=",
       );
       const payload = JSON.parse(atob(padded));
 
@@ -79,7 +82,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
       const response = await axios.post(
         `${serverUrl}/api/projects/join/${token}`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       const data = response.data;
@@ -93,11 +96,13 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
       if (data.userType === "guest") {
         localStorage.setItem(
           `project_${projectId}_guest_token`,
-          data.guestToken
+          data.guestToken,
         );
         localStorage.setItem(`project_${projectId}_guest`, "true");
         setMessage("Joined as guest!");
-      } else {
+      }
+      //For Authenticated Users
+      else {
         localStorage.setItem(`project_${projectId}_guest`, "false");
         setMessage("Successfully joined project!");
       }
@@ -108,7 +113,9 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     } catch (error) {
       console.error("Error from handleJoin", error);
       setMessage(
-        error.response?.data?.error || error.message || "Failed to join project"
+        error.response?.data?.error ||
+          error.message ||
+          "Failed to join project",
       );
     } finally {
       setLoading(false);

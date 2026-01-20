@@ -133,15 +133,15 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
     console.log("🎫 Guest token:", guestToken ? "present" : "none");
 
     // IndexedDB
-    indexeddbProvider.current = new IndexeddbPersistence(
-      `project-${projectId}`,
-      ydoc.current,
-    );
+    // indexeddbProvider.current = new IndexeddbPersistence(
+    //   `project-${projectId}`,
+    //   ydoc.current,
+    // );
 
-    indexeddbProvider.current.on("synced", () => {
-      console.log("💾 IndexedDB synced");
-      setSyncStatus("local-loaded");
-    });
+    // indexeddbProvider.current.on("synced", () => {
+    //   console.log("💾 IndexedDB synced");
+    //   setSyncStatus("local-loaded");
+    // });
 
     // WebSocket
     if (isOnline) {
@@ -227,6 +227,10 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor) => {
 
     // Bind to Monaco
     console.log("🔗 Binding Yjs to Monaco editor");
+    if (ytext.length === 0) {
+      ytext.insert(0, monacoEditor.getValue());
+    }
+
     binding.current = new MonacoBinding(
       ytext,
       monacoEditor.getModel(),

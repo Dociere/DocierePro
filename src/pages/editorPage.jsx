@@ -34,6 +34,9 @@ const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const { isSectionSpaceOpen } = useOutletContext();
   const [searchParams] = useSearchParams();
+  const [remoteProject, setRemoteProject] = useState(null);
+  const effectiveProjectDetails = remoteProject || projectDetails;
+  const [collaborationToken, setCollaborationToken] = useState(null);
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -90,19 +93,19 @@ const EditorPage = () => {
   // };
 
   useEffect(() => {
-    console.log("EditorPage mounted");
+    console.log("🔍 EditorPage effect triggered");
     console.log("Search params:", searchParams.toString());
+    console.log("All params:", Object.fromEntries(searchParams.entries()));
 
     const projectIdFromUrl = searchParams.get("project");
     console.log("Project ID from URL:", projectIdFromUrl);
 
     if (projectIdFromUrl) {
-      console.log("Loading remote project...");
-      // Set loading state BEFORE starting
+      console.log("📥 Loading REMOTE project...");
       updateProjectDetails({ isLoading: true });
       loadRemoteProject(projectIdFromUrl);
     } else {
-      console.log("Loading local projects...");
+      console.log("📂 Loading LOCAL projects...");
       fetchData();
     }
   }, [searchParams]);
@@ -159,6 +162,18 @@ const EditorPage = () => {
         serverUrl: serverUrl,
       });
 
+      setRemoteProject({
+        currentProject: project,
+        activeFile: project.activeFile || "main.tex",
+        latexContent:
+          project.files[project.activeFile || "main.tex"]?.content || "",
+        isLoading: false,
+        isRemoteProject: true,
+        serverUrl,
+      });
+
+      const effectiveProjectDetails = remoteProject || projectDetails;
+
       console.log("✓ Remote project loaded successfully");
     } catch (error) {
       console.error("Error in loadRemoteProject:", error);
@@ -170,6 +185,46 @@ const EditorPage = () => {
     }
   };
 
+  useEffect(() => {
+    const fetchCollabToken = async () => {
+      const projectId = effectiveProjectDetails.currentProject?.id;
+      if (!projectId) return;
+
+      // Check if we already have a guest token (for collaborators)
+      const guestToken = localStorage.getItem(
+        `project_${projectId}_guest_token`,
+      );
+      if (guestToken) {
+        console.log("✓ Using existing guest token");
+        setCollaborationToken(guestToken);
+        return;
+      }
+
+      // Owner/authenticated user - fetch collaboration token
+      try {
+        const response = await axios.post(
+          `http://localhost:5025/api/projects/${projectId}/get-collab-token`,
+          {},
+          { withCredentials: true }, // Sends httpOnly cookie
+        );
+
+        const token = response.data.collaborationToken;
+        console.log("✓ Got collaboration token for owner");
+        setCollaborationToken(token);
+
+        // Store temporarily (will expire)
+        localStorage.setItem(`project_${projectId}_collab_token`, token);
+      } catch (error) {
+        console.error("Failed to get collaboration token:", error);
+      }
+    };
+
+    if (effectiveProjectDetails.currentProject) {
+      fetchCollabToken();
+    }
+  }, [effectiveProjectDetails.currentProject?.id]);
+
+  //FIXME: The code seems useless to me - Clint
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -183,10 +238,10 @@ const EditorPage = () => {
     };
   }, []);
 
-  const token = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("uid="))
-    ?.split("=")[1];
+  // const token = document.cookie
+  //   .split("; ")
+  //   .find((row) => row.startsWith("uid="))
+  //   ?.split("=")[1];
 
   useEffect(() => {
     if (
@@ -509,6 +564,8 @@ const EditorPage = () => {
     [updateAllEditors],
   );
 
+  //FIXME: Fix the saving strategy
+
   const saveProjectToServer = async (updatedProject, activeFile) => {
     if (!updatedProject || !projectDetails.activeFile) return;
 
@@ -528,41 +585,41 @@ const EditorPage = () => {
     }
   };
 
-  const getCollaborationToken = () => {
-    // Priority 1: Check if this is a remote project (collaborator/guest)
-    const projectId = projectDetails.currentProject?.id;
-    if (projectId) {
-      const guestToken = localStorage.getItem(
-        `project_${projectId}_guest_token`,
-      );
-      if (guestToken) {
-        console.log("✓ Using guest token for collaboration");
-        return guestToken;
-      }
-    }
+  // const getCollaborationToken = () => {
+  //   // Priority 1: Check if this is a remote project (collaborator/guest)
+  //   const projectId = projectDetails.currentProject?.id;
+  //   if (projectId) {
+  //     const guestToken = localStorage.getItem(
+  //       `project_${projectId}_guest_token`,
+  //     );
+  //     if (guestToken) {
+  //       console.log("✓ Using guest token for collaboration");
+  //       return guestToken;
+  //     }
+  //   }
 
-    // Priority 2: Use auth token (for owner or authenticated collaborator)
-    const authToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("uid="))
-      ?.split("=")[1];
+  //   // Priority 2: Use auth token (for owner or authenticated collaborator)
+  //   const authToken = document.cookie
+  //     .split("; ")
+  //     .find((row) => row.startsWith("uid="))
+  //     ?.split("=")[1];
 
-    if (authToken) {
-      console.log("✓ Using auth token for collaboration");
-      return authToken;
-    }
+  //   if (authToken) {
+  //     console.log("✓ Using auth token for collaboration");
+  //     return authToken;
+  //   }
 
-    console.warn("⚠️ No collaboration token found");
-    return null;
-  };
+  //   console.warn("⚠️ No collaboration token found");
+  //   return null;
+  // };
 
-  const collaborationToken = getCollaborationToken();
+  // const collaborationToken = getCollaborationToken();
 
-  console.log("Collaboration setup:", {
-    projectId: projectDetails.currentProject?.id,
-    hasToken: !!collaborationToken,
-    isRemote: projectDetails.isRemoteProject,
-  });
+  // console.log("Collaboration setup:", {
+  //   projectId: projectDetails.currentProject?.id,
+  //   hasToken: !!collaborationToken,
+  //   isRemote: projectDetails.isRemoteProject,
+  // });
 
   //updatedProject, projectDetails.activeFile
 
@@ -621,7 +678,7 @@ const EditorPage = () => {
           <div className="flex items-center">
             <button
               onClick={() => setActiveView("code")}
-              className={`py-2 cursor-pointer flex-1 text-sm ${
+              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
                 activeView === "code"
                   ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                   : "text-gray-600 hover:bg-gray-100"
@@ -631,7 +688,7 @@ const EditorPage = () => {
             </button>
             <button
               onClick={() => setActiveView("text")}
-              className={`py-2 cursor-pointer flex-1 text-sm ${
+              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
                 activeView === "text"
                   ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                   : "text-gray-600 hover:bg-gray-100"
@@ -641,7 +698,7 @@ const EditorPage = () => {
             </button>
             <button
               onClick={() => setActiveView("section")}
-              className={`py-2 cursor-pointer flex-1 text-sm ${
+              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
                 activeView === "section"
                   ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                   : "text-gray-600 hover:bg-gray-100"
@@ -657,7 +714,8 @@ const EditorPage = () => {
           {activeView === "code" && (
             <div className="h-full w-full">
               <MonacoEditorPanel
-                value={projectDetails.latexContent || ""}
+                key={projectDetails.currentProject?.id}
+                value={effectiveProjectDetails.latexContent || ""}
                 handleLatexChange={handleLatexChange}
                 monacoEditorRef={monacoEditorRef}
                 projectId={projectDetails.currentProject?.id}
@@ -694,7 +752,7 @@ const EditorPage = () => {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setActiveRightView("preview")}
-              className={`py-2 cursor-pointer flex-1 text-sm ${
+              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
                 activeRightView === "preview"
                   ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                   : "text-gray-600 hover:bg-gray-100"
@@ -704,7 +762,7 @@ const EditorPage = () => {
             </button>
             <button
               onClick={() => setActiveRightView("logs")}
-              className={`py-2 cursor-pointer flex-1 text-sm ${
+              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
                 activeRightView === "logs"
                   ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                   : "text-gray-600 hover:bg-gray-100"
@@ -714,7 +772,7 @@ const EditorPage = () => {
             </button>
             <button
               onClick={() => setActiveRightView("aichat")}
-              className={`py-2 cursor-pointer flex-1 text-sm ${
+              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
                 activeRightView === "aichat"
                   ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
                   : "text-gray-600 hover:bg-gray-100"
