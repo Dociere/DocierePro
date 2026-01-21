@@ -170,7 +170,7 @@ const generate_springer_latex = (title, authors, abstract, keywords, sections) =
     latex += `\\affil[${aff_id}]{\\orgname{${org}}}\n`;
   }
 
-  latex += `\\abstract{${abstract}}\n`;
+  latex += `\\abstract{\n${abstract}}\n`;
   latex += `\\keywords{${keywords}}\n`;
   latex += "\\maketitle\n\n";
 
@@ -1505,11 +1505,11 @@ export const getSkeletonContent = (templateType) => {
   const sections = {};
   
   sectionsList.forEach(sec => {
-    sections[sec] = `% Insert ${sec} content here...`;
+    sections[sec] = `\n% Insert ${sec} content here...`;
   });
 
   return {
-    abstract: "% Abstract goes here...",
+    abstract: "Abstract goes here...",
     keywords: "Keyword 1, Keyword 2, Keyword 3",
     sections: sections
   };
