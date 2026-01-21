@@ -29,7 +29,7 @@ export const createProject = async (
       generateBoilerplate: isGenChecked,
       userIdea: isGenChecked ? userIdea : null,
       Owner: Owner || null,
-      templateType: templateType || "article",
+      templateType: templateType || "blank",
     };
 
     const response = await axios.post(
