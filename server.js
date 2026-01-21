@@ -432,6 +432,7 @@ app.post("/api/projects/create", async (req, res) => {
     await fs.ensureDir(projectDir);
 
     let defaultContent;
+    let aiJsonContent = null;
     console.log("🆕 Creating new project:", title);
 
     if (generateBoilerplate && userIdea) {
@@ -449,6 +450,7 @@ app.post("/api/projects/create", async (req, res) => {
 
         if (aiResponse.data.success) {
           defaultContent = aiResponse.data.latexContent;
+          aiJsonContent = aiResponse.data.projectJson;
           console.log("✅ AI-generated LaTeX content received");
         } else {
           throw new Error("AI generation failed");
@@ -481,6 +483,13 @@ app.post("/api/projects/create", async (req, res) => {
       spaces: 2,
     });
     await fs.writeFile(path.join(projectDir, "main.tex"), defaultContent);
+
+    if (aiJsonContent) {
+      await fs.writeJSON(path.join(projectDir, "main.json"), aiJsonContent, {
+        spaces: 2,
+      });
+      console.log("✅ Saved AI content structure to main.json");
+    }
 
     console.log(`✅ Created project: ${title} (${projectId})`);
     res.json({ success: true, project: projectData });

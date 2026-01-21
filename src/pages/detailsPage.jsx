@@ -218,7 +218,7 @@ const DetailsPage = () => {
                 className="w-full max-w-md h-32 border border-[#CFCFCF] bg-[#F9F9F9] px-2 py-2 resize-none"
               />
             </div>
-            <label
+            {/* <label
               htmlFor="githubUrl"
               className="text-[#343434] text-base font-medium font-inter block mt-5"
             >
@@ -231,7 +231,7 @@ const DetailsPage = () => {
               // placeholder="Github URL"
               // onChange={(e) => setTitle(e.target.value)}
               className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-            />
+            /> */}
           </>
         )}
 
