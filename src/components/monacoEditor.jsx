@@ -10,6 +10,7 @@ const MonacoEditorPanel = ({
   token = null,
   isOnline = null,
   user = null,
+  activeEditor = "monaco",
 }) => {
   const editorInstanceRef = useRef(null);
   const [editorReady, setEditorReady] = useState(false);
@@ -25,11 +26,18 @@ const MonacoEditorPanel = ({
     if (editorInstanceRef.current && value !== undefined) {
       const currentValue = editorInstanceRef.current.getValue();
       if (currentValue !== value) {
+        // Prevent feedback loop: Only update if the change didn't come from Monaco itself
+        // OR if the value is significantly different (e.g. file switch)
+        if (activeEditor === "monaco") {
+            // console.log("Skipping local update loop");
+            return;
+        }
+
         console.log("📝 Updating Monaco editor with new content");
         editorInstanceRef.current.setValue(value);
       }
     }
-  }, [value]);
+  }, [value, activeEditor]);
 
   const handleEditorMount = (editor, monaco) => {
     monacoEditorRef.current = editor;
