@@ -63,7 +63,7 @@ const StartingPage = () => {
         <div className="text-[#555555] text-xl font-inter font-medium leading-[20px]">
           Recent Projects
         </div>
-        <SearchBar />
+        <SearchBar data={projectData}/>
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
           {(projectData || []).slice(0, 5).map((project) => (
             <Link to={`/canvas?project=${project.id}`}>
