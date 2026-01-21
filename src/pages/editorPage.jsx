@@ -76,24 +76,13 @@ const EditorPage = () => {
   // }, []);
 
   const fetchData = async () => {
-    const projectId = searchParams.get("project");
-    if (projectId) {
-      console.log("Hello HSj");
-      const { CurrentProject, ActiveFile } = await loadProject(projectId);
-      updateProjectDetails({
-        currentProject: CurrentProject,
-        activeFile: ActiveFile,
-      });
-    } else {
-      const { Projects, Loading, CurrentProject, ActiveFile } =
-        await loadProjects();
-      updateProjectDetails({
-        project: Projects,
-        currentProject: CurrentProject,
-        activeFile: ActiveFile,
-        isLoading: Loading,
-      });
-    }
+    const { Projects, Loading, CurrentProject, ActiveFile } = await loadProjects();
+    updateProjectDetails({
+      project: Projects,
+      currentProject: CurrentProject,
+      activeFile: ActiveFile,
+      isLoading: Loading,
+    });
   };
 
   // const checkServerHealth = async () => {
@@ -109,28 +98,46 @@ const EditorPage = () => {
 
   useEffect(() => {
     console.log("🔍 EditorPage effect triggered");
-    console.log("Search params:", searchParams.toString());
-    console.log("All params:", Object.fromEntries(searchParams.entries()));
-
     const projectIdFromUrl = searchParams.get("project");
     console.log("Project ID from URL:", projectIdFromUrl);
 
     if (projectIdFromUrl) {
-      console.log("📥 Loading REMOTE project...");
-      updateProjectDetails({ isLoading: true });
-      loadRemoteProject(projectIdFromUrl);
+      // Check if this is a remote project (identified by having a server URL stored)
+      const serverUrl = localStorage.getItem(`project_${projectIdFromUrl}_server`);
+      
+      if (serverUrl) {
+        console.log("📥 Loading REMOTE project...");
+        updateProjectDetails({ isLoading: true });
+        loadRemoteProject(projectIdFromUrl);
+      } else {
+        console.log("📂 Loading LOCAL project...");
+        
+        // Inline local loading logic
+        const loadLocal = async () => {
+             updateProjectDetails({ isLoading: true });
+             const { CurrentProject, ActiveFile, Error } = await loadProject(projectIdFromUrl);
+             
+             if (Error) {
+                 updateProjectDetails({
+                    error: Error,
+                    isLoading: false
+                 });
+             } else {
+                 updateProjectDetails({
+                    currentProject: CurrentProject,
+                    activeFile: ActiveFile,
+                    isLoading: false
+                 });
+                 // Also load the list of projects in background so the sidebar works
+                 const { Projects } = await loadProjects();
+                 updateProjectDetails({ project: Projects });
+             }
+        };
+        loadLocal();
+      }
     } else {
-      console.log("📂 Loading LOCAL projects...");
+      console.log("📂 Loading LOCAL projects list...");
       fetchData();
-    }
-
-    if (projectIdFromUrl) {
-      console.log("📂 Loading LOCAL projects...");
-      fetchData();
-    } else {
-      console.log("📥 Loading REMOTE project...");
-      updateProjectDetails({ isLoading: true });
-      loadRemoteProject(projectIdFromUrl);
     }
   }, [searchParams]);
 

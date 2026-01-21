@@ -644,3 +644,39 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* =========================================
+   Yjs Collaboration Cursor Styles
+   ========================================= */
+
+.yRemoteSelection {
+  background-color: rgb(250, 129, 0, 0.5);
+  margin-right: -1px;
+}
+
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: orange solid 2px;
+  border-top: orange solid 2px;
+  border-bottom: orange solid 2px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.yRemoteSelectionHead::after {
+  position: absolute;
+  content: " ";
+  border: 1px solid orange;
+  background-color: orange;
+  padding: 4px;
+  margin-left: -1px;
+  margin-top: -22px; /* Move above cursor */
+  color: white;
+  font-size: 12px;
+  font-family: Inter, sans-serif;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
