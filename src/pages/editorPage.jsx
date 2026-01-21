@@ -9,6 +9,7 @@ import MonacoEditorPanel from "../components/monacoEditor";
 import RichTextEditorPanel from "../components/textEditor";
 import SectionEditor from "../components/sectionEditor.jsx";
 import LeaveSession from "../components/LeaveSession.jsx";
+import AIChatPanel from "../components/aiChatPanel.jsx";
 import "react-quill-new/dist/quill.snow.css";
 import "../App.css";
 import {
@@ -827,6 +828,11 @@ const EditorPage = () => {
             {logs.map((log, i) => (
               <div key={i}>{log}</div>
             ))}
+          </div>
+        )}
+        {activeRightView === "aichat" && (
+          <div className="flex-1 overflow-hidden relative">
+            <AIChatPanel projectDetails={projectDetails} />
           </div>
         )}
       </div>
