@@ -253,9 +253,8 @@ export const useYjsMonaco = (projectId, token, isOnline, monacoEditor, user) => 
 
     // Bind to Monaco
     console.log("🔗 Binding Yjs to Monaco editor");
-    if (ytext.length === 0) {
-      ytext.insert(0, monacoEditor.getValue());
-    }
+    // NOTE: Do NOT insert initial content here - let the server sync provide the content
+    // The owner's content should be pushed to the server when they first save/connect
 
     binding.current = new MonacoBinding(
       ytext,

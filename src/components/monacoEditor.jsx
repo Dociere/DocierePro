@@ -23,21 +23,16 @@ const MonacoEditorPanel = ({
   // );
 
   useEffect(() => {
-    if (editorInstanceRef.current && value !== undefined) {
+    // Only update editor content if NOT using Yjs sync (isOnline)
+    // When Yjs is active, it manages the editor content directly
+    if (!isOnline && editorInstanceRef.current && value !== undefined) {
       const currentValue = editorInstanceRef.current.getValue();
       if (currentValue !== value) {
-        // Prevent feedback loop: Only update if the change didn't come from Monaco itself
-        // OR if the value is significantly different (e.g. file switch)
-        if (activeEditor === "monaco") {
-            // console.log("Skipping local update loop");
-            return;
-        }
-
-        console.log("📝 Updating Monaco editor with new content");
+        console.log("📝 Updating Monaco editor with new content (offline mode)");
         editorInstanceRef.current.setValue(value);
       }
     }
-  }, [value, activeEditor]);
+  }, [value, isOnline]);
 
   const handleEditorMount = (editor, monaco) => {
     monacoEditorRef.current = editor;
