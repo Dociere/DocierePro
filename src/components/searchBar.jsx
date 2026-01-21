@@ -1,29 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-const SearchBar = () => {
+const SearchBar = ({ data }) => {
   const [query, setQuery] = useState("");
   const [isActive, setIsActive] = useState(false);
   const [filteredResults, setFilteredResults] = useState([]);
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  // List of pages (routes) to search against
-  const pages = [
-    { name: "Dashboard", path: "/" },
-    { name: "Image Carousel", path: "home/carousel" },
-    { name: "Introduction Text", path: "/home/introtext" },
-    { name: "Announcements", path: "/home/whatsNew" },
-    { name: "Department Home", path: "/department/home" },
-    { name: "Training and Placement", path: "/training-placement" },
-    { name: "Research and Publication", path: "/research/home" },
-    { name: "Edit Profile", path: "/profile" },
-  ];
+  // List of searchData (routes) to search against
+  // const searchData = [
+  //   { name: "Dashboard", path: "/" },
+  //   { name: "Image Carousel", path: "home/carousel" },
+  //   { name: "Introduction Text", path: "/home/introtext" },
+  //   { name: "Announcements", path: "/home/whatsNew" },
+  //   { name: "Department Home", path: "/department/home" },
+  //   { name: "Training and Placement", path: "/training-placement" },
+  //   { name: "Research and Publication", path: "/research/home" },
+  //   { name: "Edit Profile", path: "/profile" },
+  // ];
+
+  const searchData = data.map((item) => ({
+    name: item.title,
+    path: `/canvas?project=${item.id}`,
+  }));
 
   // Handle keydown events
   const handleKeyDown = (e) => {
     if (e.ctrlKey && e.key === "/") {
-      e.preventDefault(); // Prevent "/" from being typed if not focused
+      e.preventDefault();
       setIsActive(true);
       if (inputRef.current) {
         inputRef.current.focus();
@@ -70,11 +75,11 @@ const SearchBar = () => {
     }
   };
 
-  // Filter pages based on the query
+  // Filter searchData based on the query
   useEffect(() => {
     if (query.trim()) {
-      const results = pages.filter((page) =>
-        page.name.toLowerCase().includes(query.toLowerCase().trim())
+      const results = searchData.filter((page) =>
+        page.name.toLowerCase().includes(query.toLowerCase().trim()),
       );
       setFilteredResults(results);
     } else {
