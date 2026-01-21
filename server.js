@@ -600,6 +600,56 @@ app.put("/api/projects/:id", async (req, res) => {
   }
 });
 
+// API: Delete specific file from project
+app.delete("/api/projects/:id/files/:filename", async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+    const projectDir = path.join(PROJECTS_DIR, id);
+    const projectPath = path.join(projectDir, "project.json");
+    const filePath = path.join(projectDir, filename);
+
+    if (!(await fs.pathExists(projectPath))) {
+      return res.status(404).json({ success: false, error: "Project not found" });
+    }
+
+    // Load project data
+    const projectData = await fs.readJSON(projectPath);
+
+    // Remove from project.json
+    if (projectData.files[filename]) {
+      delete projectData.files[filename];
+
+      // If we deleted the active file, switch to main.tex
+      if (projectData.activeFile === filename) {
+        projectData.activeFile = "main.tex";
+      }
+
+      projectData.modified = new Date().toISOString();
+      await fs.writeJSON(projectPath, projectData, { spaces: 2 });
+    }
+
+    // Delete from disk
+    if (await fs.pathExists(filePath)) {
+      await fs.remove(filePath);
+    }
+
+    console.log(`✅ Deleted file ${filename} from project ${id}`);
+
+    // Populate remaining file contents to keep frontend in sync
+    for (const [fName, fInfo] of Object.entries(projectData.files)) {
+      const p = path.join(projectDir, fName);
+      if (await fs.pathExists(p)) {
+        fInfo.content = await fs.readFile(p, "utf8");
+      }
+    }
+
+    res.json({ success: true, project: projectData });
+  } catch (error) {
+    console.error("❌ File deletion error:", error);
+    res.status(500).json({ success: false, error: "Failed to delete file" });
+  }
+});
+
 // API: Delete project
 app.delete("/api/projects/:id", async (req, res) => {
   try {
@@ -651,200 +701,98 @@ app.post("/api/compile", async (req, res) => {
       });
     }
 
-    console.log(`📄 Project ID: ${projectId || "none"}`);
-    console.log(`📄 Content length: ${content.length} characters`);
-    console.log(`📄 TEX file path: ${texPath}`);
-    console.log(`📄 PDF target path: ${pdfPath}`);
+    // Create a unique temporary directory for this specific compilation
+    const compileId = uuidv4();
+    const buildDir = path.join(TEMP_DIR, compileId);
+    await fs.ensureDir(buildDir);
 
-    // Write the .tex file
-    await fs.writeFile(texPath, content, "utf8");
-    console.log(`✅ TEX file written successfully`);
+    console.log(`📄 Starting compilation in: ${buildDir}`);
 
-    // Verify file was written
-    const texExists = await fs.pathExists(texPath);
-    console.log(`✅ TEX file exists: ${texExists}`);
-
-    if (!texExists) {
-      throw new Error("Failed to write TEX file to disk");
+    // If a projectId is provided, copy all existing project files to the build directory
+    if (projectId) {
+      const projectDir = path.join(PROJECTS_DIR, projectId);
+      if (await fs.pathExists(projectDir)) {
+        // Copy all files EXCEPT project.json
+        const files = await fs.readdir(projectDir);
+        for (const file of files) {
+          if (file !== 'project.json') {
+            await fs.copy(path.join(projectDir, file), path.join(buildDir, file));
+          }
+        }
+        console.log(`✅ Copied project files from ${projectId}`);
+      }
     }
 
-    // Delete old PDF if it exists (prevents false positives)
-    try {
-      await fs.remove(pdfPath);
-      console.log(`🗑️ Removed old PDF if it existed`);
-    } catch (e) {
-      // Ignore if file doesn't exist
-    }
+    // Determine the active TeX file name. Default to main.tex
+    // If the user is editing a subfile, we still usually want to compile the root 'main.tex'
+    // unless the subfile is a standalone document. For now, we use the 'content' sent.
+    const texFileName = "main.tex";
+    const buildTexPath = path.join(buildDir, texFileName);
+    const buildPdfPath = path.join(buildDir, "main.pdf");
+    const buildLogPath = path.join(buildDir, "main.log");
+
+    // Write the current editor content to the build directory (overwriting the version from disk)
+    await fs.writeFile(buildTexPath, content, "utf8");
 
     // FIRST COMPILATION PASS
-    console.log("\n🔄 STARTING FIRST PDFLATEX PASS...");
-    const result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-    console.log(`📊 First pass exit code: ${result1.code}`);
-    console.log(`📊 Stdout length: ${result1.stdout.length}`);
-    console.log(`📊 Stderr length: ${result1.stderr.length}`);
+    console.log("\n🔄 STARTING PDFLATEX...");
+    const result1 = await runPdfLatexPermissive(buildTexPath, buildDir);
 
-    // Check if PDF was created after first pass
-    let pdfExists = await fs.pathExists(pdfPath);
-    console.log(`📄 PDF exists after first pass: ${pdfExists}`);
-
+    // Check for references/bibliography and run again if needed
+    let pdfExists = await fs.pathExists(buildPdfPath);
     if (pdfExists) {
-      const stats = await fs.stat(pdfPath);
-      console.log(`📄 PDF file size: ${stats.size} bytes`);
+      await runPdfLatexPermissive(buildTexPath, buildDir);
+      pdfExists = await fs.pathExists(buildPdfPath);
     }
 
-    // SECOND COMPILATION PASS (for references, bibliographies, etc.)
     if (pdfExists) {
-      console.log("\n🔄 STARTING SECOND PDFLATEX PASS...");
-      const result2 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-      console.log(`📊 Second pass exit code: ${result2.code}`);
+      const pdfBuffer = await fs.readFile(buildPdfPath);
 
-      // Check again after second pass
-      pdfExists = await fs.pathExists(pdfPath);
-      console.log(`📄 PDF exists after second pass: ${pdfExists}`);
-    }
-
-    // FINAL CHECK - Does PDF exist?
-    pdfExists = await fs.pathExists(pdfPath);
-    console.log(`\n📄 FINAL CHECK - PDF exists: ${pdfExists}`);
-
-    if (pdfExists) {
-      // SUCCESS! PDF was generated
-      const pdfBuffer = await fs.readFile(pdfPath);
-      console.log(`✅ SUCCESS! PDF size: ${pdfBuffer.length} bytes`);
-
-      // Try to read log file for errors/warnings
       let logContent = "";
       let errors = [];
       let warnings = [];
 
       try {
-        logContent = await fs.readFile(logPath, "utf8");
-
-        // Extract error lines
+        logContent = await fs.readFile(buildLogPath, "utf8");
         const lines = logContent.split("\n");
-        errors = lines
-          .filter(
-            (line) => line.trim().startsWith("!") && !line.includes("****"),
-          )
-          .slice(0, 20);
-
-        // Extract warning lines
-        warnings = lines
-          .filter((line) => line.toLowerCase().includes("warning"))
-          .slice(0, 20);
-
-        console.log(
-          `📊 Extracted ${errors.length} errors and ${warnings.length} warnings from log`,
-        );
-      } catch (logError) {
-        console.log(`⚠️ Could not read log file: ${logError.message}`);
+        errors = lines.filter(l => l.trim().startsWith("!")).slice(0, 10);
+        warnings = lines.filter(l => l.toLowerCase().includes("warning")).slice(0, 10);
+      } catch (e) {
+        console.log("Could not read log");
       }
 
-      console.log("=".repeat(60));
-      console.log("✅ COMPILATION SUCCESSFUL - SENDING PDF TO CLIENT");
-      console.log("=".repeat(60) + "\n");
+      // Cleanup build directory asynchronously
+      fs.remove(buildDir).catch(err => console.error("Cleanup error:", err));
 
-      // Return success response
       res.json({
         success: true,
         pdf: pdfBuffer.toString("base64"),
-        message:
-          errors.length > 0
-            ? `Compiled successfully despite ${errors.length} error(s)`
-            : warnings.length > 0
-              ? `Compiled with ${warnings.length} warning(s)`
-              : "Document compiled successfully",
+        message: errors.length > 0 ? "Compiled with errors" : "Success",
         log: logContent || result1.stdout,
         errors: errors.length > 0 ? errors : null,
         warnings: warnings.length > 0 ? warnings : null,
-        hasErrors: errors.length > 0,
-        hasWarnings: warnings.length > 0,
       });
     } else {
-      // FAILURE - No PDF was generated
-      console.error("\n❌ COMPILATION FAILED - NO PDF GENERATED");
-
+      // Failure logic
       let logContent = "";
-      let errorDetails = [];
+      try { logContent = await fs.readFile(buildLogPath, "utf8"); } catch (e) { }
 
-      try {
-        logContent = await fs.readFile(logPath, "utf8");
-        console.log(`📄 Log file size: ${logContent.length} characters`);
+      // Cleanup
+      fs.remove(buildDir).catch(err => console.error("Cleanup error:", err));
 
-        // Extract critical error information
-        const lines = logContent.split("\n");
-        let errorContext = [];
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          if (line.includes("!") || line.toLowerCase().includes("error")) {
-            // Collect context around error
-            const start = Math.max(0, i - 2);
-            const end = Math.min(lines.length, i + 5);
-            errorContext.push(lines.slice(start, end).join("\n"));
-          }
-        }
-
-        errorDetails = errorContext.slice(0, 5); // First 5 errors with context
-        console.log(`📊 Extracted ${errorDetails.length} error contexts`);
-
-        if (errorDetails.length > 0) {
-          console.log("\n❌ ERROR DETAILS:");
-          errorDetails.forEach((err, idx) => {
-            console.log(`\nError ${idx + 1}:\n${err}`);
-          });
-        }
-      } catch (logError) {
-        console.log(`⚠️ Could not read log file: ${logError.message}`);
-      }
-
-      // List files in output directory for debugging
-      try {
-        const outputFiles = await fs.readdir(OUTPUT_DIR);
-        const relevantFiles = outputFiles.filter((f) => f.includes(filename));
-        console.log(
-          `📁 Files in output directory for this compilation:`,
-          relevantFiles,
-        );
-      } catch (e) {
-        console.log(`⚠️ Could not list output directory`);
-      }
-
-      console.log("=".repeat(60));
-      console.log("❌ COMPILATION FAILED - SENDING ERROR TO CLIENT");
-      console.log("=".repeat(60) + "\n");
-
-      res.json({
+      res.status(500).json({
         success: false,
-        error: "LaTeX compilation failed - no PDF was generated",
-        details:
-          errorDetails.length > 0
-            ? errorDetails.join("\n\n--- Next Error ---\n\n")
-            : "No specific errors found in log. This might be a critical syntax error.",
-        log: logContent || result1.stdout,
-        message:
-          "Critical error prevented PDF generation. Check the error details and log.",
-        fullStdout: result1.stdout.slice(-2000), // Last 2000 chars of stdout
-        fullStderr: result1.stderr.slice(-2000), // Last 2000 chars of stderr
+        error: "Compilation failed. No PDF generated.",
+        log: logContent || result1.stdout
       });
     }
 
-    // Schedule cleanup after 30 seconds
-    setTimeout(() => {
-      cleanupFiles(filename, TEMP_DIR);
-      cleanupFiles(filename, OUTPUT_DIR);
-      console.log(`🧹 Cleaned up files for ${filename}`);
-    }, 30000);
   } catch (error) {
-    console.error("\n❌ EXCEPTION DURING COMPILATION:");
-    console.error(error);
-    console.log("=".repeat(60) + "\n");
-
+    console.error("\n❌ COMPILATION ERROR:", error);
     res.status(500).json({
       success: false,
-      error: "Compilation exception",
-      details: error.message,
-      stack: error.stack,
+      error: "Server Error",
+      details: error.message
     });
   }
 });
@@ -858,15 +806,15 @@ app.get("/api/test-pdflatex", async (req, res) => {
 \\begin{document}
 Hello World
 \\end{document}`;
-    
+
     const testFile = path.join(TEMP_DIR, "test.tex");
     await fs.writeFile(testFile, testLatex);
-    
+
     console.log("Testing pdflatex...");
     const result = await runPdfLatexPermissive(testFile, OUTPUT_DIR);
-    
+
     const pdfExists = await fs.pathExists(path.join(OUTPUT_DIR, "test.pdf"));
-    
+
     res.json({
       success: pdfExists,
       exitCode: result.code,
@@ -931,20 +879,20 @@ ${latex.replace(/[‹›]/g, "")}
 
     // Verify PDF exists
     const pdfExists = await fs.pathExists(pdfFilePath);
-if (!pdfExists) {
-    console.error("❌ PDF file was not created");
-    // Read the log file for errors
-    const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
-    let logContent = "";
-    try {
+    if (!pdfExists) {
+      console.error("❌ PDF file was not created");
+      // Read the log file for errors
+      const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
+      let logContent = "";
+      try {
         logContent = await fs.readFile(logPath, "utf8");
         console.error("📄 LaTeX Log:", logContent.slice(-1000));
-    } catch (logErr) {
+      } catch (logErr) {
         console.error("Could not read log file");
+      }
+
+      throw new Error(`PDF compilation failed. Check LaTeX syntax. Log: ${logContent.slice(-500)}`);
     }
-    
-    throw new Error(`PDF compilation failed. Check LaTeX syntax. Log: ${logContent.slice(-500)}`);
-}
     console.log("✅ PDF file created successfully:", pdfFileName);
 
     let finalUrl = `/output/${pdfFileName}`;
@@ -1270,7 +1218,7 @@ app.post("/api/citation/compile", async (req, res) => {
     // Delete old PDF if exists
     try {
       await fs.remove(pdfFilePath);
-    } catch (e) {}
+    } catch (e) { }
 
     // Run pdflatex
     console.log("🔄 Compiling citation...");
@@ -1286,7 +1234,7 @@ app.post("/api/citation/compile", async (req, res) => {
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch {}
+      } catch { }
 
       console.error("❌ Citation compilation failed - no PDF");
       throw new Error(`PDF not generated. Log:\n${logContent.slice(-500)}`);

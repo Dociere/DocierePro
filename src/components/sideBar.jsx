@@ -322,7 +322,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
         <VersionManager onClose={() => setIsVersionModalOpen(false)} />
       )}
 
-      {/* {isSectionSpaceOpen && <SectionSpace />} */}
+      {isSectionSpaceOpen && <SectionSpace />}
     </>
   );
 };

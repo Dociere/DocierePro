@@ -376,11 +376,11 @@ const EditorPage = () => {
     }
   }, [projectDetails.currentProject, projectDetails.activeFile]);
 
-  // Reset on project change
+  // Reset on project or file change
   useEffect(() => {
     sectionsInitialized.current = false;
     lastSyncedLatex.current = "";
-  }, [projectDetails.currentProject?.id]);
+  }, [projectDetails.currentProject?.id, projectDetails.activeFile]);
 
   useEffect(() => {
     if (projectDetails.compilationMessage) {
@@ -754,7 +754,7 @@ const EditorPage = () => {
 
   return (
     <div
-      className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-11 transition-colors duration-300 ${isDark ? "bg-[#121212]" : ""} ${isSectionSpaceOpen ? "ml-56" : "ml-0"
+      className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-11 transition-colors duration-300 ${isDark ? "bg-[#121212]" : ""} ${isSectionSpaceOpen ? "ml-64" : "ml-0"
         }`}
     >
       <LeaveSession projectId={projectDetails.currentProject?.id} />

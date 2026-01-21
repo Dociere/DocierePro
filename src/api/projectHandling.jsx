@@ -126,8 +126,7 @@ export const saveProject = async (
     if (isServerConnected && isAuthenticated) {
       try {
         await axios.put(
-          `${import.meta.env.VITE_admin_server}/api/projects/${
-            currentProject.id
+          `${import.meta.env.VITE_admin_server}/api/projects/${currentProject.id
           }`,
           {
             files: currentProject.files,
