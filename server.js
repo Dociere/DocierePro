@@ -10,6 +10,7 @@ import dotenv from "dotenv";
 import sharp from "sharp";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import * as TemplateEngine from './renderStrategies.js';
 
 dotenv.config();
 
@@ -435,15 +436,18 @@ app.post("/api/projects/create", async (req, res) => {
     let aiJsonContent = null;
     console.log("🆕 Creating new project:", title);
 
-    if (generateBoilerplate && userIdea) {
+    const useAI = generateBoilerplate && userIdea;
+    const templateKey = req.body.templateType || "article";
+
+    if (useAI) {
       try {
-        console.log("🤖 Generating LaTeX content via AI...");
+        console.log("🤖 Requesting AI content from Python Service...");
         const aiResponse = await axios.post(
           `${AI_SERVICE_URL}/api/generate-latex`,
           {
             userIdea,
             title,
-            templateType: req.body.templateType || "Blank Document",
+            templateType: templateKey,
             authorDetails,
           },
         );
@@ -456,11 +460,42 @@ app.post("/api/projects/create", async (req, res) => {
           throw new Error("AI generation failed");
         }
       } catch (aiError) {
-        console.error("AI generation error:", aiError);
-        defaultContent = getDefaultTemplate(title, authorDetails);
+        console.error("AI Error:", aiError.message);
+        // Fallback to Skeleton if AI fails
+        console.log("⚠️ Falling back to Skeleton Template");
+        const skeleton = TemplateEngine.getSkeletonContent(templateKey);
+        aiJsonContent = skeleton;
+        
+        // Prepare authors list for renderer
+        const authorsList = [{
+            name: authorDetails.name || 'Author',
+            email: authorDetails.email || '',
+            organization: authorDetails.affiliation || '',
+            is_corresponding: true
+        }];
+
+        const renderer = TemplateEngine.RENDERERS[templateKey] || TemplateEngine.RENDERERS['article'];
+        defaultContent = renderer(title, authorsList, skeleton.abstract, skeleton.keywords, skeleton.sections);
       }
     } else {
-      defaultContent = getDefaultTemplate(title, authorDetails);
+      // --- B. SKELETON MODE (Local Node.js Generation) ---
+      console.log(`🏗️ Generating Skeleton Template locally (${templateKey})...`);
+      
+      const skeleton = TemplateEngine.getSkeletonContent(templateKey);
+      aiJsonContent = skeleton;
+
+      const authorsList = [{
+          name: authorDetails.name || 'Author',
+          email: authorDetails.email || '',
+          organization: authorDetails.affiliation || '', // Note: frontend sends 'authorInstitute', you mapped it to 'affiliation'
+          is_corresponding: true
+      }];
+
+      // Pick Renderer (Default to article/blank if not found)
+      const renderer = TemplateEngine.RENDERERS[templateKey] || TemplateEngine.RENDERERS['article'];
+      
+      // Generate LaTeX string
+      defaultContent = renderer(title, authorsList, skeleton.abstract, skeleton.keywords, skeleton.sections);
     }
 
     const projectData = {
