@@ -762,6 +762,7 @@ const EditorPage = () => {
                 token={collaborationToken}
                 isOnline={isOnline}
                 user={user}
+                activeEditor={activeView === "code" ? "monaco" : "other"}
               />
             </div>
           )}
