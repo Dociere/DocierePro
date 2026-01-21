@@ -16,6 +16,7 @@ export const createProject = async (
   userIdea,
   isGenChecked,
   Owner,
+  templateType,
   e,
 ) => {
   e.preventDefault();
@@ -28,6 +29,7 @@ export const createProject = async (
       generateBoilerplate: isGenChecked,
       userIdea: isGenChecked ? userIdea : null,
       Owner: Owner || null,
+      templateType: templateType || "article",
     };
 
     const response = await axios.post(
