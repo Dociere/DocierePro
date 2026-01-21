@@ -577,8 +577,8 @@ const EasyMathInput = ({ onClose }) => {
         {/* --- HEADER --- */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center gap-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <TbMathFunction className="text-gray-700" /> Easy Math Input
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2 font-inter">
+              <TbMathFunction className="text-gray-700" /> Equation Generator
             </h2>
             <div className="flex bg-gray-100 p-1 rounded-lg">
               <button
@@ -745,7 +745,7 @@ const EasyMathInput = ({ onClose }) => {
                       <button
                         onClick={() => handleCompile()}
                         disabled={isCompiling}
-                        className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-4 py-2 bg-black text-white font-inter rounded-lg hover:bg-gray-800 shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isCompiling ? (
                           <TbLoader className="animate-spin" />

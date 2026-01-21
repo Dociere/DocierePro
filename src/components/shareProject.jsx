@@ -3,6 +3,7 @@ import axios from "axios";
 import { useAuth } from "../context/useAuth";
 import { projectContext } from "../context/useProject.jsx";
 import { saveProject } from "../api/projectHandling.jsx";
+import { useNavigate } from "react-router-dom";
 
 const ShareProject = ({ onClose, projectId, isOwner }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
   const [message, setMessage] = useState("");
   const { user } = useAuth();
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
+  const navigate = useNavigate();
 
   const handleShare = async () => {
     console.log("Project ID:", projectId);
@@ -108,7 +110,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
       }
 
       setTimeout(() => {
-        window.location.href = `/canvas?project=${projectId}`;
+        navigate(`/canvas?project=${projectId}`);
       }, 1000);
     } catch (error) {
       console.error("Error from handleJoin", error);

@@ -27,7 +27,7 @@ const StartingPage = () => {
             Docière Pro
           </div>
           <div className="mt-4 text-[#7D7D7D] text-3xl font-inter font-extralight tracking-wide">
-            Latex Redefined
+            LaTeX Redefined
           </div>
         </div>
         <div className="ml-72">
@@ -66,7 +66,9 @@ const StartingPage = () => {
         <SearchBar />
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
           {(projectData || []).slice(0, 5).map((project) => (
-            <TemplateCards title={project.title} />
+            <Link to={`/canvas?project=${project.id}`}>
+              <TemplateCards title={project.title} />
+            </Link>
           ))}
         </div>
       </div>

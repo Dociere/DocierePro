@@ -727,22 +727,27 @@ const NavBar = () => {
           </div>
           {projectDetails?.currentProject?.title ? (
             <div
-              onClick={() => setRenameProject((prev) => !prev)}
-              className="flex flex-1 py-0 text-sm font-inter font-medium flex-row justify-center items-center cursor-pointer"
+              className="flex flex-1 py-0 text-sm font-inter font-medium justify-center"
               style={{ WebkitAppRegion: "no-drag" }}
             >
-              {projectDetails?.currentProject?.title}
-              <EditIcon
-                style={{ fill: "#585858", WebkitAppRegion: "no-drag" }}
-                className="ml-2 w-3 h-3 relative select-none"
-              />
+              <div
+                className="flex flex-row items-center cursor-pointer select-none"
+                onClick={() => setRenameProject((prev) => !prev)}
+              >
+                {projectDetails?.currentProject?.title}
+                <EditIcon
+                  style={{ fill: "#585858", WebkitAppRegion: "no-drag" }}
+                  className="ml-2 w-3 h-3 relative select-none"
+                />
+              </div>
               {renameProject && (
-                <div className="absolute mt-20 bg-[#EAEAEA] px-2 py-2 border-2 border-[#CFCFCF] select-none rounded-md flex flex-row z-10">
+                <div className="absolute mt-10 bg-[#EAEAEA] px-2 py-2 border-2 border-[#CFCFCF] select-none rounded-md flex flex-row z-10">
                   <input
                     className="pl-2 bg-white w-96"
                     type="text"
                     placeholder="Enter"
                     value={updatetitle}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setUpdateTitle(e.target.value)}
                   />{" "}
                   <TickIcon
@@ -772,7 +777,7 @@ const NavBar = () => {
             style={{ WebkitAppRegion: "no-drag" }}
           >
             <button
-              className="hover:bg-gray-200 my-2 rounded-md px-3"
+              className="hover:bg-gray-200 mb-2 rounded-md px-3"
               onClick={() => window.electronAPI.minimize()}
             >
               _
