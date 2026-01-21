@@ -72,7 +72,8 @@ const DetailsPage = () => {
         userIdea,
         isGenChecked,
         user?.emailId ?? null,
-        e
+        templateTitle,
+        e,
       );
 
       navigate("/canvas");

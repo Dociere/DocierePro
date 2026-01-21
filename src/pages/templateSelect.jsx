@@ -6,18 +6,44 @@ import TemplateCards from "../components/templateCards";
 function TemplateSelect() {
   const [selected, setSelected] = useState("");
 
-  const templates = [
-    "Blank Document",
-    "IEEE Format",
-    "MLA Format",
-    "APA Format",
-    "Chicago Format",
-    "Harvard Format",
-    "ACM Format",
-    "XYZ Format",
-    "ABC Format",
-    "LMNO Format",
-  ];
+  // const templates = [
+  //   "Blank Document",
+  //   "IEEE Format",
+  //   "MLA Format",
+  //   "APA Format",
+  //   "Chicago Format",
+  //   "Harvard Format",
+  //   "ACM Format",
+  //   "XYZ Format",
+  //   "ABC Format",
+  //   "LMNO Format",
+  // ];
+
+  const templates = {
+    "AI4X Conference": "ai4x",
+    "MLA Format": "mla",
+    "Springer Nature Journal": "springer_nature",
+    "IEEE Transactions on Magnetics": "ieee_transmag",
+    "IEEE Transactions on Medical Imaging": "ieee_tmi",
+    "IEEE Journal": "ieee_journal",
+    "IEEE Transactions on Nuclear Science": "ieee_tns",
+    "IEEE Journal Letters": "ieee_journal_letters",
+    "MDPI Journal": "mdpi",
+    "ACM Manuscript": "acm_manuscript",
+    "Cell Press Journal": "cell_press",
+    "ACS Journal": "acs",
+    "Frontiers Journal": "frontiers",
+    "Elsevier Article": "elsarticle",
+    "American Journal of Physics": "ajp",
+    "AIP Journal": "aip",
+    "Science Journal": "science",
+    "Royal Society of Chemistry Journal": "rsc",
+    "ASM Journal": "asm_journal",
+    "ASME Journal": "asme",
+    "AMS Transactions": "ams_tran",
+    "IOS Press Book Article": "ios_book_article",
+    "SPIE Journal": "spie_journal",
+  };
 
   return (
     <div className="mt-20">
@@ -49,9 +75,9 @@ function TemplateSelect() {
             </div>
           </div>
           <div className="flex flex-row flex-wrap mt-10 gap-20">
-            {templates.map((templateTitle) => (
-              <Link key={templateTitle} to={`/detailPage/${templateTitle}`}>
-                <TemplateCards title={templateTitle} />
+            {Object.entries(templates).map(([title, value]) => (
+              <Link key={value} to={`/detailPage/${value}`}>
+                <TemplateCards title={title} />
               </Link>
             ))}
           </div>
