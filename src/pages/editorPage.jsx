@@ -21,6 +21,7 @@ import {
 } from "../utils/latexUtility.jsx";
 import {
   loadProjects,
+  loadProject,
   saveProject,
   loadProjectFromServer,
 } from "../api/projectHandling.jsx";
@@ -74,14 +75,24 @@ const EditorPage = () => {
   // }, []);
 
   const fetchData = async () => {
-    const { Projects, Loading, CurrentProject, ActiveFile } =
-      await loadProjects();
-    updateProjectDetails({
-      project: Projects,
-      currentProject: CurrentProject,
-      activeFile: ActiveFile,
-      isLoading: Loading,
-    });
+    const projectId = searchParams.get("project");
+    if (projectId) {
+      console.log("Hello HSj");
+      const { CurrentProject, ActiveFile } = await loadProject(projectId);
+      updateProjectDetails({
+        currentProject: CurrentProject,
+        activeFile: ActiveFile,
+      });
+    } else {
+      const { Projects, Loading, CurrentProject, ActiveFile } =
+        await loadProjects();
+      updateProjectDetails({
+        project: Projects,
+        currentProject: CurrentProject,
+        activeFile: ActiveFile,
+        isLoading: Loading,
+      });
+    }
   };
 
   // const checkServerHealth = async () => {
@@ -110,6 +121,15 @@ const EditorPage = () => {
     } else {
       console.log("📂 Loading LOCAL projects...");
       fetchData();
+    }
+
+    if (projectIdFromUrl) {
+      console.log("📂 Loading LOCAL projects...");
+      fetchData();
+    } else {
+      console.log("📥 Loading REMOTE project...");
+      updateProjectDetails({ isLoading: true });
+      loadRemoteProject(projectIdFromUrl);
     }
   }, [searchParams]);
 
