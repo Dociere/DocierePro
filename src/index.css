@@ -1,0 +1,62 @@
+/* Inter Font */
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+/* Playfair Display */
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Light mode (default) */
+:root {
+  --bg-primary: #eaeaea;
+  --bg-secondary: #f9f9f9;
+  --bg-tertiary: #ffffff;
+  --text-primary: #212121;
+  --text-secondary: #7d7d7d;
+  --text-tertiary: #585858;
+  --border-color: #cfcfcf;
+  --accent-primary: #ab2d2d;
+  --accent-secondary: #256081;
+}
+
+/* Dark mode */
+.dark {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #252525;
+  --bg-tertiary: #2d2d2d;
+  --text-primary: #e5e5e5;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #c0c0c0;
+  --border-color: #404040;
+  --accent-primary: #d63838;
+  --accent-secondary: #3a8cb8;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.ql-editor {
+  font-family: Inter;
+  font-size: 16px;
+}
+
+/* Fade in animation for save messages */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease;
+}
