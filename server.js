@@ -1049,15 +1049,17 @@ Hello World
   }
 });
 
-// API: Compile LaTeX (for math equations)
+// API: Compile LaTeX (for math equations OR sections)
 app.post("/api/latex/compile", async (req, res) => {
   console.log("📝 Received LaTeX compilation request");
   try {
     const {
       latex,
+      preamble,
       isTemp = true,
       fileName = "temp",
       format = "pdf",
+      type = "equation", // Default to 'equation', but can be 'section'
     } = req.body;
 
     if (!latex) {
@@ -1073,8 +1075,28 @@ app.post("/api/latex/compile", async (req, res) => {
     const pdfFilePath = path.join(OUTPUT_DIR, pdfFileName);
     const imgFilePath = path.join(OUTPUT_DIR, imgFileName);
 
-    // This is the original, simple template that worked for you
-    const minimalLatexDocument = `\\documentclass[border=2pt,varwidth=true]{standalone}
+    let minimalLatexDocument = "";
+
+    if (preamble) {
+      // ✅ OPTION A: Use the User's Real Preamble
+      // We assume the preamble includes \documentclass ... \begin{document}
+      // We just append the section content and the closing tag.
+      minimalLatexDocument = `${preamble}\n${latex}\n\\end{document}`;
+      console.log(minimalLatexDocument);
+    } else if (type === "section") {
+      // ⚠️ OPTION B: Fallback Section Template (if no preamble found)
+      minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
+\\usepackage{amsmath}
+\\usepackage{amsfonts}
+\\usepackage{amssymb}
+\\usepackage{graphicx}
+\\usepackage{xcolor}
+\\begin{document}
+${latex}
+\\end{document}`;
+    } else {
+      // ➗ OPTION C: Equation Mode
+      minimalLatexDocument = `\\documentclass[border=2pt,varwidth=true]{standalone}
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
 \\usepackage{amssymb}
@@ -1085,32 +1107,28 @@ app.post("/api/latex/compile", async (req, res) => {
 ${latex.replace(/[‹›]/g, "")}
 \\end{displaymath}
 \\end{document}`;
+    }
 
     await fs.writeFile(texFilePath, minimalLatexDocument, "utf8");
     console.log("📄 Writing LaTeX file:", texFileName);
 
-    // Run the permissive compiler (resolves even on warnings)
+    // Run the permissive compiler
     await runPdfLatexPermissive(texFilePath, OUTPUT_DIR);
+
+    // ... (The rest of the function remains the same: verification, image conversion, cleanup) ...
 
     // Verify PDF exists
     const pdfExists = await fs.pathExists(pdfFilePath);
     if (!pdfExists) {
-      console.error("❌ PDF file was not created");
-      // Read the log file for errors
+      // ... existing error handling ...
       const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-        console.error("📄 LaTeX Log:", logContent.slice(-1000));
-      } catch (logErr) {
-        console.error("Could not read log file");
-      }
+      } catch (logErr) {}
 
-      throw new Error(
-        `PDF compilation failed. Check LaTeX syntax. Log: ${logContent.slice(-500)}`,
-      );
+      throw new Error(`PDF compilation failed. Log: ${logContent.slice(-500)}`);
     }
-    console.log("✅ PDF file created successfully:", pdfFileName);
 
     let finalUrl = `/output/${pdfFileName}`;
     let finalFileName = pdfFileName;
@@ -1119,20 +1137,16 @@ ${latex.replace(/[‹›]/g, "")}
       try {
         console.log("🖼️ Converting PDF to image...");
         const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
+        // Crop logic...
         const croppedImagePath = path.join(
           OUTPUT_DIR,
           `cropped_${imgFileName}`,
         );
-        console.log("✂️ Cropping image to content...");
         await cropImageToContent(rawImagePath, croppedImagePath);
         finalUrl = `/output/cropped_${imgFileName}`;
         finalFileName = `cropped_${imgFileName}`;
-        console.log("✅ Image created and cropped successfully");
       } catch (imageError) {
-        console.error(
-          "⚠️ Image conversion failed, falling back to PDF:",
-          imageError.message,
-        );
+        console.error("⚠️ Image conversion failed:", imageError.message);
       }
     }
 
@@ -1142,7 +1156,6 @@ ${latex.replace(/[‹›]/g, "")}
       success: true,
       pdfUrl: finalUrl,
       fileName: finalFileName,
-      message: "LaTeX compiled successfully",
       format: finalUrl.endsWith(".png") ? "image" : "pdf",
     });
   } catch (error) {

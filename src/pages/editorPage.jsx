@@ -21,6 +21,7 @@ import {
   sectionsToLatex,
   sectionToRichText,
   richTextToSection,
+  splitLatex,
 } from "../utils/latexUtility.jsx";
 import {
   loadProjects,
@@ -62,6 +63,7 @@ const EditorPage = () => {
   const [logs, setLogs] = useState([]);
 
   const [debugLogs, setDebugLogs] = useState([]);
+  const [docPreamble, setDocPreamble] = useState("");
 
   // 2. Add helper function to log messages:
   const addDebugLog = (message, type = "info", details = null) => {
@@ -98,6 +100,13 @@ const EditorPage = () => {
   //     });
   //   }
   // };
+
+  useEffect(() => {
+    if (effectiveProjectDetails.latexContent) {
+      const { preamble } = splitLatex(effectiveProjectDetails.latexContent);
+      setDocPreamble(preamble);
+    }
+  }, [effectiveProjectDetails.latexContent]);
 
   useEffect(() => {
     console.log("🔍 EditorPage effect triggered");
@@ -788,6 +797,7 @@ const EditorPage = () => {
               <SectionEditor
                 sections={sections}
                 onSectionsChange={handleSectionsChange}
+                preamble={docPreamble}
                 sectionToRichText={sectionToRichText}
                 richTextToSection={richTextToSection}
               />
