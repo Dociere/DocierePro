@@ -2,10 +2,104 @@ import React, { useState, useEffect } from "react";
 import MonacoEditorPanel from "./monacoEditor";
 import RichTextEditorPanel from "./textEditor";
 import latexUtility from "../utils/latexUtility";
+import axios from "axios";
+
+const SERVER_URL = "http://localhost:5000";
+
+// ==========================================
+// 4. DELETE CONFIRMATION MODAL (MATCHING STYLE)
+// ==========================================
+const DeleteConfirmationModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  sectionName,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] backdrop-blur-sm"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose(e);
+      }}
+    >
+      <div
+        className="bg-white rounded-xl p-6 w-96 shadow-2xl border border-gray-100"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-bold text-gray-900 mb-3">Delete Section</h3>
+
+        <p className="text-sm text-gray-600 mb-6">
+          Are you sure you want to delete
+          <span className="font-semibold">
+            {" "}
+            "{sectionName || "Untitled Section"}"
+          </span>
+          ? This action cannot be undone.
+        </p>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ==========================================
 // 1. ICONS
 // ==========================================
+const LoaderIcon = () => (
+  <svg
+    className="animate-spin"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="#5f6368"
+      strokeWidth="4"
+      className="opacity-25"
+    />
+    <path
+      fill="#5f6368"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
 const PlayIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="10" stroke="#5f6368" strokeWidth="2" />
@@ -99,6 +193,7 @@ const SectionEditor = ({
   isOnline,
   sectionToRichText,
   richTextToSection,
+  preamble,
 }) => {
   const [focusedSectionId, setFocusedSectionId] = useState(null);
 
@@ -213,6 +308,7 @@ const SectionEditor = ({
                 projectId={projectId}
                 token={token}
                 isOnline={isOnline}
+                preamble={preamble}
                 sectionToRichText={sectionToRichText}
                 richTextToSection={richTextToSection}
               />
@@ -251,6 +347,7 @@ const RecursiveSection = ({
   projectId,
   token,
   isOnline,
+  preamble,
   sectionToRichText,
   richTextToSection,
 }) => {
@@ -259,8 +356,24 @@ const RecursiveSection = ({
   const [isCodeMode, setIsCodeMode] = useState(false);
   const [richTextContent, setRichTextContent] = useState("");
 
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const handleDeleteConfirm = (e) => {
+    e.stopPropagation();
+    onDelete();
+    setShowDeleteModal(false);
+  };
+
   // STORE HIDDEN PARTS (Preamble/Postamble) HERE
   const hiddenParts = React.useRef({ preamble: "", postamble: "" });
+
+  useEffect(() => {
+    if (isFocused && !section.name) {
+      setIsEditingName(true);
+    }
+  }, [isFocused, section.name]);
 
   useEffect(() => {
     if (!isCodeMode) {
@@ -298,6 +411,79 @@ const RecursiveSection = ({
       hiddenParts.current.preamble + bodyLatex + hiddenParts.current.postamble;
 
     onUpdate({ ...section, content: fullLatex });
+  };
+
+  const handleRunSection = async (e) => {
+    e.stopPropagation();
+
+    if (!section.content || section.content.trim() === "") return;
+
+    setIsLoadingPreview(true);
+    setPreviewError(null);
+    setPreviewUrl(null);
+
+    try {
+      // 1. RECONSTRUCT THE WRAPPER
+      // We take the clean content and wrap it back in its LaTeX command
+      // so the compiler knows how to render it (Bold title, italic keywords, etc.)
+
+      let contentToCompile = section.content;
+
+      if (section.subtype === "env") {
+        // === ENVIRONMENT CASE (Abstract, Keywords) ===
+        const tag = section.envTag || section.name.toLowerCase(); // e.g., "IEEEkeywords"
+
+        // Add the \begin{tag}
+        // We prepend it to the content
+        contentToCompile = `\\begin{${tag}}\n${contentToCompile}`;
+
+        // Check if \end{tag} is missing (it usually is in the visual editor)
+        // Only append if it's not already there to avoid double ending
+        if (!contentToCompile.includes(`\\end{${tag}}`)) {
+          contentToCompile = `${contentToCompile}\n\\end{${tag}}`;
+        }
+      } else {
+        // === STANDARD SECTION CASE (\section, \subsection) ===
+        // If we just compile the text, it looks like a paragraph.
+        // We want to see the Heading Style too.
+
+        if (section.subtype === "starred") {
+          contentToCompile = `\\${section.type}*{${section.name}}\n${contentToCompile}`;
+        } else {
+          contentToCompile = `\\${section.type}{${section.name}}\n${contentToCompile}`;
+        }
+      }
+
+      // 2. SEND TO SERVER
+      const response = await axios.post(`${SERVER_URL}/api/latex/compile`, {
+        latex: contentToCompile, // <--- Send the wrapped content
+        preamble: preamble,
+        format: "image",
+        type: "section",
+        fileName: `preview_${section.id}`,
+        isTemp: true,
+      });
+
+      if (response.data.success) {
+        setPreviewUrl(`${SERVER_URL}${response.data.pdfUrl}?t=${Date.now()}`);
+      } else {
+        console.error("Server Compilation Failed:", response.data);
+        const serverMsg = response.data.error || "Compilation failed";
+        setPreviewError(serverMsg);
+      }
+    } catch (error) {
+      console.error("Preview error:", error);
+      const errMsg = error.response?.data?.error || "Error generating preview";
+      setPreviewError(errMsg);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  const handleClosePreview = (e) => {
+    e.stopPropagation();
+    setPreviewUrl(null);
+    setPreviewError(null);
   };
 
   // ... (Rest of your component handlers: handleChildUpdate, addChild, rendering, etc. remain EXACTLY THE SAME)
@@ -440,7 +626,7 @@ const RecursiveSection = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              setShowDeleteModal(true);
             }}
             disabled={totalSections <= 1 && level === 0}
             className={`w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 ${
@@ -462,10 +648,12 @@ const RecursiveSection = ({
       >
         <div className="w-8 bg-gray-50 border-r border-gray-200 flex flex-col items-center pt-2 flex-shrink-0 gap-2">
           <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded"
-            title="Run"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded transition-colors"
+            title="Compile Section Preview"
+            onClick={handleRunSection}
+            disabled={isLoadingPreview}
           >
-            <PlayIcon />
+            {isLoadingPreview ? <LoaderIcon /> : <PlayIcon />}
           </button>
           <span className="text-[10px] uppercase font-bold text-gray-400 [writing-mode:vertical-rl] rotate-180 mt-2 tracking-widest">
             {section.type}
@@ -485,6 +673,15 @@ const RecursiveSection = ({
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
+                // 👇 ADDED: Exit edit mode on click away (Blur)
+                onBlur={() => setIsEditingName(false)}
+                // 👇 ADDED: Exit edit mode on Enter key
+                onKeyDown={(e) => {
+                  e.stopPropagation(); // Prevent triggering parent handlers
+                  if (e.key === "Enter") {
+                    setIsEditingName(false);
+                  }
+                }}
               />
             </div>
           )}
@@ -538,12 +735,46 @@ const RecursiveSection = ({
               </div>
             )}
           </div>
+          {(previewUrl || previewError) && (
+            <div className="mt-4 p-4 border border-dashed border-gray-300 rounded bg-gray-50 relative group">
+              <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-1">
+                <span className="text-xs font-bold text-gray-500 uppercase">
+                  Compiled Preview
+                </span>
+                <button
+                  onClick={handleClosePreview}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+
+              {previewUrl && (
+                <div className="flex justify-center bg-white p-2 border border-gray-100 shadow-sm">
+                  <img
+                    src={previewUrl}
+                    alt="Section Preview"
+                    className="max-w-full h-auto object-contain"
+                    style={{ maxHeight: "400px" }}
+                  />
+                </div>
+              )}
+
+              {previewError && (
+                <div className="text-xs text-red-500 font-mono bg-red-50 p-2 rounded">
+                  {previewError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div
         className={`flex gap-2 pt-2 pb-2 justify-center transition-all duration-200 overflow-hidden ${
-          isFocused ? "opacity-100 max-h-16" : "opacity-0 max-h-0"
+          isFocused
+            ? "opacity-100 max-h-16 pointer-events-auto" // <--- ADD pointer-events-auto
+            : "opacity-0 max-h-0 pointer-events-none" // <--- ADD pointer-events-none
         }`}
       >
         <button
@@ -569,6 +800,15 @@ const RecursiveSection = ({
           </button>
         )}
       </div>
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        sectionName={section.name}
+        onClose={(e) => {
+          e && e.stopPropagation();
+          setShowDeleteModal(false);
+        }}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {section.children && section.children.length > 0 && (
         <div className="mt-2 ml-4 pl-4 border-l-2 border-gray-200">
@@ -594,6 +834,7 @@ const RecursiveSection = ({
               isOnline={isOnline}
               sectionToRichText={sectionToRichText}
               richTextToSection={richTextToSection}
+              preamble={preamble}
             />
           ))}
         </div>
