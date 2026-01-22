@@ -1,668 +1,15 @@
-// import React from "react";
-
-// // ============ LATEX SPECIAL CHARACTERS ============
-// const escapeLatexSpecialChars = (text) => {
-//   if (!text) return text;
-//   if (containsLatexCommands(text)) return text;
-//   const mathExpressions = [];
-//   let processed = text
-//     .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
-//       mathExpressions.push(match);
-//       return `__MATH${mathExpressions.length - 1}__`;
-//     })
-//     .replace(/\$([^$]+)\$/g, (match) => {
-//       mathExpressions.push(match);
-//       return `__MATH${mathExpressions.length - 1}__`;
-//     });
-
-//   const escapeMap = {
-//     "&": "\\&",
-//     "%": "\\%",
-//     $: "\\$",
-//     "#": "\\#",
-//     _: "\\_",
-//     "{": "\\{",
-//     "}": "\\}",
-//     "~": "\\textasciitilde{}",
-//     "^": "\\textasciicircum{}",
-//     "\\": "\\textbackslash{}",
-//   };
-
-//   processed = processed.replace(
-//     /[&%$#_{}~^\\]/g,
-//     (char) => escapeMap[char] || char
-//   );
-//   mathExpressions.forEach((expr, i) => {
-//     processed = processed.replace(`__MATH${i}__`, expr);
-//   });
-//   return processed;
-// };
-
-// const unescapeLatexSpecialChars = (text) => {
-//   if (!text) return text;
-//   return text
-//     .replace(/\\textbackslash\{\}/g, "\\")
-//     .replace(/\\textasciitilde\{\}/g, "~")
-//     .replace(/\\textasciicircum\{\}/g, "^")
-//     .replace(/\\\{/g, "{")
-//     .replace(/\\\}/g, "}")
-//     .replace(/\\_/g, "_")
-//     .replace(/\\#/g, "#")
-//     .replace(/\\\$/g, "$")
-//     .replace(/\\%/g, "%")
-//     .replace(/\\&/g, "&");
-// };
-
-// const stripLatexComments = (text) => {
-//   if (!text) return text;
-//   return text
-//     .split("\n")
-//     .filter((line) => {
-//       const trimmed = line.trim();
-//       return !trimmed.startsWith("%") || trimmed.startsWith("\\%");
-//     })
-//     .join("\n");
-// };
-
-// const containsLatexCommands = (text) => {
-//   if (!text) return false;
-//   const latexPatterns = [/\\[a-zA-Z]+/, /\\begin\{/, /\\end\{/, /\\\\/, /\$\$/];
-//   return latexPatterns.some((pattern) => pattern.test(text));
-// };
-
-// // ============ HELPER: EXTRACT BODY ============
-// export const extractLatexBody = (latex) => {
-//   const beginDocIndex = latex.indexOf("\\begin{document}");
-//   if (beginDocIndex === -1) return latex;
-//   const afterBeginDoc = latex.substring(
-//     beginDocIndex + "\\begin{document}".length
-//   );
-//   const endDocIndex = afterBeginDoc.indexOf("\\end{document}");
-//   if (endDocIndex === -1) return afterBeginDoc;
-//   let content = afterBeginDoc.substring(0, endDocIndex);
-//   content = content.replace(/^\s*\\maketitle\s*/, "").trim();
-//   return content;
-// };
-
-// export const reconstructLatexDocument = (originalLatex, newBodyContent) => {
-//   // If the new body content already has full document structure, return it as-is
-//   if (
-//     newBodyContent?.includes("\\begin{document}") &&
-//     newBodyContent?.includes("\\end{document}")
-//   ) {
-//     return newBodyContent;
-//   }
-
-//   // Otherwise, there's a problem - but return it anyway to avoid breaking
-//   console.error(
-//     "❌ reconstructLatexDocument: New content missing document structure!"
-//   );
-//   return newBodyContent;
-// };
-
-// // ============ 1. LATEX TO SECTIONS ============
-// export const latexToSections = (latexDoc) => {
-//   if (!latexDoc) return [];
-
-//   const root = [];
-//   let bodyStr = latexDoc;
-
-//   // --- A. Handle Preamble ---
-//   const beginRegex = /\\begin\{document\}/;
-//   const matchBegin = latexDoc.match(beginRegex);
-
-//   if (matchBegin) {
-//     const beginIndex = matchBegin.index;
-//     const beginLen = matchBegin[0].length;
-
-//     const afterBegin = latexDoc.substring(beginIndex + beginLen);
-//     const maketitleRegex = /^\s*\\maketitle/;
-//     const maketitleMatch = afterBegin.match(maketitleRegex);
-
-//     let splitIndex = beginIndex + beginLen;
-//     if (maketitleMatch) {
-//       splitIndex += maketitleMatch[0].length;
-//     }
-
-//     const preambleContent = latexDoc.substring(0, splitIndex).trim();
-
-//     root.push({
-//       id: "preamble-block",
-//       type: "preamble",
-//       name: "Document Configuration",
-//       content: preambleContent,
-//       children: [],
-//     });
-
-//     bodyStr = latexDoc.substring(splitIndex);
-//   }
-
-//   // --- B. Handle Postamble ---
-//   const endRegex = /(\\end\{document\}\s*)$/;
-//   const matchEnd = bodyStr.match(endRegex);
-//   let postambleBlock = null;
-
-//   if (matchEnd) {
-//     postambleBlock = {
-//       id: "postamble-block",
-//       type: "postamble",
-//       name: "End Document",
-//       content: matchEnd[1] || "\\end{document}",
-//       children: [],
-//     };
-//     bodyStr = bodyStr.substring(0, matchEnd.index);
-//   }
-
-//   // --- C. Parse Body Sections ---
-//   let currentSection = null;
-//   let currentSubsection = null;
-
-//   const parts = bodyStr.split(
-//     /(\\(?:section|subsection|subsubsection)\{[^}]*\})/g
-//   );
-
-//   parts.forEach((part) => {
-//     if (!part.trim()) return;
-
-//     const match = part.match(/\\(section|subsection|subsubsection)\{([^}]*)\}/);
-
-//     if (match) {
-//       const type = match[1];
-//       const name = match[2];
-
-//       const newBlock = {
-//         id: Date.now() + Math.random(),
-//         type: type,
-//         name: name,
-//         content: "",
-//         children: [],
-//       };
-
-//       if (type === "section") {
-//         currentSection = newBlock;
-//         currentSubsection = null;
-//         root.push(newBlock);
-//       } else if (type === "subsection") {
-//         if (currentSection) {
-//           currentSection.children.push(newBlock);
-//           currentSubsection = newBlock;
-//         } else {
-//           root.push(newBlock);
-//           currentSubsection = newBlock;
-//         }
-//       } else if (type === "subsubsection") {
-//         if (currentSubsection) {
-//           currentSubsection.children.push(newBlock);
-//         } else if (currentSection) {
-//           currentSection.children.push(newBlock);
-//         } else {
-//           root.push(newBlock);
-//         }
-//       }
-//     } else {
-//       if (currentSubsection && currentSubsection.children.length > 0) {
-//         const lastSubSub =
-//           currentSubsection.children[currentSubsection.children.length - 1];
-//         lastSubSub.content += part;
-//       } else if (currentSubsection) {
-//         currentSubsection.content += part;
-//       } else if (currentSection) {
-//         if (currentSection.children.length > 0) {
-//           const lastSub =
-//             currentSection.children[currentSection.children.length - 1];
-//           lastSub.content += part;
-//         } else {
-//           currentSection.content += part;
-//         }
-//       } else {
-//         const lastRoot = root[root.length - 1];
-//         if (
-//           lastRoot &&
-//           (lastRoot.type === "section" || lastRoot.type === "preamble")
-//         ) {
-//           if (lastRoot.type === "preamble") {
-//             root.push({
-//               id: Date.now() + Math.random(),
-//               type: "section",
-//               name: "Introduction",
-//               content: part,
-//               children: [],
-//             });
-//           } else {
-//             lastRoot.content += part;
-//           }
-//         } else {
-//           root.push({
-//             id: Date.now() + Math.random(),
-//             type: "section",
-//             name: "Introduction",
-//             content: part,
-//             children: [],
-//           });
-//         }
-//       }
-//     }
-//   });
-
-//   if (postambleBlock) {
-//     root.push(postambleBlock);
-//   }
-
-//   return root;
-// };
-
-// // ============ 2. SECTIONS TO LATEX ============
-// export const sectionsToLatex = (sections) => {
-//   let latex = "";
-//   let postambleContent = "";
-
-//   const processNode = (node) => {
-//     if (node.type === "postamble") {
-//       postambleContent = "\n" + node.content;
-//       return;
-//     }
-
-//     if (node.type === "preamble") {
-//       latex += node.content + "\n\n";
-//     } else if (["section", "subsection", "subsubsection"].includes(node.type)) {
-//       latex += `\n\\${node.type}{${node.name}}\n`;
-//     }
-
-//     if (node.content && node.type !== "preamble") {
-//       latex += node.content + "\n";
-//     }
-
-//     if (node.children && node.children.length > 0) {
-//       node.children.forEach(processNode);
-//     }
-//   };
-
-//   sections.forEach(processNode);
-
-//   if (postambleContent) {
-//     latex += postambleContent;
-//   } else {
-//     if (
-//       latex.includes("\\documentclass") &&
-//       !latex.includes("\\end{document}")
-//     ) {
-//       latex += "\n\\end{document}";
-//     }
-//   }
-
-//   return latex;
-// };
-
-// // ============ 3. LATEX TO RICH TEXT (For Visual Editor) - ULTRA ROBUST ============
-// export const latexToRichText = (latexBody) => {
-//   if (!latexBody) return "";
-
-//   console.log("=== LATEX TO RICH TEXT ===");
-//   console.log("Input length:", latexBody.length);
-
-//   let preamble = "";
-//   let postamble = "";
-//   let bodyContent = latexBody;
-
-//   // --- Step A: Extract and Preserve Preamble ---
-//   const beginDocIdx = latexBody.indexOf("\\begin{document}");
-//   if (beginDocIdx !== -1) {
-//     let preambleEnd = beginDocIdx + "\\begin{document}".length;
-
-//     // Check for \maketitle immediately after
-//     const afterBegin = latexBody.substring(preambleEnd);
-//     const maketitleMatch = afterBegin.match(/^\s*\\maketitle\s*/);
-
-//     if (maketitleMatch) {
-//       preambleEnd += maketitleMatch[0].length;
-//     }
-
-//     preamble = latexBody.substring(0, preambleEnd);
-//     bodyContent = latexBody.substring(preambleEnd);
-
-//     console.log("✅ Preamble extracted:", preamble.length, "chars");
-//   } else {
-//     console.log("⚠️ No \\begin{document} found");
-//   }
-
-//   // --- Step B: Extract and Preserve Postamble ---
-//   const endDocIdx = bodyContent.lastIndexOf("\\end{document}");
-//   if (endDocIdx !== -1) {
-//     postamble = bodyContent.substring(endDocIdx);
-//     bodyContent = bodyContent.substring(0, endDocIdx);
-
-//     console.log("✅ Postamble extracted:", postamble.length, "chars");
-//   } else {
-//     console.log("⚠️ No \\end{document} found");
-//   }
-
-//   // --- Step C: Process Body Content ---
-//   let processed = stripLatexComments(bodyContent);
-
-//   // Preserve all math expressions
-//   const equations = [];
-//   processed = processed
-//     .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
-//       equations.push(match);
-//       return `__EQ${equations.length - 1}__`;
-//     })
-//     .replace(/\$([^$\n]+)\$/g, (match) => {
-//       equations.push(match);
-//       return `__EQ${equations.length - 1}__`;
-//     })
-//     .replace(
-//       /\\begin\{equation\*?\}([\s\S]*?)\\end\{equation\*?\}/g,
-//       (match) => {
-//         equations.push(match);
-//         return `__EQ${equations.length - 1}__`;
-//       }
-//     )
-//     .replace(/\\begin\{align\*?\}([\s\S]*?)\\end\{align\*?\}/g, (match) => {
-//       equations.push(match);
-//       return `__EQ${equations.length - 1}__`;
-//     });
-
-//   // 1. Handle Environments
-//   processed = processed.replace(
-//     /\\begin\{(abstract|acknowledgements?|preface|theorem|lemma|proof|definition|corollary|proposition|example|remark|note)\}([\s\S]*?)\\end\{\1\}/gi,
-//     (match, envName, content) =>
-//       `\n\n<h3><strong>${
-//         envName.charAt(0).toUpperCase() + envName.slice(1)
-//       }</strong></h3>\n<p>${content.trim()}</p>\n`
-//   );
-
-//   // 2. Handle Flushleft/center/right
-//   processed = processed.replace(
-//     /\\begin\{(flushleft|center|flushright)\}([\s\S]*?)\\end\{\1\}/gi,
-//     (match, align, content) =>
-//       `\n<div class="latex-${align}">${content.trim()}</div>\n`
-//   );
-
-//   // 3. Remove vspace
-//   processed = processed.replace(/\\vspace\{[^}]+\}/g, "");
-
-//   // 4. Handle Sections
-//   processed = processed
-//     .replace(/\\section\{([^}]*)\}/g, "<h2><strong>$1</strong></h2>")
-//     .replace(/\\subsection\{([^}]*)\}/g, "<h3><strong>$1</strong></h3>")
-//     .replace(/\\subsubsection\{([^}]*)\}/g, "<h4><strong>$1</strong></h4>");
-
-//   // 5. Handle Lists
-//   processed = processed.replace(
-//     /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
-//     (match, content) => {
-//       const items = content
-//         .split(/\\item\s+/)
-//         .filter((i) => i.trim())
-//         .map((i) => `<li>${i.trim()}</li>`)
-//         .join("");
-//       return `<ul>${items}</ul>`;
-//     }
-//   );
-
-//   processed = processed.replace(
-//     /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
-//     (match, content) => {
-//       const items = content
-//         .split(/\\item\s+/)
-//         .filter((i) => i.trim())
-//         .map((i) => `<li>${i.trim()}</li>`)
-//         .join("");
-//       return `<ol>${items}</ol>`;
-//     }
-//   );
-
-//   // 6. Formatting
-//   processed = processed
-//     .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>")
-//     .replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>")
-//     .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>")
-//     .replace(/\\texttt\{([^}]+)\}/g, "<code>$1</code>")
-//     .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>")
-//     .replace(/\\today/g, "[Date: Today]");
-
-//   const paragraphs = processed
-//     .split(/\n\n+/)
-//     .filter((p) => p.trim())
-//     .map((p) => {
-//       const trimmed = p.trim();
-//       return trimmed.startsWith("<") ? trimmed : `<p>${trimmed}</p>`;
-//     })
-//     .join("\n\n");
-
-//   let result = paragraphs;
-//   equations.forEach((eq, i) => {
-//     result = result.replace(`__EQ${i}__`, eq);
-//   });
-
-//   // --- Step D: Store Preamble/Postamble as DATA ATTRIBUTES ---
-//   // Use a special marker comment that won't be touched by the editor
-//   let prefix = "";
-//   let suffix = "";
-
-//   if (preamble) {
-//     // Store as hidden comment-like div with data attribute
-//     const encoded = btoa(unescape(encodeURIComponent(preamble)));
-//     prefix = `<!--LATEX_PREAMBLE:${encoded}-->`;
-//     console.log("📦 Preamble encoded (length):", encoded.length);
-//   }
-
-//   if (postamble) {
-//     const encoded = btoa(unescape(encodeURIComponent(postamble)));
-//     suffix = `<!--LATEX_POSTAMBLE:${encoded}-->`;
-//     console.log("📦 Postamble encoded (length):", encoded.length);
-//   }
-
-//   const finalResult = prefix + result + suffix;
-//   console.log("📝 Final rich text length:", finalResult.length);
-//   console.log("=== END LATEX TO RICH TEXT ===\n");
-
-//   return finalResult;
-// };
-
-// // ============ 4. RICH TEXT TO LATEX (For Visual Editor) - ULTRA ROBUST ============
-// export const richTextToLatex = (richText) => {
-//   if (!richText) return "";
-
-//   console.log("=== RICH TEXT TO LATEX ===");
-//   console.log("Input length:", richText.length);
-
-//   let latex = richText;
-//   let restoredPreamble = "";
-//   let restoredPostamble = "";
-
-//   // --- Step A: Extract Hidden Preamble/Postamble from HTML Comments ---
-
-//   // Extract preamble
-//   const preambleMatch = latex.match(/<!--LATEX_PREAMBLE:([^-]+)-->/);
-//   if (preambleMatch) {
-//     try {
-//       const encoded = preambleMatch[1];
-//       restoredPreamble = decodeURIComponent(escape(atob(encoded)));
-//       latex = latex.replace(preambleMatch[0], "");
-//       console.log("✅ Preamble restored:", restoredPreamble.length, "chars");
-//     } catch (e) {
-//       console.error("❌ Error decoding preamble:", e);
-//     }
-//   } else {
-//     console.warn("⚠️ No preamble marker found");
-//   }
-
-//   // Extract postamble
-//   const postambleMatch = latex.match(/<!--LATEX_POSTAMBLE:([^-]+)-->/);
-//   if (postambleMatch) {
-//     try {
-//       const encoded = postambleMatch[1];
-//       restoredPostamble = decodeURIComponent(escape(atob(encoded)));
-//       latex = latex.replace(postambleMatch[0], "");
-//       console.log("✅ Postamble restored:", restoredPostamble.length, "chars");
-//     } catch (e) {
-//       console.error("❌ Error decoding postamble:", e);
-//     }
-//   } else {
-//     console.warn("⚠️ No postamble marker found");
-//   }
-
-//   // --- Step B: Clean up HTML artifacts ---
-//   // Remove <br> tags that editors add
-//   latex = latex.replace(/<br\s*\/?>/gi, "\n");
-
-//   // Remove any stray HTML comments
-//   latex = latex.replace(/<!--(?!LATEX_)[^>]*-->/g, "");
-
-//   // --- Step C: Process Body Content ---
-//   const equations = [];
-//   latex = latex
-//     .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
-//       equations.push(match);
-//       return `__EQ${equations.length - 1}__`;
-//     })
-//     .replace(/\$([^$\n]+)\$/g, (match) => {
-//       equations.push(match);
-//       return `__EQ${equations.length - 1}__`;
-//     });
-
-//   // 1. Restore Layouts
-//   latex = latex.replace(
-//     /<div class="latex-(flushleft|center|flushright)">([\s\S]*?)<\/div>/gi,
-//     (match, align, content) =>
-//       `\n\\begin{${align}}\n${content.trim()}\n\\end{${align}}\n`
-//   );
-
-//   // 2. Restore \today
-//   latex = latex.replace(/\[Date: Today\]/g, "\\today");
-
-//   // 3. Restore environments
-//   latex = latex.replace(
-//     /<h3[^>]*>\s*<strong>(Abstract|Acknowledgements?|Preface|Theorem|Lemma|Proof|Definition|Corollary|Proposition|Example|Remark|Note)<\/strong>\s*<\/h3>\s*<p>([^<]*)<\/p>/gi,
-//     (match, envName, content) =>
-//       `\n\n\\begin{${envName.toLowerCase()}}\n${content.trim()}\n\\end{${envName.toLowerCase()}}\n`
-//   );
-
-//   // 4. Restore sections
-//   latex = latex
-//     .replace(
-//       /<h2[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
-//       "\n\n\\section{$1}\n\n"
-//     )
-//     .replace(
-//       /<h3[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
-//       "\n\n\\subsection{$1}\n\n"
-//     )
-//     .replace(
-//       /<h4[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h4>/gi,
-//       "\n\n\\subsubsection{$1}\n\n"
-//     );
-
-//   // 5. Restore lists
-//   latex = latex.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (match, content) => {
-//     const items = content
-//       .split(/<li[^>]*>/)
-//       .slice(1)
-//       .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
-//       .join("\n");
-//     return `\n\\begin{itemize}\n${items}\n\\end{itemize}\n`;
-//   });
-
-//   latex = latex.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (match, content) => {
-//     const items = content
-//       .split(/<li[^>]*>/)
-//       .slice(1)
-//       .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
-//       .join("\n");
-//     return `\n\\begin{enumerate}\n${items}\n\\end{enumerate}\n`;
-//   });
-
-//   // 6. Restore formatting
-//   latex = latex
-//     .replace(/<strong[^>]*>([^<]+)<\/strong>/gi, "\\textbf{$1}")
-//     .replace(/<b[^>]*>([^<]+)<\/b>/gi, "\\textbf{$1}")
-//     .replace(/<em[^>]*>([^<]+)<\/em>/gi, "\\textit{$1}")
-//     .replace(/<i[^>]*>([^<]+)<\/i>/gi, "\\textit{$1}")
-//     .replace(/<code[^>]*>([^<]+)<\/code>/gi, "\\texttt{$1}")
-//     .replace(/<u[^>]*>([^<]+)<\/u>/gi, "\\underline{$1}");
-
-//   // 7. Clean up HTML
-//   latex = latex
-//     .replace(/<p[^>]*>/gi, "")
-//     .replace(/<\/p>/gi, "\n\n")
-//     .replace(/<div[^>]*>/gi, "")
-//     .replace(/<\/div>/gi, "")
-//     .replace(/&nbsp;/gi, " ")
-//     .replace(/&lt;/gi, "<")
-//     .replace(/&gt;/gi, ">")
-//     .replace(/&amp;/gi, "&")
-//     .replace(/\n{3,}/g, "\n\n")
-//     .trim();
-
-//   // 8. Restore equations
-//   equations.forEach((eq, i) => {
-//     latex = latex.replace(`__EQ${i}__`, eq);
-//   });
-
-//   // --- Step D: Combine Preamble + Body + Postamble ---
-//   let finalLatex = "";
-
-//   if (restoredPreamble) {
-//     finalLatex = restoredPreamble;
-//     if (!finalLatex.endsWith("\n")) {
-//       finalLatex += "\n";
-//     }
-//   }
-
-//   finalLatex += latex;
-
-//   if (restoredPostamble) {
-//     if (!finalLatex.endsWith("\n")) {
-//       finalLatex += "\n";
-//     }
-//     finalLatex += restoredPostamble;
-//   }
-
-//   console.log("📝 Final LaTeX length:", finalLatex.length);
-//   console.log(
-//     "📝 Has \\begin{document}:",
-//     finalLatex.includes("\\begin{document}")
-//   );
-//   console.log(
-//     "📝 Has \\end{document}:",
-//     finalLatex.includes("\\end{document}")
-//   );
-//   console.log("=== END RICH TEXT TO LATEX ===\n");
-
-//   return finalLatex;
-// };
-
-// export const debugConversion = (latex) => {
-//   console.log("\n=== DEBUG CONVERSION ===");
-//   const richText = latexToRichText(latex);
-//   console.log("Rich text output:", richText.substring(0, 200));
-//   const backToLatex = richTextToLatex(richText);
-//   console.log("Back to LaTeX:", backToLatex.substring(0, 200));
-//   console.log(
-//     "Lengths - Original:",
-//     latex.length,
-//     "Final:",
-//     backToLatex.length
-//   );
-//   console.log("Match:", latex === backToLatex);
-//   console.log("=== END DEBUG ===\n");
-//   return { richText, backToLatex, match: latex === backToLatex };
-// };
-
-// export default {
-//   extractLatexBody,
-//   reconstructLatexDocument,
-//   latexToRichText,
-//   richTextToLatex,
-//   latexToSections,
-//   sectionsToLatex,
-//   escapeLatexSpecialChars,
-//   unescapeLatexSpecialChars,
-//   debugConversion,
-// };
 import React from "react";
 
+// ============ CONSTANTS ============
+const SPECIAL_ENVS_PATTERN =
+  "abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix|wraptable|table|figure";
+
+// Matches the start of any Section OR Special Environment
+const SECTION_REGEX = new RegExp(
+  `(\\\\(?:section|subsection|subsubsection)\\*?\\{[^}]*\\}|\\\\begin\\{(?:${SPECIAL_ENVS_PATTERN})\\})`,
+  "i",
+);
+const SPECIAL_ENVS_REGEX = new RegExp(SPECIAL_ENVS_PATTERN, "i");
 // ============ LATEX SPECIAL CHARACTERS ============
 const escapeLatexSpecialChars = (text) => {
   if (!text) return text;
@@ -692,7 +39,7 @@ const escapeLatexSpecialChars = (text) => {
   };
   processed = processed.replace(
     /[&%$#_{}~^\\]/g,
-    (char) => escapeMap[char] || char
+    (char) => escapeMap[char] || char,
   );
   mathExpressions.forEach((expr, i) => {
     processed = processed.replace(`__MATH${i}__`, expr);
@@ -740,7 +87,7 @@ export const extractLatexBody = (latex) => {
   if (beginDocIndex === -1) return latex;
 
   const afterBeginDoc = latex.substring(
-    beginDocIndex + "\\begin{document}".length
+    beginDocIndex + "\\begin{document}".length,
   );
   const endDocIndex = afterBeginDoc.lastIndexOf("\\end{document}");
 
@@ -756,52 +103,129 @@ export const extractLatexBody = (latex) => {
 
 // Restored to full functionality
 export const reconstructLatexDocument = (originalLatex, newBodyContent) => {
-  const beginDocIndex = originalLatex.indexOf("\\begin{document}");
+  // const beginDocIndex = originalLatex.indexOf("\\begin{document}");
+  // const endDocIndex = originalLatex.lastIndexOf("\\end{document}");
+
+  // if (beginDocIndex === -1 || endDocIndex === -1) {
+  //   // If original structure is broken, just return body (or wrap it in default)
+  //   return newBodyContent;
+  // }
+
+  // // 1. Get Preamble (everything before \begin{document} + \begin{document})
+  // let preamble = originalLatex.substring(
+  //   0,
+  //   beginDocIndex + "\\begin{document}".length,
+  // );
+
+  // // 2. Check for \maketitle in the original body start
+  // const originalBodyStart = originalLatex.substring(
+  //   beginDocIndex + "\\begin{document}".length,
+  // );
+  // if (originalBodyStart.trim().startsWith("\\maketitle")) {
+  //   preamble += "\n\\maketitle";
+  // }
+
+  // // 3. Get Postamble (everything from \end{document} onwards)
+  // const postamble = originalLatex.substring(endDocIndex);
+
+  // return `${preamble}\n\n${newBodyContent}\n\n${postamble}`;
+  if (!originalLatex) return newBodyContent;
+
+  // 1. Find where the "Real Body" started in the ORIGINAL file.
+  // We use the same SECTION_REGEX to find the first Section, Abstract, or Keyword block.
+  // Everything BEFORE this match is considered "Extended Preamble" (includes \documentclass, \title, \maketitle, etc.)
+
+  const match = originalLatex.match(SECTION_REGEX);
+  let extendedPreamble = "";
+
+  if (match) {
+    // We found a section/abstract. Everything before it is preserved.
+    extendedPreamble = originalLatex.substring(0, match.index);
+  } else {
+    // Fallback: If original had no sections, try splitting at \begin{document}
+    const beginIndex = originalLatex.indexOf("\\begin{document}");
+    if (beginIndex !== -1) {
+      // Include \begin{document} in the preamble part
+      extendedPreamble = originalLatex.substring(
+        0,
+        beginIndex + "\\begin{document}".length,
+      );
+    } else {
+      // If the file is totally empty or weird, just use empty string
+      extendedPreamble = "";
+    }
+  }
+
+  // 2. Get Postamble (everything from \end{document} onwards)
   const endDocIndex = originalLatex.lastIndexOf("\\end{document}");
-
-  if (beginDocIndex === -1 || endDocIndex === -1) {
-    // If original structure is broken, just return body (or wrap it in default)
-    return newBodyContent;
+  let postamble = "";
+  if (endDocIndex !== -1) {
+    postamble = originalLatex.substring(endDocIndex);
+  } else {
+    postamble = "\n\\end{document}";
   }
 
-  // 1. Get Preamble (everything before \begin{document} + \begin{document})
-  let preamble = originalLatex.substring(
-    0,
-    beginDocIndex + "\\begin{document}".length
-  );
-
-  // 2. Check for \maketitle in the original body start
-  const originalBodyStart = originalLatex.substring(
-    beginDocIndex + "\\begin{document}".length
-  );
-  if (originalBodyStart.trim().startsWith("\\maketitle")) {
-    preamble += "\n\\maketitle";
-  }
-
-  // 3. Get Postamble (everything from \end{document} onwards)
-  const postamble = originalLatex.substring(endDocIndex);
-
-  return `${preamble}\n\n${newBodyContent}\n\n${postamble}`;
+  // 3. Merge: Original Preamble + New Edited Body + Original Postamble
+  return `${extendedPreamble.trim()}\n\n${newBodyContent.trim()}\n\n${postamble}`;
 };
 
 // ============ NEW HELPER: SPLIT LATEX INTO PARTS ============
 export const splitLatex = (latexDoc) => {
+  // if (!latexDoc) return { preamble: "", body: "", postamble: "" };
+
+  // const beginIndex = latexDoc.indexOf("\\begin{document}");
+  // if (beginIndex === -1) {
+  //   // If no document structure, treat entire thing as body
+  //   return { preamble: "", body: latexDoc, postamble: "" };
+  // }
+
+  // // Calculate where the Body starts
+  // let splitPoint = beginIndex + "\\begin{document}".length;
+
+  // // Optionally include \maketitle in the "hidden" preamble so it doesn't show in editor
+  // const afterBegin = latexDoc.substring(splitPoint);
+  // const makeTitleMatch = afterBegin.match(/^\s*\\maketitle/);
+  // if (makeTitleMatch) {
+  //   splitPoint += makeTitleMatch[0].length;
+  // }
+
+  // let preamble = latexDoc.substring(0, splitPoint);
+  // let rest = latexDoc.substring(splitPoint);
+
+  // // Calculate where Body ends
+  // const endIndex = rest.lastIndexOf("\\end{document}");
+
+  // if (endIndex === -1) {
+  //   return { preamble, body: rest, postamble: "" };
+  // }
+
+  // return {
+  //   preamble: preamble,
+  //   body: rest.substring(0, endIndex),
+  //   postamble: rest.substring(endIndex),
+  // };
   if (!latexDoc) return { preamble: "", body: "", postamble: "" };
 
   const beginIndex = latexDoc.indexOf("\\begin{document}");
   if (beginIndex === -1) {
-    // If no document structure, treat entire thing as body
     return { preamble: "", body: latexDoc, postamble: "" };
   }
 
-  // Calculate where the Body starts
+  // Default split point: right after \begin{document}
   let splitPoint = beginIndex + "\\begin{document}".length;
 
-  // Optionally include \maketitle in the "hidden" preamble so it doesn't show in editor
+  // --- NEW LOGIC: AGGRESSIVE PREAMBLE CAPTURE ---
+  // We look for \maketitle. If it exists, EVERYTHING up to it is considered Preamble.
+  // This handles \title, \author, \markboth, \IEEEpubid, etc.
+
   const afterBegin = latexDoc.substring(splitPoint);
-  const makeTitleMatch = afterBegin.match(/^\s*\\maketitle/);
+  const makeTitleRegex = /\\maketitle\s*/;
+  const makeTitleMatch = afterBegin.match(makeTitleRegex);
+
   if (makeTitleMatch) {
-    splitPoint += makeTitleMatch[0].length;
+    // Move the split point to AFTER \maketitle
+    // splitPoint + index of match + length of match
+    splitPoint += makeTitleMatch.index + makeTitleMatch[0].length;
   }
 
   let preamble = latexDoc.substring(0, splitPoint);
@@ -826,106 +250,90 @@ export const latexToSections = (latexDoc) => {
   if (!latexDoc) return [];
   const root = [];
 
-  // Use the splitter to isolate content
   const { preamble, body, postamble } = splitLatex(latexDoc);
 
-  // 1. Store Preamble
-  if (preamble) {
-    root.push({
-      id: "preamble-block",
-      type: "preamble",
-      name: "Document Configuration",
-      content: preamble,
-      children: [],
-    });
-  }
+  // Updated REGEX to include specific environments + starred sections
+  const SECTION_REGEX =
+    /(\\(?:section|subsection|subsubsection)\*?\{[^}]*\}|\\begin\{(?:abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix|wraptable|table|figure)\})/i;
 
-  // 2. Parse Body Sections
-  let currentSection = null;
-  let currentSubsection = null;
-  const parts = body.split(
-    /(\\(?:section|subsection|subsubsection)\{[^}]*\})/g
-  );
+  const parts = body.split(SECTION_REGEX);
 
-  parts.forEach((part) => {
-    if (!part.trim()) return;
-    const match = part.match(/\\(section|subsection|subsubsection)\{([^}]*)\}/);
+  const innerPreamble = parts[0] || "";
+  const fullPreambleContent = (preamble + "\n" + innerPreamble).trim();
 
-    if (match) {
-      const type = match[1];
-      const name = match[2];
-      const newBlock = {
-        id: Date.now() + Math.random(),
-        type,
-        name,
-        content: "",
-        children: [],
-      };
-
-      if (type === "section") {
-        currentSection = newBlock;
-        currentSubsection = null;
-        root.push(newBlock);
-      } else if (type === "subsection") {
-        if (currentSection) {
-          currentSection.children.push(newBlock);
-          currentSubsection = newBlock;
-        } else {
-          root.push(newBlock);
-          currentSubsection = newBlock;
-        }
-      } else if (type === "subsubsection") {
-        if (currentSubsection) {
-          currentSubsection.children.push(newBlock);
-        } else if (currentSection) {
-          currentSection.children.push(newBlock);
-        } else {
-          root.push(newBlock);
-        }
-      }
-    } else {
-      // Content Logic
-      if (currentSubsection && currentSubsection.children.length > 0) {
-        currentSubsection.children[
-          currentSubsection.children.length - 1
-        ].content += part;
-      } else if (currentSubsection) {
-        currentSubsection.content += part;
-      } else if (currentSection) {
-        if (currentSection.children.length > 0)
-          currentSection.children[currentSection.children.length - 1].content +=
-            part;
-        else currentSection.content += part;
-      } else {
-        // Root Text (Introduction)
-        const lastRoot = root[root.length - 1];
-        if (
-          lastRoot &&
-          (lastRoot.type === "section" || lastRoot.type === "preamble")
-        ) {
-          if (lastRoot.type === "preamble")
-            root.push({
-              id: Date.now() + Math.random(),
-              type: "section",
-              name: "Introduction",
-              content: part,
-              children: [],
-            });
-          else lastRoot.content += part;
-        } else {
-          root.push({
-            id: Date.now() + Math.random(),
-            type: "section",
-            name: "Introduction",
-            content: part,
-            children: [],
-          });
-        }
-      }
-    }
+  root.push({
+    id: "preamble-block",
+    type: "preamble",
+    name: "Document Configuration",
+    content: fullPreambleContent,
+    children: [],
   });
 
-  // 3. Store Postamble
+  let currentSection = null;
+  let currentSubsection = null;
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const delimiter = parts[i];
+    const content = parts[i + 1] || "";
+
+    let type = "section";
+    let name = "Untitled";
+    let subtype = "standard";
+    let envTag = null; // New variable to store raw tag
+
+    if (delimiter.startsWith("\\begin")) {
+      const match = delimiter.match(/\\begin\{([^}]+)\}/);
+      if (match) {
+        envTag = match[1]; // Store "IEEEkeywords" exactly as is
+        // Make the Display Name pretty (Capitalized) for the UI
+        name = envTag.charAt(0).toUpperCase() + envTag.slice(1);
+        type = "section";
+        subtype = "env";
+      }
+    } else {
+      const match = delimiter.match(
+        /\\(section|subsection|subsubsection)(\*)?\{([^}]*)\}/,
+      );
+      if (match) {
+        type = match[1];
+        subtype = match[2] === "*" ? "starred" : "standard";
+        name = match[3];
+      }
+    }
+
+    const newBlock = {
+      id: Date.now() + Math.random(),
+      type: type,
+      subtype: subtype,
+      envTag: envTag, // <--- ADDED THIS PROPERTY
+      name: name,
+      content: content,
+      children: [],
+    };
+
+    if (type === "section") {
+      currentSection = newBlock;
+      currentSubsection = null;
+      root.push(newBlock);
+    } else if (type === "subsection") {
+      if (currentSection) {
+        currentSection.children.push(newBlock);
+        currentSubsection = newBlock;
+      } else {
+        root.push(newBlock);
+        currentSubsection = newBlock;
+      }
+    } else if (type === "subsubsection") {
+      if (currentSubsection) {
+        currentSubsection.children.push(newBlock);
+      } else if (currentSection) {
+        currentSection.children.push(newBlock);
+      } else {
+        root.push(newBlock);
+      }
+    }
+  }
+
   if (postamble) {
     root.push({
       id: "postamble-block",
@@ -949,33 +357,155 @@ export const sectionsToLatex = (sections) => {
       postambleContent = "\n" + node.content;
       return;
     }
+
     if (node.type === "preamble") {
       latex += node.content + "\n\n";
-    } else if (["section", "subsection", "subsubsection"].includes(node.type)) {
-      latex += `\n\\${node.type}{${node.name}}\n`;
+    } else {
+      let header = "";
+
+      if (node.subtype === "env") {
+        // USE THE STORED TAG (e.g. "IEEEkeywords"), or fallback to lowercase name
+        const tag = node.envTag || node.name.toLowerCase();
+        header = `\n\\begin{${tag}}`;
+      } else if (node.subtype === "starred") {
+        header = `\n\\${node.type}*{${node.name}}`;
+      } else {
+        header = `\n\\${node.type}{${node.name}}`;
+      }
+
+      latex += header + "\n";
     }
 
     if (node.content && node.type !== "preamble") {
-      latex += node.content + "\n";
+      latex += node.content;
     }
+
     if (node.children && node.children.length > 0) {
       node.children.forEach(processNode);
     }
   };
 
   sections.forEach(processNode);
+
   latex +=
     postambleContent ||
     (latex.includes("\\documentclass") && !latex.includes("\\end{document}")
       ? "\n\\end{document}"
       : "");
+
   return latex;
 };
 
 // ============ 3. LATEX TO RICH TEXT (PURE BODY CONVERSION) ============
 export const latexToRichText = (latexBody) => {
+  // if (!latexBody) return "";
+  // let processed = stripLatexComments(latexBody);
+
+  // const equations = [];
+  // processed = processed
+  //   .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
+  //     equations.push(match);
+  //     return `__EQ${equations.length - 1}__`;
+  //   })
+  //   .replace(/\$([^$\n]+)\$/g, (match) => {
+  //     equations.push(match);
+  //     return `__EQ${equations.length - 1}__`;
+  //   })
+  //   .replace(
+  //     /\\begin\{equation\*?\}([\s\S]*?)\\end\{equation\*?\}/g,
+  //     (match) => {
+  //       equations.push(match);
+  //       return `__EQ${equations.length - 1}__`;
+  //     },
+  //   )
+  //   .replace(/\\begin\{align\*?\}([\s\S]*?)\\end\{align\*?\}/g, (match) => {
+  //     equations.push(match);
+  //     return `__EQ${equations.length - 1}__`;
+  //   });
+
+  // // Handle Layouts (Just clear the commands, keep text)
+  // processed = processed.replace(
+  //   /\\begin\{(flushleft|center|flushright)\}([\s\S]*?)\\end\{\1\}/gi,
+  //   "$2",
+  // );
+  // processed = processed.replace(/\\vspace\{[^}]+\}/g, ""); // Remove vspace completely
+
+  // // Environments
+  // processed = processed.replace(
+  //   /\\begin\{(abstract|acknowledgements?|preface|theorem|lemma|proof|definition|corollary|proposition|example|remark|note)\}([\s\S]*?)\\end\{\1\}/gi,
+  //   (match, envName, content) =>
+  //     `\n\n<h3><strong>${
+  //       envName.charAt(0).toUpperCase() + envName.slice(1)
+  //     }</strong></h3>\n<p>${content.trim()}</p>\n`,
+  // );
+
+  // // Sections/Lists/Formatting
+  // processed = processed
+  //   .replace(/\\section\{([^}]*)\}/g, "<h2><strong>$1</strong></h2>")
+  //   .replace(/\\subsection\{([^}]*)\}/g, "<h3><strong>$1</strong></h3>")
+  //   .replace(/\\subsubsection\{([^}]*)\}/g, "<h4><strong>$1</strong></h4>")
+  //   .replace(
+  //     /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
+  //     (match, content) =>
+  //       `<ul>${content
+  //         .split(/\\item\s+/)
+  //         .filter((i) => i.trim())
+  //         .map((i) => `<li>${i.trim()}</li>`)
+  //         .join("")}</ul>`,
+  //   )
+  //   .replace(
+  //     /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
+  //     (match, content) =>
+  //       `<ol>${content
+  //         .split(/\\item\s+/)
+  //         .filter((i) => i.trim())
+  //         .map((i) => `<li>${i.trim()}</li>`)
+  //         .join("")}</ol>`,
+  //   )
+  //   .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>")
+  //   .replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>")
+  //   .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>")
+  //   .replace(/\\texttt\{([^}]+)\}/g, "<code>$1</code>")
+  //   .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>")
+  //   .replace(/\\today/g, "[Date: Today]");
+
+  // const paragraphs = processed
+  //   .split(/\n\n+/)
+  //   .filter((p) => p.trim())
+  //   .map((p) => {
+  //     const trimmed = p.trim();
+  //     return trimmed.startsWith("<") ? trimmed : `<p>${trimmed}</p>`;
+  //   })
+  //   .join("\n\n");
+
+  // let result = paragraphs;
+  // equations.forEach((eq, i) => {
+  //   result = result.replace(`__EQ${i}__`, eq);
+  // });
+  // return result;
+  // ============ 3. LATEX TO RICH TEXT (FIXED PREAMBLE LEAK) ============
   if (!latexBody) return "";
-  let processed = stripLatexComments(latexBody);
+
+  // 1. SPLIT PREAMBLE, BODY, POSTAMBLE
+  let { preamble, body, postamble } = splitLatex(latexBody);
+
+  // 2. EXTRACT "INNER PREAMBLE" (The Fix)
+  // Find where the first real section or abstract starts
+  const match = body.match(SECTION_REGEX);
+  let innerPreamble = "";
+
+  if (match) {
+    innerPreamble = body.substring(0, match.index);
+    body = body.substring(match.index); // Body is now clean content only
+  }
+
+  // Hide the inner preamble (Title, Author, etc.) inside the main preamble
+  if (innerPreamble.trim()) {
+    preamble = (preamble + "\n" + innerPreamble).trim();
+  }
+
+  // 3. PROCESS REMAINING BODY
+  let processed = stripLatexComments(body);
 
   const equations = [];
   processed = processed
@@ -992,34 +522,41 @@ export const latexToRichText = (latexBody) => {
       (match) => {
         equations.push(match);
         return `__EQ${equations.length - 1}__`;
-      }
+      },
     )
     .replace(/\\begin\{align\*?\}([\s\S]*?)\\end\{align\*?\}/g, (match) => {
       equations.push(match);
       return `__EQ${equations.length - 1}__`;
     });
 
-  // Handle Layouts (Just clear the commands, keep text)
   processed = processed.replace(
     /\\begin\{(flushleft|center|flushright)\}([\s\S]*?)\\end\{\1\}/gi,
-    "$2"
+    "$2",
   );
-  processed = processed.replace(/\\vspace\{[^}]+\}/g, ""); // Remove vspace completely
+  processed = processed.replace(/\\vspace\{[^}]+\}/g, "");
 
-  // Environments
+  // Handle Special Environments
+  const envRegex = new RegExp(
+    `\\\\begin\\{(${SPECIAL_ENVS_PATTERN})\\}([\\s\\S]*?)\\\\end\\{\\1\\}`,
+    "gi",
+  );
   processed = processed.replace(
-    /\\begin\{(abstract|acknowledgements?|preface|theorem|lemma|proof|definition|corollary|proposition|example|remark|note)\}([\s\S]*?)\\end\{\1\}/gi,
+    envRegex,
     (match, envName, content) =>
-      `\n\n<h3><strong>${
-        envName.charAt(0).toUpperCase() + envName.slice(1)
-      }</strong></h3>\n<p>${content.trim()}</p>\n`
+      `\n\n<h3><strong>${envName}</strong></h3>\n<p>${content.trim()}</p>\n`,
   );
 
-  // Sections/Lists/Formatting
+  // Handle Sections
   processed = processed
     .replace(/\\section\{([^}]*)\}/g, "<h2><strong>$1</strong></h2>")
     .replace(/\\subsection\{([^}]*)\}/g, "<h3><strong>$1</strong></h3>")
     .replace(/\\subsubsection\{([^}]*)\}/g, "<h4><strong>$1</strong></h4>")
+    .replace(/\\section\*\{([^}]*)\}/g, "<h2><strong>$1</strong></h2>")
+    .replace(/\\subsection\*\{([^}]*)\}/g, "<h3><strong>$1</strong></h3>")
+    .replace(/\\subsubsection\*\{([^}]*)\}/g, "<h4><strong>$1</strong></h4>");
+
+  // Handle Lists
+  processed = processed
     .replace(
       /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
       (match, content) =>
@@ -1027,7 +564,7 @@ export const latexToRichText = (latexBody) => {
           .split(/\\item\s+/)
           .filter((i) => i.trim())
           .map((i) => `<li>${i.trim()}</li>`)
-          .join("")}</ul>`
+          .join("")}</ul>`,
     )
     .replace(
       /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
@@ -1036,8 +573,11 @@ export const latexToRichText = (latexBody) => {
           .split(/\\item\s+/)
           .filter((i) => i.trim())
           .map((i) => `<li>${i.trim()}</li>`)
-          .join("")}</ol>`
-    )
+          .join("")}</ol>`,
+    );
+
+  // Formatting
+  processed = processed
     .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>")
     .replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>")
     .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>")
@@ -1048,25 +588,131 @@ export const latexToRichText = (latexBody) => {
   const paragraphs = processed
     .split(/\n\n+/)
     .filter((p) => p.trim())
-    .map((p) => {
-      const trimmed = p.trim();
-      return trimmed.startsWith("<") ? trimmed : `<p>${trimmed}</p>`;
-    })
+    .map((p) => (p.trim().startsWith("<") ? p : `<p>${p}</p>`))
     .join("\n\n");
 
   let result = paragraphs;
   equations.forEach((eq, i) => {
     result = result.replace(`__EQ${i}__`, eq);
   });
-  return result;
+
+  // 4. PACK HIDDEN DATA
+  let prefix = "";
+  let suffix = "";
+
+  if (preamble) {
+    const encoded = btoa(unescape(encodeURIComponent(preamble)));
+    prefix = ``;
+  }
+
+  if (postamble) {
+    const encoded = btoa(unescape(encodeURIComponent(postamble)));
+    suffix = ``;
+  }
+
+  return prefix + result + suffix;
 };
 
 // ============ 4. RICH TEXT TO LATEX ============
 export const richTextToLatex = (richText) => {
-  if (!richText) return "";
-  let latex = richText;
-  const equations = [];
+  // if (!richText) return "";
+  // let latex = richText;
+  // const equations = [];
 
+  // latex = latex
+  //   .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
+  //     equations.push(match);
+  //     return `__EQ${equations.length - 1}__`;
+  //   })
+  //   .replace(/\$([^$\n]+)\$/g, (match) => {
+  //     equations.push(match);
+  //     return `__EQ${equations.length - 1}__`;
+  //   });
+
+  // latex = latex
+  //   .replace(/<br\s*\/?>/gi, "\n")
+  //   .replace(/<\/p><p>/gi, "\n\n")
+  //   .replace(/<p>/gi, "")
+  //   .replace(/<\/p>/gi, "\n")
+  //   .replace(/\[Date: Today\]/g, "\\today")
+  //   .replace(
+  //     /<h2[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
+  //     "\n\n\\section{$1}\n\n",
+  //   )
+  //   .replace(
+  //     /<h3[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
+  //     "\n\n\\subsection{$1}\n\n",
+  //   )
+  //   .replace(
+  //     /<h4[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h4>/gi,
+  //     "\n\n\\subsubsection{$1}\n\n",
+  //   )
+  //   .replace(
+  //     /<ul[^>]*>([\s\S]*?)<\/ul>/gi,
+  //     (match, content) =>
+  //       `\n\\begin{itemize}\n${content
+  //         .split(/<li[^>]*>/)
+  //         .slice(1)
+  //         .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
+  //         .join("\n")}\n\\end{itemize}\n`,
+  //   )
+  //   .replace(
+  //     /<ol[^>]*>([\s\S]*?)<\/ol>/gi,
+  //     (match, content) =>
+  //       `\n\\begin{enumerate}\n${content
+  //         .split(/<li[^>]*>/)
+  //         .slice(1)
+  //         .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
+  //         .join("\n")}\n\\end{enumerate}\n`,
+  //   )
+  //   .replace(/<strong[^>]*>([^<]+)<\/strong>/gi, "\\textbf{$1}")
+  //   .replace(/<b[^>]*>([^<]+)<\/b>/gi, "\\textbf{$1}")
+  //   .replace(/<em[^>]*>([^<]+)<\/em>/gi, "\\textit{$1}")
+  //   .replace(/<i[^>]*>([^<]+)<\/i>/gi, "\\textit{$1}")
+  //   .replace(/<code[^>]*>([^<]+)<\/code>/gi, "\\texttt{$1}")
+  //   .replace(/<u[^>]*>([^<]+)<\/u>/gi, "\\underline{$1}");
+
+  // latex = latex.replace(/\n{3,}/g, "\n\n").trim();
+  // equations.forEach((eq, i) => {
+  //   latex = latex.replace(`__EQ${i}__`, eq);
+  // });
+  // return latex;
+  // ============ 4. RICH TEXT TO LATEX (FIXED \end LOGIC) ============
+  // ============ 4. RICH TEXT TO LATEX (FIXED \end LOGIC & SYNTAX) ============
+  if (!richText) return "";
+
+  let latex = richText;
+  let restoredPreamble = "";
+  let restoredPostamble = "";
+
+  // 1. EXTRACT HIDDEN PREAMBLE
+  // Use new RegExp string syntax to avoid editor comment issues
+  const preambleRegex = new RegExp("");
+  const preambleMatch = latex.match(preambleRegex);
+
+  if (preambleMatch) {
+    try {
+      restoredPreamble = decodeURIComponent(escape(atob(preambleMatch[1])));
+      latex = latex.replace(preambleMatch[0], "");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 2. EXTRACT HIDDEN POSTAMBLE
+  const postambleRegex = new RegExp("");
+  const postambleMatch = latex.match(postambleRegex);
+
+  if (postambleMatch) {
+    try {
+      restoredPostamble = decodeURIComponent(escape(atob(postambleMatch[1])));
+      latex = latex.replace(postambleMatch[0], "");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  const equations = [];
   latex = latex
     .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
       equations.push(match);
@@ -1082,19 +728,45 @@ export const richTextToLatex = (richText) => {
     .replace(/<\/p><p>/gi, "\n\n")
     .replace(/<p>/gi, "")
     .replace(/<\/p>/gi, "\n")
-    .replace(/\[Date: Today\]/g, "\\today")
+    .replace(/\[Date: Today\]/g, "\\today");
+
+  // Restore Special Environment Headers -> \begin{...}
+  // We use the SPECIAL_ENVS_PATTERN constant you added at the top of the file
+  latex = latex.replace(
+    new RegExp(
+      `<h3[^>]*>\\s*(?:<strong>|<b>)?\\s*(${SPECIAL_ENVS_PATTERN})\\s*(?:<\\/strong>|<\\/b>)?\\s*<\\/h3>`,
+      "gi",
+    ),
+    (match, envName) => `\n\n\\begin{${envName}}\n`,
+  );
+
+  // Restore Sections
+  latex = latex
     .replace(
       /<h2[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
-      "\n\n\\section{$1}\n\n"
+      "\n\n\\section{$1}\n\n",
     )
     .replace(
       /<h3[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
-      "\n\n\\subsection{$1}\n\n"
+      "\n\n\\subsection{$1}\n\n",
     )
     .replace(
       /<h4[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h4>/gi,
-      "\n\n\\subsubsection{$1}\n\n"
-    )
+      "\n\n\\subsubsection{$1}\n\n",
+    );
+
+  // AUTO-CLOSE ENVIRONMENTS
+  const closeEnvRegex = new RegExp(
+    `(\\\\begin\\{(${SPECIAL_ENVS_PATTERN})\\}[\\s\\S]*?)(?=\n\\s*\\\\(?:section|subsection|subsubsection|begin)|$)`,
+    "gi",
+  );
+  latex = latex.replace(closeEnvRegex, (match, content, envName) => {
+    if (content.includes(`\\end{${envName}}`)) return match;
+    return `${content.trim()}\n\\end{${envName}}\n`;
+  });
+
+  // Lists and formatting
+  latex = latex
     .replace(
       /<ul[^>]*>([\s\S]*?)<\/ul>/gi,
       (match, content) =>
@@ -1102,7 +774,7 @@ export const richTextToLatex = (richText) => {
           .split(/<li[^>]*>/)
           .slice(1)
           .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
-          .join("\n")}\n\\end{itemize}\n`
+          .join("\n")}\n\\end{itemize}\n`,
     )
     .replace(
       /<ol[^>]*>([\s\S]*?)<\/ol>/gi,
@@ -1111,8 +783,10 @@ export const richTextToLatex = (richText) => {
           .split(/<li[^>]*>/)
           .slice(1)
           .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
-          .join("\n")}\n\\end{enumerate}\n`
-    )
+          .join("\n")}\n\\end{enumerate}\n`,
+    );
+
+  latex = latex
     .replace(/<strong[^>]*>([^<]+)<\/strong>/gi, "\\textbf{$1}")
     .replace(/<b[^>]*>([^<]+)<\/b>/gi, "\\textbf{$1}")
     .replace(/<em[^>]*>([^<]+)<\/em>/gi, "\\textit{$1}")
@@ -1124,7 +798,35 @@ export const richTextToLatex = (richText) => {
   equations.forEach((eq, i) => {
     latex = latex.replace(`__EQ${i}__`, eq);
   });
-  return latex;
+
+  // Combine
+  let finalLatex = "";
+  if (restoredPreamble) finalLatex += restoredPreamble + "\n";
+  finalLatex += latex;
+  if (restoredPostamble) finalLatex += "\n" + restoredPostamble;
+
+  return finalLatex;
+};
+
+// ============ 5. SECTION <-> RICH TEXT WRAPPERS ============
+
+// Converts a specific Section Node (from latexToSections) into Rich Text for the editor
+export const sectionToRichText = (sectionNode) => {
+  if (!sectionNode) return "";
+
+  // If the node IS the environment (e.g. type="section", subtype="env", name="IEEEkeywords"),
+  // the content usually doesn't include the \begin{...} \end{...} tags if extracted correctly,
+  // OR it does include them depending on how `latexToSections` parsed it.
+
+  // Assuming `latexToSections` content INCLUDES the raw body but maybe NOT the wrapper commands for that specific section:
+  // We treat the content as pure body.
+
+  return latexToRichText(sectionNode.content);
+};
+
+// Converts Rich Text back into the Content string for a Section Node
+export const richTextToSection = (richText) => {
+  return richTextToLatex(richText);
 };
 
 export default {
@@ -1134,6 +836,8 @@ export default {
   richTextToLatex,
   latexToSections,
   sectionsToLatex,
+  sectionToRichText,
+  richTextToSection,
   splitLatex,
   escapeLatexSpecialChars,
   unescapeLatexSpecialChars,

@@ -97,6 +97,8 @@ const SectionEditor = ({
   projectId,
   token,
   isOnline,
+  sectionToRichText,
+  richTextToSection,
 }) => {
   const [focusedSectionId, setFocusedSectionId] = useState(null);
 
@@ -117,7 +119,7 @@ const SectionEditor = ({
   // --- ROOT HANDLERS ---
   const handleRootUpdate = (updatedSection) => {
     const newSections = sections.map((s) =>
-      s.id === updatedSection.id ? updatedSection : s
+      s.id === updatedSection.id ? updatedSection : s,
     );
     onSectionsChange(newSections);
   };
@@ -211,6 +213,8 @@ const SectionEditor = ({
                 projectId={projectId}
                 token={token}
                 isOnline={isOnline}
+                sectionToRichText={sectionToRichText}
+                richTextToSection={richTextToSection}
               />
             );
           })}
@@ -247,6 +251,8 @@ const RecursiveSection = ({
   projectId,
   token,
   isOnline,
+  sectionToRichText,
+  richTextToSection,
 }) => {
   const isFocused = focusedSectionId === section.id;
   const [isEditingName, setIsEditingName] = useState(false);
@@ -260,23 +266,32 @@ const RecursiveSection = ({
     if (!isCodeMode) {
       // 1. SPLIT CONTENT
       const { preamble, body, postamble } = latexUtility.splitLatex(
-        section.content
+        section.content,
       );
 
       // 2. SAVE HIDDEN PARTS TO REF
       hiddenParts.current = { preamble, postamble };
 
-      // 3. CONVERT ONLY BODY TO HTML
-      const html = latexUtility.latexToRichText(body);
-      setRichTextContent(html);
+      if (sectionToRichText) {
+        const html = sectionToRichText({ content: body });
+        setRichTextContent(html);
+      } else {
+        // Fallback if prop missing
+        setRichTextContent(latexUtility.latexToRichText(body));
+      }
     }
-  }, [section.content, isCodeMode]);
+  }, [section.content, isCodeMode, sectionToRichText]);
 
   const handleRichTextChange = (html) => {
     setRichTextContent(html);
 
     // 1. CONVERT HTML TO BODY LATEX
-    const bodyLatex = latexUtility.richTextToLatex(html);
+    let bodyLatex = "";
+    if (richTextToSection) {
+      bodyLatex = richTextToSection(html);
+    } else {
+      bodyLatex = latexUtility.richTextToLatex(html);
+    }
 
     // 2. RECOMBINE WITH HIDDEN PARTS
     const fullLatex =
@@ -290,7 +305,7 @@ const RecursiveSection = ({
 
   const handleChildUpdate = (childId, updatedChild) => {
     const newChildren = section.children.map((c) =>
-      c.id === childId ? updatedChild : c
+      c.id === childId ? updatedChild : c,
     );
     onUpdate({ ...section, children: newChildren });
   };
@@ -396,12 +411,12 @@ const RecursiveSection = ({
           >
             <ArrowDownIcon />
           </button>
-          <button
+          {/* <button
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 text-xs font-semibold text-gray-600"
             title="AI Assistant"
           >
             AI
-          </button>
+          </button> */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -577,6 +592,8 @@ const RecursiveSection = ({
               projectId={projectId}
               token={token}
               isOnline={isOnline}
+              sectionToRichText={sectionToRichText}
+              richTextToSection={richTextToSection}
             />
           ))}
         </div>
