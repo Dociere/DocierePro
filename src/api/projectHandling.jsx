@@ -44,6 +44,43 @@ export const createProject = async (
   }
 };
 
+export const editDocumentWithAI = async (prompt, currentLatex) => {
+  try {
+    const response = await axios.post(`${API_URL}/api/edit`, {
+      prompt,
+      latexContent: currentLatex,
+    });
+    return response.data; // Returns { success: true, latexContent: "..." }
+  } catch (error) {
+    console.error("AI Edit Failed:", error);
+    throw error;
+  }
+};
+
+// api/projectHandling.jsx
+
+export const saveChatMessage = async (projectId, message) => {
+  try {
+    await axios.post(`${API_URL}/api/projects/${projectId}/chat/save`, {
+      message,
+    });
+  } catch (error) {
+    console.error("Failed to save chat message:", error);
+  }
+};
+
+export const loadChatHistory = async (projectId) => {
+  try {
+    const response = await axios.get(
+      `${API_URL}/api/projects/${projectId}/chat`,
+    );
+    return response.data.history || [];
+  } catch (error) {
+    console.error("Failed to load chat history:", error);
+    return [];
+  }
+};
+
 export const loadProjects = async () => {
   try {
     let Loading = true;
