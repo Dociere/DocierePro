@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 import sharp from "sharp";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import * as TemplateEngine from './renderStrategies.js';
+import * as TemplateEngine from "./renderStrategies.js";
 
 dotenv.config();
 
@@ -364,6 +364,42 @@ function generateHarvardCitation({
   return citation;
 }
 
+// ==================== PAPER EDITING USING AI ROUTE ====================
+// API: AI Edit LaTeX
+app.post("/api/edit", async (req, res) => {
+  try {
+    const { prompt, latexContent } = req.body;
+
+    if (!prompt || !latexContent) {
+      return res
+        .status(400)
+        .json({ error: "Prompt and LaTeX content required" });
+    }
+
+    console.log(
+      `🤖 Editing LaTeX with AI prompt: "${prompt.substring(0, 50)}..."`,
+    );
+
+    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/edit-latex`, {
+      prompt,
+      latexContent,
+    });
+
+    if (aiResponse.data.success) {
+      res.json({
+        success: true,
+        latexContent: aiResponse.data.latexContent,
+        changedSnippet: aiResponse.data.changedSnippet,
+      });
+    } else {
+      throw new Error(aiResponse.data.error || "AI edit failed");
+    }
+  } catch (error) {
+    console.error("❌ AI Edit Error:", error.message);
+    res.status(500).json({ success: false, error: "Failed to edit document" });
+  }
+});
+
 // ==================== EQUATION GENERATION USING AI ROUTE ====================
 
 app.post("/api/generate-equation", async (req, res) => {
@@ -371,32 +407,36 @@ app.post("/api/generate-equation", async (req, res) => {
     const { prompt } = req.body;
 
     if (!prompt) {
-      return res.status(400).json({ success: false, error: "Prompt is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Prompt is required" });
     }
 
     console.log(`🤖 Generating equation for prompt: "${prompt}"`);
 
     // Call Python AI Service
-    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/generate-equation`, {
-      prompt: prompt
-    });
+    const aiResponse = await axios.post(
+      `${AI_SERVICE_URL}/api/generate-equation`,
+      {
+        prompt: prompt,
+      },
+    );
 
     if (aiResponse.data && aiResponse.data.success) {
       console.log("✅ AI Equation generated successfully");
       res.json({
         success: true,
-        latexEquation: aiResponse.data.latexEquation
+        latexEquation: aiResponse.data.latexEquation,
       });
     } else {
       throw new Error(aiResponse.data.error || "AI service failed");
     }
-
   } catch (error) {
     console.error("❌ AI Equation Generation Error:", error.message);
     res.status(500).json({
       success: false,
       error: "Failed to generate equation",
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -465,37 +505,59 @@ app.post("/api/projects/create", async (req, res) => {
         console.log("⚠️ Falling back to Skeleton Template");
         const skeleton = TemplateEngine.getSkeletonContent(templateKey);
         aiJsonContent = skeleton;
-        
-        // Prepare authors list for renderer
-        const authorsList = [{
-            name: authorDetails.name || 'Author',
-            email: authorDetails.email || '',
-            organization: authorDetails.affiliation || '',
-            is_corresponding: true
-        }];
 
-        const renderer = TemplateEngine.RENDERERS[templateKey] || TemplateEngine.RENDERERS['article'];
-        defaultContent = renderer(title, authorsList, skeleton.abstract, skeleton.keywords, skeleton.sections);
+        // Prepare authors list for renderer
+        const authorsList = [
+          {
+            name: authorDetails.name || "Author",
+            email: authorDetails.email || "",
+            organization: authorDetails.affiliation || "",
+            is_corresponding: true,
+          },
+        ];
+
+        const renderer =
+          TemplateEngine.RENDERERS[templateKey] ||
+          TemplateEngine.RENDERERS["article"];
+        defaultContent = renderer(
+          title,
+          authorsList,
+          skeleton.abstract,
+          skeleton.keywords,
+          skeleton.sections,
+        );
       }
     } else {
       // --- B. SKELETON MODE (Local Node.js Generation) ---
-      console.log(`🏗️ Generating Skeleton Template locally (${templateKey})...`);
-      
+      console.log(
+        `🏗️ Generating Skeleton Template locally (${templateKey})...`,
+      );
+
       const skeleton = TemplateEngine.getSkeletonContent(templateKey);
       aiJsonContent = skeleton;
 
-      const authorsList = [{
-          name: authorDetails.name || 'Author',
-          email: authorDetails.email || '',
-          organization: authorDetails.affiliation || '', // Note: frontend sends 'authorInstitute', you mapped it to 'affiliation'
-          is_corresponding: true
-      }];
+      const authorsList = [
+        {
+          name: authorDetails.name || "Author",
+          email: authorDetails.email || "",
+          organization: authorDetails.affiliation || "", // Note: frontend sends 'authorInstitute', you mapped it to 'affiliation'
+          is_corresponding: true,
+        },
+      ];
 
       // Pick Renderer (Default to article/blank if not found)
-      const renderer = TemplateEngine.RENDERERS[templateKey] || TemplateEngine.RENDERERS['article'];
-      
+      const renderer =
+        TemplateEngine.RENDERERS[templateKey] ||
+        TemplateEngine.RENDERERS["article"];
+
       // Generate LaTeX string
-      defaultContent = renderer(title, authorsList, skeleton.abstract, skeleton.keywords, skeleton.sections);
+      defaultContent = renderer(
+        title,
+        authorsList,
+        skeleton.abstract,
+        skeleton.keywords,
+        skeleton.sections,
+      );
     }
 
     const projectData = {
@@ -662,6 +724,64 @@ app.delete("/api/projects/:id", async (req, res) => {
   } catch (error) {
     console.error("❌ Project deletion error:", error);
     res.status(500).json({ success: false, error: "Failed to delete project" });
+  }
+});
+
+// server.js - Add these new routes
+
+// API: Save Chat Message
+app.post("/api/projects/:id/chat/save", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    const projectDir = path.join(PROJECTS_DIR, id);
+    const chatPath = path.join(projectDir, "chat.json");
+
+    if (!(await fs.pathExists(projectDir))) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    let chatHistory = [];
+    if (await fs.pathExists(chatPath)) {
+      chatHistory = await fs.readJSON(chatPath);
+    }
+
+    // Append new message (stripping interactive properties like 'isAction' for storage)
+    // We only store the text, sender, timestamp, and snippet (for reference)
+    const storedMessage = {
+      id: message.id,
+      sender: message.sender,
+      text: message.text,
+      timestamp: message.timestamp,
+      snippet: message.snippet || null,
+      isError: message.isError || false,
+    };
+
+    chatHistory.push(storedMessage);
+
+    await fs.writeJSON(chatPath, chatHistory, { spaces: 2 });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("❌ Chat Save Error:", error);
+    res.status(500).json({ error: "Failed to save chat" });
+  }
+});
+
+// API: Load Chat History
+app.get("/api/projects/:id/chat", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const chatPath = path.join(PROJECTS_DIR, id, "chat.json");
+
+    if (await fs.pathExists(chatPath)) {
+      const history = await fs.readJSON(chatPath);
+      res.json({ success: true, history });
+    } else {
+      res.json({ success: true, history: [] }); // Empty history for new projects
+    }
+  } catch (error) {
+    console.error("❌ Chat Load Error:", error);
+    res.status(500).json({ error: "Failed to load chat" });
   }
 });
 
@@ -902,15 +1022,15 @@ app.get("/api/test-pdflatex", async (req, res) => {
 \\begin{document}
 Hello World
 \\end{document}`;
-    
+
     const testFile = path.join(TEMP_DIR, "test.tex");
     await fs.writeFile(testFile, testLatex);
-    
+
     console.log("Testing pdflatex...");
     const result = await runPdfLatexPermissive(testFile, OUTPUT_DIR);
-    
+
     const pdfExists = await fs.pathExists(path.join(OUTPUT_DIR, "test.pdf"));
-    
+
     res.json({
       success: pdfExists,
       exitCode: result.code,
@@ -918,17 +1038,16 @@ Hello World
       stdoutLength: result.stdout?.length,
       stderrLength: result.stderr?.length,
       stdout: result.stdout?.slice(0, 500),
-      stderr: result.stderr?.slice(0, 500)
+      stderr: result.stderr?.slice(0, 500),
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
   }
 });
-
 
 // API: Compile LaTeX (for math equations)
 app.post("/api/latex/compile", async (req, res) => {
@@ -975,20 +1094,22 @@ ${latex.replace(/[‹›]/g, "")}
 
     // Verify PDF exists
     const pdfExists = await fs.pathExists(pdfFilePath);
-if (!pdfExists) {
-    console.error("❌ PDF file was not created");
-    // Read the log file for errors
-    const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
-    let logContent = "";
-    try {
+    if (!pdfExists) {
+      console.error("❌ PDF file was not created");
+      // Read the log file for errors
+      const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
+      let logContent = "";
+      try {
         logContent = await fs.readFile(logPath, "utf8");
         console.error("📄 LaTeX Log:", logContent.slice(-1000));
-    } catch (logErr) {
+      } catch (logErr) {
         console.error("Could not read log file");
+      }
+
+      throw new Error(
+        `PDF compilation failed. Check LaTeX syntax. Log: ${logContent.slice(-500)}`,
+      );
     }
-    
-    throw new Error(`PDF compilation failed. Check LaTeX syntax. Log: ${logContent.slice(-500)}`);
-}
     console.log("✅ PDF file created successfully:", pdfFileName);
 
     let finalUrl = `/output/${pdfFileName}`;
@@ -1010,7 +1131,7 @@ if (!pdfExists) {
       } catch (imageError) {
         console.error(
           "⚠️ Image conversion failed, falling back to PDF:",
-          imageError.message
+          imageError.message,
         );
       }
     }
