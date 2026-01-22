@@ -19,6 +19,8 @@ import {
   richTextToLatex,
   latexToSections,
   sectionsToLatex,
+  sectionToRichText,
+  richTextToSection,
 } from "../utils/latexUtility.jsx";
 import {
   loadProjects,
@@ -76,7 +78,8 @@ const EditorPage = () => {
   // }, []);
 
   const fetchData = async () => {
-    const { Projects, Loading, CurrentProject, ActiveFile } = await loadProjects();
+    const { Projects, Loading, CurrentProject, ActiveFile } =
+      await loadProjects();
     updateProjectDetails({
       project: Projects,
       currentProject: CurrentProject,
@@ -103,35 +106,38 @@ const EditorPage = () => {
 
     if (projectIdFromUrl) {
       // Check if this is a remote project (identified by having a server URL stored)
-      const serverUrl = localStorage.getItem(`project_${projectIdFromUrl}_server`);
-      
+      const serverUrl = localStorage.getItem(
+        `project_${projectIdFromUrl}_server`,
+      );
+
       if (serverUrl) {
         console.log("📥 Loading REMOTE project...");
         updateProjectDetails({ isLoading: true });
         loadRemoteProject(projectIdFromUrl);
       } else {
         console.log("📂 Loading LOCAL project...");
-        
+
         // Inline local loading logic
         const loadLocal = async () => {
-             updateProjectDetails({ isLoading: true });
-             const { CurrentProject, ActiveFile, Error } = await loadProject(projectIdFromUrl);
-             
-             if (Error) {
-                 updateProjectDetails({
-                    error: Error,
-                    isLoading: false
-                 });
-             } else {
-                 updateProjectDetails({
-                    currentProject: CurrentProject,
-                    activeFile: ActiveFile,
-                    isLoading: false
-                 });
-                 // Also load the list of projects in background so the sidebar works
-                 const { Projects } = await loadProjects();
-                 updateProjectDetails({ project: Projects });
-             }
+          updateProjectDetails({ isLoading: true });
+          const { CurrentProject, ActiveFile, Error } =
+            await loadProject(projectIdFromUrl);
+
+          if (Error) {
+            updateProjectDetails({
+              error: Error,
+              isLoading: false,
+            });
+          } else {
+            updateProjectDetails({
+              currentProject: CurrentProject,
+              activeFile: ActiveFile,
+              isLoading: false,
+            });
+            // Also load the list of projects in background so the sidebar works
+            const { Projects } = await loadProjects();
+            updateProjectDetails({ project: Projects });
+          }
         };
         loadLocal();
       }
@@ -782,6 +788,8 @@ const EditorPage = () => {
               <SectionEditor
                 sections={sections}
                 onSectionsChange={handleSectionsChange}
+                sectionToRichText={sectionToRichText}
+                richTextToSection={richTextToSection}
               />
             </div>
           )}
