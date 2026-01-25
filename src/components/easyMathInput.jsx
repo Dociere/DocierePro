@@ -8,6 +8,8 @@ import {
   TbChevronDown,
   TbRobot,
   TbArrowUp,
+  TbListNumbers,
+  TbMath,
   TbLoader,
   TbMathFunction,
   TbCode,
@@ -43,6 +45,9 @@ const EasyMathInput = ({ onClose }) => {
   const [cardPreviewLoading, setCardPreviewLoading] = useState(null); // fileName
 
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [equationMode, setEquationMode] = useState("numbered");
+
+  const [toastMessage, setToastMessage] = useState(null);
 
   // Default expanded categories
   const [expandedCategories, setExpandedCategories] = useState(
@@ -67,6 +72,19 @@ const EasyMathInput = ({ onClose }) => {
       setCardPreviewLoading(null);
     }
   }, [activeTab]);
+
+  const getWrappedCode = (raw) => {
+    const clean = raw.trim();
+    if (!clean) return "";
+
+    // Simple Toggle: Numbered vs Normal (Display)
+    if (equationMode === "numbered") {
+      return `\\begin{equation}\n${clean}\n\\end{equation}`;
+    } else {
+      // "Normal" maps to standard unnumbered display math
+      return `\\[\n${clean}\n\\]`;
+    }
+  };
 
   // --- SMART INSERTION LOGIC (Enables Nesting) ---
   const insertAtCursor = (template) => {
@@ -233,8 +251,14 @@ const EasyMathInput = ({ onClose }) => {
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(latexCode);
-    alert("Copied to clipboard!");
+    const finalCode = getWrappedCode(latexCode);
+    navigator.clipboard.writeText(finalCode);
+
+    // 👇 UPDATE: Simplified Toast Text
+    const modeText = equationMode === "numbered" ? "Numbered Eq" : "Normal Eq";
+    setToastMessage(`✓ Copied as ${modeText}`);
+
+    setTimeout(() => setToastMessage(null), 2000);
   };
 
   // --- EXTENSIVE DATA LIBRARY ---
@@ -727,6 +751,20 @@ const EasyMathInput = ({ onClose }) => {
                   </div>
 
                   <div className="flex gap-2">
+                    <div className="relative group h-full">
+                      <select
+                        value={equationMode}
+                        onChange={(e) => setEquationMode(e.target.value)}
+                        className="appearance-none bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-xs py-2 pl-3 pr-8 rounded-lg cursor-pointer outline-none focus:ring-2 focus:ring-gray-300 transition-colors h-full"
+                      >
+                        <option value="numbered">Numbered (1)</option>
+                        <option value="normal">Normal</option>
+                      </select>
+                      <TbChevronDown
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+                        size={14}
+                      />
+                    </div>
                     <button
                       onClick={copyToClipboard}
                       className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
@@ -1011,6 +1049,11 @@ const EasyMathInput = ({ onClose }) => {
             </div>
           </div>
         )}
+        <div
+          className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl text-sm font-medium transition-all duration-300 pointer-events-none z-[70] flex items-center gap-2 ${toastMessage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+        >
+          {toastMessage}
+        </div>
       </div>
     </div>
   );

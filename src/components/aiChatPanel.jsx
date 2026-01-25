@@ -6,7 +6,7 @@ import {
 } from "../api/projectHandling";
 import { projectContext } from "../context/useProject";
 
-const AIChatPanel = ({ projectDetails }) => {
+const AIChatPanel = ({ projectDetails, onApplyChanges }) => {
   const { updateProjectDetails } = useContext(projectContext);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
@@ -114,7 +114,10 @@ const AIChatPanel = ({ projectDetails }) => {
   };
 
   const handleApplyChanges = (msgId, newContent) => {
-    updateProjectDetails({ latexContent: newContent });
+    // updateProjectDetails({ latexContent: newContent });
+    if (onApplyChanges) {
+      onApplyChanges(newContent);
+    }
 
     // Remove buttons from the message that was clicked
     setMessages((prev) =>

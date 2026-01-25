@@ -858,7 +858,10 @@ const EditorPage = () => {
         )}
         {activeRightView === "aichat" && (
           <div className="flex-1 overflow-hidden relative">
-            <AIChatPanel projectDetails={projectDetails} />
+            <AIChatPanel
+              projectDetails={projectDetails}
+              onApplyChanges={handleLatexChange}
+            />
           </div>
         )}
       </div>
