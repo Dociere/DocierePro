@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import MonacoEditorPanel from "./monacoEditor";
 import RichTextEditorPanel from "./textEditor";
 import latexUtility from "../utils/latexUtility";
+import TableDesigner from "./tableDesigner";
 import axios from "axios";
 
 const SERVER_URL = "http://localhost:5000";
@@ -247,14 +248,29 @@ const SectionEditor = ({
     onSectionsChange(newSections);
   };
 
-  const handleRootAddAfter = (index) => {
-    const newSection = {
-      id: Date.now() + Math.random(),
-      type: "section",
-      name: "",
-      content: "",
-      children: [],
-    };
+  const handleRootAddAfter = (index, type = "section") => {
+    let newSection;
+
+    if (type === "table") {
+      newSection = {
+        id: Date.now() + Math.random(),
+        type: "section",
+        subtype: "table",
+        name: "New Table",
+        content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n 1 & 2 \\\\ \\hline\n 3 & 4 \\\\ \\hline\n\\end{tabular}\n\\end{table}`,
+        children: [],
+      };
+    } else {
+      // Standard Section
+      newSection = {
+        id: Date.now() + Math.random(),
+        type: "section",
+        name: "",
+        content: "",
+        children: [],
+      };
+    }
+
     const newSections = [...sections];
     newSections.splice(index + 1, 0, newSection);
     onSectionsChange(newSections);
@@ -303,7 +319,7 @@ const SectionEditor = ({
                 onMoveUp={() => handleRootMove(index, -1)}
                 onMoveDown={() => handleRootMove(index, 1)}
                 onDuplicate={() => handleRootDuplicate(section, index)}
-                onAddAfter={() => handleRootAddAfter(index)}
+                onAddAfter={(type) => handleRootAddAfter(index, type)}
                 // Props
                 projectId={projectId}
                 token={token}
@@ -394,6 +410,20 @@ const RecursiveSection = ({
       }
     }
   }, [section.content, isCodeMode, sectionToRichText]);
+
+  const handleAddTable = () => {
+    const newTable = {
+      id: Date.now() + Math.random(),
+      type: "section",
+      subtype: "table",
+      name: "New Table",
+      // Default content for a 2x2 table
+      content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n Cell 1 & Cell 2 \\\\ \\hline\n Cell 3 & Cell 4 \\\\ \\hline\n\\end{tabular}\n\\caption{New Table}\n\\end{table}`,
+      children: [],
+    };
+    // to accept an optional 'template' argument.
+    props.onAddAfter(props.index, newTable);
+  };
 
   const handleRichTextChange = (html) => {
     setRichTextContent(html);
@@ -523,14 +553,32 @@ const RecursiveSection = ({
     onUpdate({ ...section, children: newChildren });
   };
 
-  const handleChildAddAfter = (childIndex, siblingType) => {
-    const newSibling = {
-      id: Date.now() + Math.random(),
-      type: siblingType,
-      name: "",
-      content: "",
-      children: [],
-    };
+  const handleChildAddAfter = (
+    childIndex,
+    siblingType,
+    specificType = null,
+  ) => {
+    let newSibling;
+
+    if (specificType === "table") {
+      newSibling = {
+        id: Date.now() + Math.random(),
+        type: "section", // Tables sit at the same hierarchy as sections usually
+        subtype: "table",
+        name: "New Table",
+        content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n 1 & 2 \\\\ \\hline\n 3 & 4 \\\\ \\hline\n\\end{tabular}\n\\end{table}`,
+        children: [],
+      };
+    } else {
+      newSibling = {
+        id: Date.now() + Math.random(),
+        type: siblingType,
+        name: "",
+        content: "",
+        children: [],
+      };
+    }
+
     const newChildren = [...section.children];
     newChildren.splice(childIndex + 1, 0, newSibling);
     onUpdate({ ...section, children: newChildren });
@@ -685,26 +733,30 @@ const RecursiveSection = ({
               />
             </div>
           )}
-
           {section.name && !isEditingName && (
             <div className="mb-2 text-sm font-semibold text-gray-700 flex justify-between items-center">
               <span>{section.name}</span>
-              {isFocused && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCodeMode(!isCodeMode);
-                  }}
-                  className="text-[10px] text-blue-500 hover:underline cursor-pointer"
-                >
-                  {isCodeMode ? "Switch to Visual" : "Switch to LaTeX Code"}
-                </button>
-              )}
             </div>
+          )}
+          {isFocused && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCodeMode(!isCodeMode);
+              }}
+              className="text-[10px] text-blue-500 hover:underline cursor-pointer"
+            >
+              {isCodeMode
+                ? section.subtype === "table"
+                  ? "Switch to Designer"
+                  : "Switch to Visual"
+                : "Switch to LaTeX Code"}
+            </button>
           )}
 
           <div className="min-h-[80px]">
             {isCodeMode ? (
+              // 1. CODE VIEW (Shared by Tables & Sections)
               <div
                 className="h-64 border border-gray-200 rounded"
                 onKeyDown={(e) => e.stopPropagation()}
@@ -719,7 +771,19 @@ const RecursiveSection = ({
                   isOnline={isOnline}
                 />
               </div>
+            ) : section.subtype === "table" ? (
+              // 2. TABLE DESIGNER (Only for Tables)
+              <div onClick={(e) => e.stopPropagation()}>
+                <TableDesigner
+                  initialContent={section.content}
+                  onSave={(newLatex) => {
+                    onUpdate({ ...section, content: newLatex });
+                  }}
+                  onCancel={() => {}}
+                />
+              </div>
             ) : (
+              // 3. RICH TEXT (Only for Standard Sections)
               <div onKeyDown={(e) => e.stopPropagation()}>
                 <RichTextEditorPanel
                   value={richTextContent}
@@ -786,6 +850,17 @@ const RecursiveSection = ({
         >
           <PlusIcon /> {getSiblingLabel()}
         </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            // You need to update the `onAddAfter` logic to accept a type/template!
+            // See Step 3 below for the parent fix.
+            onAddAfter("table");
+          }}
+          className="px-4 py-1.5 bg-white border border-green-300 text-green-600 rounded-full text-sm hover:bg-green-50 flex items-center gap-1"
+        >
+          <PlusIcon /> Add Table
+        </button>
 
         {level < 2 && (
           <button
@@ -828,7 +903,9 @@ const RecursiveSection = ({
               onMoveUp={() => handleChildMove(i, -1)}
               onMoveDown={() => handleChildMove(i, 1)}
               onDuplicate={() => handleChildDuplicate(child, i)}
-              onAddAfter={() => handleChildAddAfter(i, child.type)}
+              onAddAfter={(specificType) =>
+                handleChildAddAfter(i, child.type, specificType)
+              }
               projectId={projectId}
               token={token}
               isOnline={isOnline}
