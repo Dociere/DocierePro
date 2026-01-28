@@ -215,7 +215,7 @@ export const latexToSections = (latexDoc) => {
 
   for (let i = 1; i < parts.length; i += 2) {
     const delimiter = parts[i];
-    const content = parts[i + 1] || "";
+    let content = parts[i + 1] || "";
 
     let type = "section";
     let name = "Untitled";
@@ -231,6 +231,7 @@ export const latexToSections = (latexDoc) => {
           type = "section"; // Treat it as a main block
           subtype = "table"; // Mark specifically as table
           name = "Table Block";
+          content = delimiter + content;
         } else {
           // Your existing logic for Abstract/Keywords
           name = envTag.charAt(0).toUpperCase() + envTag.slice(1);
@@ -373,32 +374,74 @@ export const latexToRichText = (latexBody) => {
 
   processed = processed.replace(
     /\\begin\{table\}(?:\[.*?\])?([\s\S]*?)\\end\{table\}/g,
-    (match, content) => {
-      return `<div class="latex-table-wrapper">${content}</div>`;
-    },
-  );
+    (match, tableContent) => {
+      // 1. Extract Caption
+      const captionMatch = tableContent.match(/\\caption\{([^}]+)\}/);
+      const captionText = captionMatch ? captionMatch[1] : "";
 
-  processed = processed.replace(
-    /\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/g,
-    (match, content) => {
-      // Split by row (\\) and clean empty splits
-      const rows = content.split("\\\\").filter((r) => r.trim());
+      // 2. Extract Tabular
+      const tabularMatch = tableContent.match(
+        /\\begin\{tabular\}\{([^}]+)\}([\s\S]*?)\\end\{tabular\}/,
+      );
 
-      const htmlRows = rows
-        .map((row) => {
-          // Split by column (&)
-          const cells = row.split("&");
-          return `<tr>${cells
-            .map((c) => {
-              // Basic cleanup of cell content
-              const cellContent = c.replace(/\\hline/g, "").trim();
-              return `<td style="border:1px solid #000; padding:8px;">${cellContent}</td>`;
-            })
-            .join("")}</tr>`;
-        })
-        .join("");
+      if (!tabularMatch) {
+        return `<div class="latex-table" data-latex="${match.replace(/"/g, "&quot;")}">${match}</div>`;
+      }
 
-      return `<table border="1" style="border-collapse:collapse; width:100%; margin: 10px 0;"><tbody>${htmlRows}</tbody></table>`;
+      const colDef = tabularMatch[1];
+      const rawRows = tabularMatch[2];
+
+      // Count columns from column definition
+      const colCount = (colDef.match(/\|/g) || []).length - 1 || 1;
+
+      // Split rows properly - handle \\ with optional \\hline
+      const rows = rawRows
+        .replace(/\\hline/g, "")
+        .split(/\\\\/)
+        .map((row) => row.trim())
+        .filter(Boolean);
+
+      if (rows.length === 0) {
+        return `<table class="latex-table" data-caption="${captionText}"><caption>${captionText}</caption><tbody><tr><td>Empty table</td></tr></tbody></table>`;
+      }
+
+      // Build HTML table
+      const encodedLatex = btoa(unescape(encodeURIComponent(match)));
+
+      let html = `<table
+  class="latex-table"
+  data-caption="${captionText.replace(/"/g, "&quot;")}"
+  data-latex="${encodedLatex}"
+>`;
+
+      if (captionText) {
+        html += `<caption style="font-weight: bold; padding: 5px;">${captionText}</caption>`;
+      }
+
+      html += "<tbody>";
+
+      rows.forEach((row, rowIndex) => {
+        const cells = row
+          .split("&")
+          .map((cell) =>
+            escapeLatexSpecialChars(cell.replace(/\\hline/g, "").trim()),
+          );
+
+        // Ensure we have the right number of cells
+        while (cells.length < colCount) {
+          cells.push("");
+        }
+
+        html += "<tr>";
+        cells.forEach((cell, cellIndex) => {
+          html += `<td style="border: 1px solid #ccc; padding: 8px;">${cell || ""}</td>`;
+        });
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+
+      return html;
     },
   );
 
@@ -509,6 +552,201 @@ export const latexToRichText = (latexBody) => {
 };
 
 // ============ 4. RICH TEXT TO LATEX ============
+// export const richTextToLatex = (richText) => {
+//   if (!richText) return "";
+
+//   let latex = richText;
+//   let restoredPreamble = "";
+//   let restoredPostamble = "";
+
+//   // 1. EXTRACT HIDDEN PREAMBLE
+//   // Use new RegExp string syntax to avoid editor comment issues
+//   const preambleRegex = new RegExp("");
+//   const preambleMatch = latex.match(preambleRegex);
+
+//   if (preambleMatch) {
+//     try {
+//       restoredPreamble = decodeURIComponent(escape(atob(preambleMatch[1])));
+//       latex = latex.replace(preambleMatch[0], "");
+//     } catch (e) {
+//       console.error(e);
+//     }
+//   }
+
+//   // 2. EXTRACT HIDDEN POSTAMBLE
+//   const postambleRegex = new RegExp("");
+//   const postambleMatch = latex.match(postambleRegex);
+
+//   if (postambleMatch) {
+//     try {
+//       restoredPostamble = decodeURIComponent(escape(atob(postambleMatch[1])));
+//       latex = latex.replace(postambleMatch[0], "");
+//     } catch (e) {
+//       console.error(e);
+//     }
+//   }
+
+//   latex = latex.replace(
+//     /<table[^>]*>([\s\S]*?)<\/table>/gi,
+//     (match, innerContent) => {
+//       // 1. Extract caption
+//       let captionText = "";
+//       const captionMatch = innerContent.match(
+//         /<caption[^>]*>([\s\S]*?)<\/caption>/i,
+//       );
+//       if (captionMatch) {
+//         captionText = captionMatch[1].trim();
+//       } else {
+//         // Fallback: data attribute
+//         const dataMatch = match.match(/data-latex-caption="([^"]*)"/);
+//         if (dataMatch) captionText = dataMatch[1];
+//       }
+
+//       // 2. Extract rows
+//       const rows = innerContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+//       if (rows.length === 0) return match; // Return original if no rows
+
+//       // 3. Determine column count from first row
+//       const firstRowCells = rows[0].match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
+//       const colCount = firstRowCells.length || 1;
+//       const colDef = "|" + Array(colCount).fill("c").join("|") + "|";
+
+//       // 4. Process each row
+//       const latexRows = rows
+//         .map((row, rowIndex) => {
+//           const cells = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
+
+//           // Process cell content
+//           const cellContents = cells
+//             .map((cell) => {
+//               let txt = cell.replace(/<\/?td[^>]*>/g, "").trim();
+//               txt = txt.replace(/&nbsp;/g, " ");
+//               txt = txt.replace(/\\/g, "\\\\"); // Escape backslashes
+//               return txt;
+//             })
+//             .join(" & ");
+
+//           // Add \\hline after each row EXCEPT the last one (LaTeX handles last hline differently)
+//           const rowEnd = rowIndex < rows.length - 1 ? " \\\\ \\hline" : " \\\\";
+//           return cellContents + rowEnd;
+//         })
+//         .join("\n");
+
+//       // 5. Build final LaTeX table
+//       const captionLatex = captionText ? `\\caption{${captionText}}\n` : "";
+
+//       return `\n\\begin{table}[htbp]
+// \\centering
+// ${captionLatex}\\begin{tabular}{${colDef}}
+// \\hline
+// ${latexRows}
+// \\hline
+// \\end{tabular}
+// \\end{table}\n`;
+//     },
+//   );
+
+//   // // Clean up the wrapper div if it exists
+//   // latex = latex
+//   //   .replace(/<div class="latex-table-wrapper">/g, "")
+//   //   .replace(/<\/div>/g, "");
+
+//   const equations = [];
+//   latex = latex
+//     .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
+//       equations.push(match);
+//       return `__EQ${equations.length - 1}__`;
+//     })
+//     .replace(/\$([^$\n]+)\$/g, (match) => {
+//       equations.push(match);
+//       return `__EQ${equations.length - 1}__`;
+//     });
+
+//   latex = latex
+//     .replace(/<br\s*\/?>/gi, "\n")
+//     .replace(/<\/p><p>/gi, "\n\n")
+//     .replace(/<p>/gi, "")
+//     .replace(/<\/p>/gi, "\n")
+//     .replace(/\[Date: Today\]/g, "\\today");
+
+//   // Restore Special Environment Headers -> \begin{...}
+//   // We use the SPECIAL_ENVS_PATTERN constant you added at the top of the file
+//   latex = latex.replace(
+//     new RegExp(
+//       `<h3[^>]*>\\s*(?:<strong>|<b>)?\\s*(${SPECIAL_ENVS_PATTERN})\\s*(?:<\\/strong>|<\\/b>)?\\s*<\\/h3>`,
+//       "gi",
+//     ),
+//     (match, envName) => `\n\n\\begin{${envName}}\n`,
+//   );
+
+//   // Restore Sections
+//   latex = latex
+//     .replace(
+//       /<h2[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
+//       "\n\n\\section{$1}\n\n",
+//     )
+//     .replace(
+//       /<h3[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
+//       "\n\n\\subsection{$1}\n\n",
+//     )
+//     .replace(
+//       /<h4[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h4>/gi,
+//       "\n\n\\subsubsection{$1}\n\n",
+//     );
+
+//   // AUTO-CLOSE ENVIRONMENTS
+//   const closeEnvRegex = new RegExp(
+//     `(\\\\begin\\{(${SPECIAL_ENVS_PATTERN})\\}[\\s\\S]*?)(?=\n\\s*\\\\(?:section|subsection|subsubsection|begin)|$)`,
+//     "gi",
+//   );
+//   latex = latex.replace(closeEnvRegex, (match, content, envName) => {
+//     if (content.includes(`\\end{${envName}}`)) return match;
+//     return `${content.trim()}\n\\end{${envName}}\n`;
+//   });
+
+//   // Lists and formatting
+//   latex = latex
+//     .replace(
+//       /<ul[^>]*>([\s\S]*?)<\/ul>/gi,
+//       (match, content) =>
+//         `\n\\begin{itemize}\n${content
+//           .split(/<li[^>]*>/)
+//           .slice(1)
+//           .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
+//           .join("\n")}\n\\end{itemize}\n`,
+//     )
+//     .replace(
+//       /<ol[^>]*>([\s\S]*?)<\/ol>/gi,
+//       (match, content) =>
+//         `\n\\begin{enumerate}\n${content
+//           .split(/<li[^>]*>/)
+//           .slice(1)
+//           .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
+//           .join("\n")}\n\\end{enumerate}\n`,
+//     );
+
+//   latex = latex
+//     .replace(/<strong[^>]*>([^<]+)<\/strong>/gi, "\\textbf{$1}")
+//     .replace(/<b[^>]*>([^<]+)<\/b>/gi, "\\textbf{$1}")
+//     .replace(/<em[^>]*>([^<]+)<\/em>/gi, "\\textit{$1}")
+//     .replace(/<i[^>]*>([^<]+)<\/i>/gi, "\\textit{$1}")
+//     .replace(/<code[^>]*>([^<]+)<\/code>/gi, "\\texttt{$1}")
+//     .replace(/<u[^>]*>([^<]+)<\/u>/gi, "\\underline{$1}");
+
+//   latex = latex.replace(/\n{3,}/g, "\n\n").trim();
+//   equations.forEach((eq, i) => {
+//     latex = latex.replace(`__EQ${i}__`, eq);
+//   });
+
+//   // Combine
+//   let finalLatex = "";
+//   if (restoredPreamble) finalLatex += restoredPreamble + "\n";
+//   finalLatex += latex;
+//   if (restoredPostamble) finalLatex += "\n" + restoredPostamble;
+
+//   return finalLatex;
+// };
+
 export const richTextToLatex = (richText) => {
   if (!richText) return "";
 
@@ -517,7 +755,6 @@ export const richTextToLatex = (richText) => {
   let restoredPostamble = "";
 
   // 1. EXTRACT HIDDEN PREAMBLE
-  // Use new RegExp string syntax to avoid editor comment issues
   const preambleRegex = new RegExp("");
   const preambleMatch = latex.match(preambleRegex);
 
@@ -543,40 +780,7 @@ export const richTextToLatex = (richText) => {
     }
   }
 
-  latex = latex.replace(
-    /<table[^>]*>[\s\S]*?<tbody[^>]*>([\s\S]*?)<\/tbody>[\s\S]*?<\/table>/gi,
-    (match, bodyContent) => {
-      // Parse Rows
-      const rows = bodyContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
-      if (rows.length === 0) return "";
-
-      // Calculate columns based on first row
-      const firstRowCells = rows[0].match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
-      const colCount = firstRowCells.length || 1;
-      const colDef = "|" + Array(colCount).fill("c").join("|") + "|";
-
-      // Build LaTeX Rows
-      const latexRows = rows
-        .map((row) => {
-          const cells = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
-          return cells
-            .map((cell) => {
-              // Strip HTML tags from cell content
-              return cell.replace(/<\/?td[^>]*>/g, "").trim();
-            })
-            .join(" & ");
-        })
-        .join(" \\\\ \\hline\n");
-
-      return `\n\\begin{table}[h]\n\\centering\n\\begin{tabular}{${colDef}}\n\\hline\n${latexRows} \\\\ \\hline\n\\end{tabular}\n\\end{table}\n`;
-    },
-  );
-
-  // Clean up the wrapper div if it exists
-  latex = latex
-    .replace(/<div class="latex-table-wrapper">/g, "")
-    .replace(/<\/div>/g, "");
-
+  // ====== KEY FIX: PRESERVE EQUATIONS FIRST ======
   const equations = [];
   latex = latex
     .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
@@ -588,6 +792,28 @@ export const richTextToLatex = (richText) => {
       return `__EQ${equations.length - 1}__`;
     });
 
+  // ====== FIXED TABLE CONVERSION ======
+  llatex = latex.replace(
+    /<table[^>]*class="latex-table"[^>]*data-latex="([^"]+)"[^>]*>[\s\S]*?<\/table>/gi,
+    (_, encoded) => {
+      try {
+        return decodeURIComponent(escape(atob(encoded)));
+      } catch {
+        return "";
+      }
+    },
+  );
+
+  // Fallback for tables without data-latex-caption attribute
+  // latex = latex.replace(
+  //   /<table[^>]*>([\s\S]*?)<\/table>/gi,
+  //   (match, innerContent) => {
+  //     // Just return empty table to avoid broken LaTeX
+  //     return `\n\\begin{table}[htbp]\n\\centering\n\\begin{tabular}{|c|}\n\\hline\n \\\\ \\hline\n\\end{tabular}\n\\end{table}\n`;
+  //   },
+  // );
+
+  // Basic HTML to LaTeX conversions
   latex = latex
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p><p>/gi, "\n\n")
@@ -596,7 +822,6 @@ export const richTextToLatex = (richText) => {
     .replace(/\[Date: Today\]/g, "\\today");
 
   // Restore Special Environment Headers -> \begin{...}
-  // We use the SPECIAL_ENVS_PATTERN constant you added at the top of the file
   latex = latex.replace(
     new RegExp(
       `<h3[^>]*>\\s*(?:<strong>|<b>)?\\s*(${SPECIAL_ENVS_PATTERN})\\s*(?:<\\/strong>|<\\/b>)?\\s*<\\/h3>`,
@@ -660,8 +885,10 @@ export const richTextToLatex = (richText) => {
     .replace(/<u[^>]*>([^<]+)<\/u>/gi, "\\underline{$1}");
 
   latex = latex.replace(/\n{3,}/g, "\n\n").trim();
+
+  // RESTORE EQUATIONS AT THE END
   equations.forEach((eq, i) => {
-    latex = latex.replace(`__EQ${i}__`, eq);
+    latex = latex.replace(new RegExp(`__EQ${i}__`, "g"), eq);
   });
 
   // Combine
