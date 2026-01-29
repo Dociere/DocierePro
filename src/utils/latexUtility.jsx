@@ -794,7 +794,7 @@ export const richTextToLatex = (richText) => {
 
   // ====== FIXED TABLE CONVERSION ======
   llatex = latex.replace(
-    /<table[^>]*class="latex-table"[^>]*data-latex="([^"]+)"[^>]*>[\s\S]*?<\/table>/gi,
+    /<table[^>]*class="latex-table"contenteditable="false"[^>]*data-latex="([^"]+)"[^>]*>[\s\S]*?<\/table>/gi,
     (_, encoded) => {
       try {
         return decodeURIComponent(escape(atob(encoded)));
