@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
 import ShareProject from "./shareProject";
+import VersionManager from "./versionManager";
 import SectionIcon from "../assets/icons/sectionIcon.svg?react";
 import CitationIcon from "../assets/icons/citation-manager.svg?react";
 import ShareIcon from "../assets/icons/shareIcon.svg?react";
 import DraftIcon from "../assets/icons/draftIcon.svg?react";
 import MathIcon from "../assets/icons/mathIcon.svg?react";
+import DraftVersionIcon from "../assets/icons/draftVersion.svg?react";
 import ExtensionIcon from "../assets/icons/extensionIcon.svg?react";
 import CompileIcon from "../assets/icons/compileIcon.svg?react";
 import SettingsIcon from "../assets/icons/settings.svg?react";
@@ -23,6 +25,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
   // const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -66,7 +69,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       pdfUrl,
       latexContent,
       isServerConnected,
-      isAuthenticated
+      isAuthenticated,
     );
 
     console.log("handleCompile response", response.pdfUrl);
@@ -89,7 +92,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       await axios.post(
         `${import.meta.env.VITE_admin_server}/api/signout`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
       console.log("Successfully Logged Out");
       window.location.reload();
@@ -207,6 +210,19 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
               </span>
             </Link>
 
+            {/* Draft Versioning */}
+            <div onClick={() => setIsVersionModalOpen(true)}>
+              <span
+                className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group`}
+                title="Draft Versioning"
+              >
+                <DraftVersionIcon
+                  style={{ fill: "#585858" }}
+                  className="w-4 h-4"
+                />
+              </span>
+            </div>
+
             {/* Compile */}
             <div onClick={handleCompile}>
               <span
@@ -230,7 +246,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
           </div>
           <div className="flex flex-col mb-2">
             {/* Settings */}
-            <Link to="/canvas">
+            <Link to="/settings">
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Settings"
@@ -313,6 +329,11 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
           projectId={projectDetails?.currentProject?.id}
           isOwner={projectDetails?.currentProject?.owner}
         />
+      )}
+
+      {/* Versioning Manager Modal */}
+      {isVersionModalOpen && (
+        <VersionManager onClose={() => setIsVersionModalOpen(false)} />
       )}
 
       {/* {isSectionSpaceOpen && <SectionSpace />} */}
