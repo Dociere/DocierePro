@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import SyncIcon from "../assets/icons/syncIcon.svg?react";
+import IncIcon from "../assets/icons/inc.svg?react";
+import DecIcon from "../assets/icons/dec.svg?react";
+import DownloadIcon from "../assets/icons/download.svg?react";
 import axios from "axios";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -74,42 +78,61 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       {pdfUrl && (
-        <div className="flex items-center justify-between px-4 py-1 bg-gray-100 border-b border-gray-300">
+        <div className="flex items-center justify-between px-4 py-1 bg-gray-100 border-b border-gray-300 font-poppins">
+          <div className="flex items-center">
+            <button className="flex border-2 border-gray-300 px-2 rounded-sm py-[2px] cursor-pointer">
+              <SyncIcon
+                style={{ fill: "#4F4F4F" }}
+                className="mt-[1px] w-4 h-4"
+              />
+              <p className="px-2 font-poppins text-sm font-light">Compile</p>
+            </button>
+            <p className="font-poppins font-light text-sm ml-3 cursor-pointer">
+              Logs
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={prevPage}
               disabled={pageNumber <= 1}
-              className="px-3 pb-2 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-1 mt-1 text-xl rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ←
+              &lt;
             </button>
-            <span className="text-xs font-mono font-thin">
-              {pageNumber} / {numPages}
+            <span className="text-xs font-poppins font-light">
+              <span className="underline pr-2">{pageNumber}</span>{" "}
+              <span className="italic">of</span> {numPages}
             </span>
             <button
               onClick={nextPage}
               disabled={pageNumber >= numPages}
-              className="px-3 pb-2 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-1 mt-1 text-xl rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              →
+              &gt;
             </button>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={zoomOut}
-              className="px-3 py-1 rounded hover:bg-gray-50"
-            >
-              −
+            <button onClick={zoomOut} className="rounded hover:bg-gray-50">
+              <DecIcon
+                style={{ fill: "#4F4F4F" }}
+                className="mt-[1px] w-4 h-4"
+              />
             </button>
-            <span className="text-xs w-12 text-center font-mono">
+            <span className="text-xs w-12 text-center font-poppins">
               {Math.round(scale * 100)}%
             </span>
-            <button
-              onClick={zoomIn}
-              className="px-3 py-1 rounded hover:bg-gray-50"
-            >
-              +
+            <button onClick={zoomIn} className="rounded hover:bg-gray-50">
+              <IncIcon
+                style={{ fill: "#4F4F4F" }}
+                className="mt-[1px] w-4 h-4"
+              />
+            </button>
+            <button>
+            <DownloadIcon
+              style={{ fill: "#4F4F4F" }}
+              className="mt-[1px] w-5 h-5 ml-5"
+            />
             </button>
           </div>
         </div>
@@ -117,7 +140,7 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
 
       {/* PDF Viewer */}
       <div
-        className="flex-1 overflow-auto bg-gray-200 py-4"
+        className="flex-1 overflow-auto bg-white pb-4"
         style={{ overflowX: "auto", overflowY: "auto" }}
       >
         {pdfUrl ? (
@@ -130,24 +153,6 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
                 <div className="p-4 text-red-600">Failed to load PDF.</div>
               }
             >
-              {/* {Array.from(new Array(numPages), (el, index) => (
-                <Page
-                  key={`page_${index + 1}`}
-                  pageNumber={index + 1}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                  scale={scale}
-                  className="shadow-lg mb-4"
-                />
-              ))} */}
-              {/* <Page
-                pageNumber={index + 1}
-                scale={scale}
-                ref={(el) => (pageRefs.current[index] = el)}
-                renderTextLayer
-                renderAnnotationLayer
-                className="shadow-lg mb-4"
-              /> */}
               {Array.from(new Array(numPages), (_, index) => (
                 <div
                   key={index}
@@ -160,7 +165,7 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
                     scale={scale}
                     renderTextLayer
                     renderAnnotationLayer
-                    className="shadow-lg mb-4"
+                    className="shadow-lg mb-4 border-2 border-gray-200 rounded-xl overflow-hidden"
                   />
                 </div>
               ))}

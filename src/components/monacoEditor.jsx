@@ -19,13 +19,6 @@ const MonacoEditorPanel = ({
   const decorationsRef = useRef([]);
   const [editorReady, setEditorReady] = useState(false);
 
-  // const { users, syncStatus } = useYjsMonaco(
-  //   projectId,
-  //   token,
-  //   isOnline,
-  //   editorInstanceRef.current,
-  // );
-
   useEffect(() => {
     if (editorInstanceRef.current && highlightLine) {
       const editor = editorInstanceRef.current;
@@ -142,7 +135,7 @@ const MonacoEditorPanel = ({
       )}
 
       {/* Sync Status Indicator */}
-      <div className="bg-gray-100 px-4 py-1 border-b text-xs">
+      {/* <div className="bg-gray-100 px-4 py-1 border-b text-xs">
         Status:{" "}
         <span
           className={
@@ -151,7 +144,7 @@ const MonacoEditorPanel = ({
         >
           {syncStatus}
         </span>
-      </div>
+      </div> */}
 
       {/* Monaco Editor Container */}
       <div className="flex-1 h-full">
@@ -163,7 +156,8 @@ const MonacoEditorPanel = ({
           theme="customLight"
           onMount={handleEditorMount}
           options={{
-            minimap: { enabled: true },
+            // minimap: { enabled: true },
+            minimap: { enabled: false },
             fontSize: 14,
             wordWrap: "on",
             automaticLayout: true,
@@ -185,16 +179,5 @@ const MonacoEditorPanel = ({
     </div>
   );
 };
-
-// Do not uncomment this below code. This was removed since the new version of Monaco Editor does not support defaultProps
-
-// MonacoEditorPanel.defaultProps = {
-//   value: "",
-//   handleLatexChange: () => console.warn("handleLatexChange not provided"),
-//   monacoEditorRef: { current: null },
-//   projectId: null,
-//   token: null,
-//   isOnline: true,
-// };
 
 export default MonacoEditorPanel;

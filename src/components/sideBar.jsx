@@ -110,7 +110,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
     <>
       <div className="bg-[#F9F9F9] h-[calc(100vh-4rem)] w-12 fixed top-11 left-0 z-40 border-[#CFCFCF] border-r-[1px] select-none">
         <div className="flex flex-col justify-between h-full">
-          <div className="flex flex-col items-center pt-4 space-y-3">
+          <div className="flex flex-col items-center pt-4 space-y-1">
             {/* Current Project file */}
             <Link to="/canvas">
               <span
@@ -224,13 +224,22 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
               </span>
             </div>
 
+            {/* AI Chat */}
+            <div onClick={() => setIsVersionModalOpen(true)}>
+              <span
+                className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group font-poppins text-sm`}
+                title="AI Chat"
+              >
+                AI
+              </span>
+            </div>
+
             {/* Compile */}
             <div onClick={handleCompile}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Compile"
               >
-                {/* <CompileIcon style={{ fill: "#585858" }} className="w-5 h-5" /> */}
                 {projectDetails.compilationStatus === "error" ? (
                   <div className="text-xl text-[#ff0000]">►</div>
                 ) : projectDetails.compilationStatus === "success" ? (
@@ -238,10 +247,6 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
                 ) : (
                   <div className="text-xl text-[#929292]">►</div>
                 )}
-
-                {/* <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Compile
-              </span> */}
               </span>
             </div>
           </div>
@@ -337,7 +342,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
         <VersionManager onClose={() => setIsVersionModalOpen(false)} />
       )}
 
-      {/* {isSectionSpaceOpen && <SectionSpace />} */}
+      {isSectionSpaceOpen && <SectionSpace />}
     </>
   );
 };

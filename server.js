@@ -744,6 +744,58 @@ app.put("/api/projects/:id", async (req, res) => {
   }
 });
 
+// API: Delete specific file from project
+app.delete("/api/projects/:id/files/:filename", async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+    const projectDir = path.join(PROJECTS_DIR, id);
+    const projectPath = path.join(projectDir, "project.json");
+    const filePath = path.join(projectDir, filename);
+
+    if (!(await fs.pathExists(projectPath))) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Project not found" });
+    }
+
+    // Load project data
+    const projectData = await fs.readJSON(projectPath);
+
+    // Remove from project.json
+    if (projectData.files[filename]) {
+      delete projectData.files[filename];
+
+      // If we deleted the active file, switch to main.tex
+      if (projectData.activeFile === filename) {
+        projectData.activeFile = "main.tex";
+      }
+
+      projectData.modified = new Date().toISOString();
+      await fs.writeJSON(projectPath, projectData, { spaces: 2 });
+    }
+
+    // Delete from disk
+    if (await fs.pathExists(filePath)) {
+      await fs.remove(filePath);
+    }
+
+    console.log(`✅ Deleted file ${filename} from project ${id}`);
+
+    // Populate remaining file contents to keep frontend in sync
+    for (const [fName, fInfo] of Object.entries(projectData.files)) {
+      const p = path.join(projectDir, fName);
+      if (await fs.pathExists(p)) {
+        fInfo.content = await fs.readFile(p, "utf8");
+      }
+    }
+
+    res.json({ success: true, project: projectData });
+  } catch (error) {
+    console.error("❌ File deletion error:", error);
+    res.status(500).json({ success: false, error: "Failed to delete file" });
+  }
+});
+
 // API: Delete project
 app.delete("/api/projects/:id", async (req, res) => {
   try {

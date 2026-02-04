@@ -6,6 +6,7 @@ export default {
       fontFamily: {
         inter: ["Inter"],
         playfair: ["Playfair Display"],
+        poppins: ["Poppins"],
       },
     },
   },
