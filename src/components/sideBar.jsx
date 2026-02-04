@@ -78,6 +78,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
       pdfUrl: response.pdfUrl,
       compilationStatus: response.compilationStatus,
       compilationMessage: response.compilationMessage,
+      pdfFileName: response.fileName,
     });
   };
 

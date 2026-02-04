@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import MonacoEditorPanel from "./monacoEditor";
 import RichTextEditorPanel from "./textEditor";
 import latexUtility from "../utils/latexUtility";
 import TableDesigner from "./tableDesigner";
+import "../assets/styles/synctex.css";
 import axios from "axios";
 
 const SERVER_URL = "http://localhost:5000";
@@ -195,8 +196,14 @@ const SectionEditor = ({
   sectionToRichText,
   richTextToSection,
   preamble,
+  globalHighlightLine,
+  onHighlightClear,
 }) => {
   const [focusedSectionId, setFocusedSectionId] = useState(null);
+  const [syncHighlight, setSyncHighlight] = useState({
+    sectionId: null,
+    line: null,
+  });
 
   useEffect(() => {
     if (!sections || sections.length === 0) {
@@ -211,6 +218,103 @@ const SectionEditor = ({
       ]);
     }
   }, []);
+
+  const handlePdfLineJump = (globalLineNumber) => {
+    // Build a flat list of all sections with their line ranges
+    // This is more accurate than cumulative counting during recursion
+    
+    const preambleLines = (preamble || "").split("\n").length;
+    let currentLine = preambleLines;
+    
+    // Flatten all sections and calculate their line ranges
+    const flattenSections = (sectionList, result = []) => {
+      for (const sec of sectionList) {
+        // Skip preamble/postamble
+        if (sec.type === "preamble" || sec.type === "postamble") continue;
+        
+        // Calculate header/wrapper lines based on section type
+        // - Environments (abstract, IEEEkeywords, etc.) have \begin{...} AND \end{...} = 2 lines
+        // - Regular sections (\section{...}) = 1 line
+        // - Also account for blank line before each section
+        let wrapperLines = 1; // Default for \section{...}
+        let blankLinesBefore = 1; // Usually 1 blank line before sections
+        
+        if (sec.subtype === "env") {
+          // \begin{env} + \end{env} = 2 lines
+          wrapperLines = 2;
+        } else if (sec.subtype === "table") {
+          // Tables have more complex structure
+          wrapperLines = 2;
+        }
+        
+        const contentLines = (sec.content || "").split("\n").length;
+        
+        const startLine = currentLine + blankLinesBefore;
+        const endLine = currentLine + blankLinesBefore + wrapperLines + contentLines;
+        
+        result.push({
+          id: sec.id,
+          name: sec.name,
+          type: sec.type,
+          subtype: sec.subtype,
+          startLine,
+          endLine,
+        });
+        
+        currentLine = endLine;
+        
+        // Process children BEFORE moving to next sibling
+        // (children appear in the LaTeX right after their parent content)
+        if (sec.children && sec.children.length > 0) {
+          flattenSections(sec.children, result);
+        }
+      }
+      return result;
+    };
+    
+    const allSections = flattenSections(sections);
+    
+    console.log(`🔎 SyncTeX: Looking for line ${globalLineNumber}`);
+    console.log(`📊 Section line ranges:`, allSections.map(s => 
+      `${s.name || s.type}: ${s.startLine}-${s.endLine}`
+    ));
+    
+    // Find the section that contains this line
+    const matchedSection = allSections.find(
+      sec => globalLineNumber >= sec.startLine && globalLineNumber <= sec.endLine
+    );
+    
+    if (matchedSection) {
+      console.log(
+        `📍 SyncTeX: Found section "${matchedSection.name}" (lines ${matchedSection.startLine}-${matchedSection.endLine})`,
+      );
+      setSyncHighlight({ sectionId: matchedSection.id, line: globalLineNumber });
+      setFocusedSectionId(matchedSection.id);
+    } else {
+      // If no exact match, find the closest section before the line
+      const closestSection = allSections
+        .filter(sec => sec.startLine <= globalLineNumber)
+        .pop();
+        
+      if (closestSection) {
+        console.log(
+          `📍 SyncTeX: Closest section "${closestSection.name}" (line ${globalLineNumber} is after line ${closestSection.endLine})`,
+        );
+        setSyncHighlight({ sectionId: closestSection.id, line: globalLineNumber });
+        setFocusedSectionId(closestSection.id);
+      } else {
+        console.warn("⚠️ SyncTeX: Could not map line to a specific section");
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (globalHighlightLine) {
+      handlePdfLineJump(globalHighlightLine); // Internal logic to map line -> section
+      // After finding it, you might want to call onHighlightClear()
+      // but usually best to let the user clear it by clicking/typing.
+    }
+  }, [globalHighlightLine]);
 
   // --- ROOT HANDLERS ---
   const handleRootUpdate = (updatedSection) => {
@@ -327,6 +431,10 @@ const SectionEditor = ({
                 preamble={preamble}
                 sectionToRichText={sectionToRichText}
                 richTextToSection={richTextToSection}
+                syncHighlight={syncHighlight}
+                onHighlightClear={() =>
+                  setSyncHighlight({ sectionId: null, line: null })
+                }
               />
             );
           })}
@@ -366,6 +474,8 @@ const RecursiveSection = ({
   preamble,
   sectionToRichText,
   richTextToSection,
+  syncHighlight,
+  onHighlightClear,
 }) => {
   const isFocused = focusedSectionId === section.id;
   const [isEditingName, setIsEditingName] = useState(false);
@@ -376,6 +486,24 @@ const RecursiveSection = ({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const isHighlightedSection = syncHighlight?.sectionId === section.id;
+  const lineToHighlight = isHighlightedSection ? syncHighlight.line : null;
+
+  // Ref for scrolling section into view
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    if (isHighlightedSection) {
+      setIsCodeMode(true);
+      // Scroll section into view when highlighted by SyncTeX
+      if (sectionRef.current) {
+        sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log(`📍 SyncTeX: Scrolling to section "${section.name || 'Untitled'}"`);
+      }
+    }
+  }, [isHighlightedSection]);
+
   const handleDeleteConfirm = (e) => {
     e.stopPropagation();
     onDelete();
@@ -615,8 +743,15 @@ const RecursiveSection = ({
 
   const cardBorder = isFocused ? "border-gray-400" : "border-gray-200";
 
+  // Visual feedback for SyncTeX highlight
+  const highlightBorder = isHighlightedSection ? 'ring-2 ring-yellow-400 ring-offset-2' : '';
+
   return (
-    <div className={`relative mb-4 transition-all duration-200`}>
+    <div 
+      ref={sectionRef}
+      id={`section-${section.id}`}
+      className={`relative mb-4 transition-all duration-200 ${highlightBorder}`}
+    >
       {isFocused && (
         <div className="absolute -top-5 right-8 flex gap-0.5 bg-gray-50 rounded border border-gray-300 p-1 shadow-md z-20">
           <button
@@ -766,6 +901,8 @@ const RecursiveSection = ({
                   handleLatexChange={(val) =>
                     onUpdate({ ...section, content: val })
                   }
+                  highlightLine={lineToHighlight}
+                  onHighlightClear={onHighlightClear}
                   projectId={projectId}
                   token={token}
                   isOnline={isOnline}
@@ -795,6 +932,8 @@ const RecursiveSection = ({
                       ["code-block"],
                     ],
                   }}
+                  highlightLine={lineToHighlight}
+                  onHighlightClear={onHighlightClear}
                 />
               </div>
             )}
@@ -912,6 +1051,8 @@ const RecursiveSection = ({
               sectionToRichText={sectionToRichText}
               richTextToSection={richTextToSection}
               preamble={preamble}
+              syncHighlight={syncHighlight}
+              onHighlightClear={onHighlightClear}
             />
           ))}
         </div>
