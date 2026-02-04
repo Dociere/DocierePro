@@ -65,6 +65,8 @@ const EditorPage = () => {
   const [debugLogs, setDebugLogs] = useState([]);
   const [docPreamble, setDocPreamble] = useState("");
 
+  const [syncTexLine, setSyncTexLine] = useState(null);
+
   // 2. Add helper function to log messages:
   const addDebugLog = (message, type = "info", details = null) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -619,6 +621,18 @@ const EditorPage = () => {
     [updateAllEditors],
   );
 
+  const handlePdfLineJump = (lineNumber) => {
+    console.log("🚀 SyncTeX Triggered in EditorPage. Line:", lineNumber);
+    // 1. Set the line number to state to trigger highlighting in children
+    setSyncTexLine(lineNumber);
+
+    // Optional: You could force switch the view here if you wanted
+    // if (activeView === 'text') setActiveView('code');
+  };
+
+  // Helper to clear highlight after jump is done
+  const clearSyncTex = () => setSyncTexLine(null);
+
   //FIXME: Fix the saving strategy
 
   const saveProjectToServer = async (updatedProject, activeFile) => {
@@ -778,6 +792,8 @@ const EditorPage = () => {
                 isOnline={isOnline}
                 user={user}
                 activeEditor={activeView === "code" ? "monaco" : "other"}
+                highlightLine={syncTexLine}
+                onHighlightClear={clearSyncTex}
               />
             </div>
           )}
@@ -788,6 +804,8 @@ const EditorPage = () => {
                 value={projectDetails.richTextContent || ""}
                 onChange={handleRichTextChange}
                 quillModules={quillModules}
+                highlightLine={syncTexLine}
+                onHighlightClear={clearSyncTex}
               />
             </div>
           )}
@@ -800,6 +818,8 @@ const EditorPage = () => {
                 preamble={docPreamble}
                 sectionToRichText={sectionToRichText}
                 richTextToSection={richTextToSection}
+                globalHighlightLine={syncTexLine}
+                onHighlightClear={clearSyncTex}
               />
             </div>
           )}
@@ -845,7 +865,11 @@ const EditorPage = () => {
 
         {activeRightView === "preview" && (
           <div className="flex-1 overflow-hidden relative">
-            <PdfViewer pdfUrl={projectDetails.pdfUrl} />
+            <PdfViewer
+              pdfUrl={projectDetails.pdfUrl}
+              pdfFileName={projectDetails.pdfFileName}
+              onLineJump={handlePdfLineJump}
+            />
           </div>
         )}
 

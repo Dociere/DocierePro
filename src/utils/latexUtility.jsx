@@ -793,7 +793,7 @@ export const richTextToLatex = (richText) => {
     });
 
   // ====== FIXED TABLE CONVERSION ======
-  llatex = latex.replace(
+  latex = latex.replace(
     /<table[^>]*class="latex-table"contenteditable="false"[^>]*data-latex="([^"]+)"[^>]*>[\s\S]*?<\/table>/gi,
     (_, encoded) => {
       try {

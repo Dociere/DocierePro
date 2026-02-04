@@ -11,8 +11,11 @@ const MonacoEditorPanel = ({
   isOnline = null,
   user = null,
   activeEditor = "monaco",
+  highlightLine = null, // New Prop: line number to jump to
+  onHighlightClear = () => {}, // New Prop: callback when user clicks
 }) => {
   const editorInstanceRef = useRef(null);
+  const decorationsRef = useRef([]);
   const [editorReady, setEditorReady] = useState(false);
 
   // const { users, syncStatus } = useYjsMonaco(
@@ -23,12 +26,39 @@ const MonacoEditorPanel = ({
   // );
 
   useEffect(() => {
+    if (editorInstanceRef.current && highlightLine) {
+      const editor = editorInstanceRef.current;
+
+      // 1. Reveal the line
+      editor.revealLineInCenter(highlightLine);
+      editor.setPosition({ lineNumber: highlightLine, column: 1 });
+      editor.focus();
+
+      // 2. Add Decoration (CSS class)
+      // Note: You need to define '.synctex-highlight' in your global CSS
+      const newDecorations = editor.deltaDecorations(decorationsRef.current, [
+        {
+          range: new monaco.Range(highlightLine, 1, highlightLine, 1),
+          options: {
+            isWholeLine: true,
+            className: "synctex-highlight", // We will define this CSS below
+            linesDecorationsClassName: "synctex-gutter-highlight",
+          },
+        },
+      ]);
+      decorationsRef.current = newDecorations;
+    }
+  }, [highlightLine]);
+
+  useEffect(() => {
     // Only update editor content if NOT using Yjs sync (isOnline)
     // When Yjs is active, it manages the editor content directly
     if (!isOnline && editorInstanceRef.current && value !== undefined) {
       const currentValue = editorInstanceRef.current.getValue();
       if (currentValue !== value) {
-        console.log("📝 Updating Monaco editor with new content (offline mode)");
+        console.log(
+          "📝 Updating Monaco editor with new content (offline mode)",
+        );
         editorInstanceRef.current.setValue(value);
       }
     }
@@ -51,6 +81,25 @@ const MonacoEditorPanel = ({
 
     // Mark editor as ready AFTER mount
     console.log("✅ Monaco editor mounted and ready");
+
+    editor.onMouseDown(() => {
+      if (decorationsRef.current.length > 0) {
+        decorationsRef.current = editor.deltaDecorations(
+          decorationsRef.current,
+          [],
+        );
+        onHighlightClear();
+      }
+    });
+    editor.onKeyDown(() => {
+      if (decorationsRef.current.length > 0) {
+        decorationsRef.current = editor.deltaDecorations(
+          decorationsRef.current,
+          [],
+        );
+        onHighlightClear();
+      }
+    });
     setEditorReady(true);
   };
 
@@ -60,7 +109,7 @@ const MonacoEditorPanel = ({
     token,
     isOnline,
     editorReady ? editorInstanceRef.current : null, // Pass null until ready
-    user
+    user,
   );
 
   console.log("Monaco render:", {
