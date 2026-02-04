@@ -283,11 +283,12 @@ export const compileDocument = async (
 };
 
 export const checkServerConnection = async () => {
+  console.log("from checkServerConnection");
   try {
     await axios.get(`${import.meta.env.VITE_admin_server}/api/health`);
     return true;
   } catch (error) {
-    console.log("Error connecting to the Backend Server");
+    console.log("Error connecting to the Backend Server", error);
     return false;
   }
 };

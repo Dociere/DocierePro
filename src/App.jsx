@@ -6,7 +6,6 @@ import DetailsPage from "./pages/detailsPage";
 import CanvasPage from "./pages/canvasPage";
 import Signup from "./pages/User_Account/signup";
 import Login from "./pages/User_Account/login";
-import ShareProject from "./pages/sharePage";
 import SettingsPage from "./pages/settingsPage";
 
 function App() {
@@ -19,7 +18,6 @@ function App() {
         <Route path="/template" element={<TemplateSelect />} />
         <Route path="/detailPage/:templateTitle" element={<DetailsPage />} />
         <Route path="/canvas" element={<CanvasPage />} />
-        <Route path="/share" element={<ShareProject />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>

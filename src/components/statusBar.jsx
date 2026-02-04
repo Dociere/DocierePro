@@ -11,7 +11,7 @@ const StatusBar = () => {
   return (
     <>
       <div className="w-screen z-30 h-5 fixed bottom-0 bg-[#F9F9F9] border-[#CFCFCF] border-[1.5px]">
-        <div className="flex flex-row justify-between text-[#9095A1] mx-5 text-[13px]">
+        <div className="flex flex-row justify-between text-gray-500 mx-5 text-[13px]">
           <div className="flex flex-row gap-5">
             {isServerConnected ? (
               <div className="flex flex-row gap-5">
@@ -24,11 +24,12 @@ const StatusBar = () => {
                 <p>Not Connected to the Server</p>
               </div>
             )}
-            <SyncIcon style={{ fill: "#296623" }} className="w-4 h-4" />
+            {/* <SyncIcon style={{ fill: "#296623" }} className="w-4 h-4" />
             <SyncIcon style={{ fill: "#BD7E00" }} className="w-4 h-4" />
-            <p>Sync</p>
+            <p>Sync</p> */}
           </div>
           <div className="flex flex-row gap-5">
+            <p className="p-0 m-0 text-black font-inter font-medium text-[11px]">AI CHAT</p>
             <LayoutIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
             <HelpIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
           </div>

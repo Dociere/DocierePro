@@ -72,11 +72,6 @@ const EditorPage = () => {
     ]); // Keep last 50 logs
   };
 
-  // useEffect(() => {
-  //   fetchData();
-  //   // checkServerHealth();
-  // }, []);
-
   const fetchData = async () => {
     const { Projects, Loading, CurrentProject, ActiveFile } =
       await loadProjects();
@@ -134,7 +129,7 @@ const EditorPage = () => {
               activeFile: ActiveFile,
               isLoading: false,
             });
-            // Also load the list of projects in background so the sidebar works
+            // Load the list of projects in background so the sidebar works
             const { Projects } = await loadProjects();
             updateProjectDetails({ project: Projects });
           }
@@ -342,11 +337,11 @@ const EditorPage = () => {
     }
   }, [projectDetails.currentProject, projectDetails.activeFile]);
 
-  // Reset on project change
+  // Reset on project change or file change
   useEffect(() => {
     sectionsInitialized.current = false;
     lastSyncedLatex.current = "";
-  }, [projectDetails.currentProject?.id]);
+  }, [projectDetails.currentProject?.id, projectDetails.activeFile]);
 
   useEffect(() => {
     if (projectDetails.compilationMessage) {
@@ -631,44 +626,6 @@ const EditorPage = () => {
     }
   };
 
-  // const getCollaborationToken = () => {
-  //   // Priority 1: Check if this is a remote project (collaborator/guest)
-  //   const projectId = projectDetails.currentProject?.id;
-  //   if (projectId) {
-  //     const guestToken = localStorage.getItem(
-  //       `project_${projectId}_guest_token`,
-  //     );
-  //     if (guestToken) {
-  //       console.log("✓ Using guest token for collaboration");
-  //       return guestToken;
-  //     }
-  //   }
-
-  //   // Priority 2: Use auth token (for owner or authenticated collaborator)
-  //   const authToken = document.cookie
-  //     .split("; ")
-  //     .find((row) => row.startsWith("uid="))
-  //     ?.split("=")[1];
-
-  //   if (authToken) {
-  //     console.log("✓ Using auth token for collaboration");
-  //     return authToken;
-  //   }
-
-  //   console.warn("⚠️ No collaboration token found");
-  //   return null;
-  // };
-
-  // const collaborationToken = getCollaborationToken();
-
-  // console.log("Collaboration setup:", {
-  //   projectId: projectDetails.currentProject?.id,
-  //   hasToken: !!collaborationToken,
-  //   isRemote: projectDetails.isRemoteProject,
-  // });
-
-  //updatedProject, projectDetails.activeFile
-
   const quillModules = {
     toolbar: {
       container: [
@@ -714,7 +671,7 @@ const EditorPage = () => {
   return (
     <div
       className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-11 ${
-        isSectionSpaceOpen ? "ml-56" : "ml-0"
+        isSectionSpaceOpen ? "ml-64" : "ml-0"
       }`}
     >
       <LeaveSession projectId={projectDetails.currentProject?.id} />
@@ -730,7 +687,7 @@ const EditorPage = () => {
                   : "text-gray-600 hover:bg-gray-100"
               }`}
             >
-              Full Code View
+              Code Editor
             </button>
             <button
               onClick={() => setActiveView("text")}
@@ -798,6 +755,7 @@ const EditorPage = () => {
 
       {/* Right side of the screen */}
       <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden">
+        {/* Comment the below code when intgerating the new UI */}
         <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-1">
             <button
