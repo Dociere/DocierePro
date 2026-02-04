@@ -209,10 +209,8 @@ export const compileDocument = async (
   compilationMessage = "Compiling document...";
 
   try {
-    // Use the current LaTeX content for compilation
     const contentToCompile = latexContent;
 
-    // Validate document before compilation
     if (
       !contentToCompile.includes("\\begin{document}") ||
       !contentToCompile.includes("\\end{document}")
@@ -220,15 +218,12 @@ export const compileDocument = async (
       throw new Error("Invalid LaTeX document structure");
     }
 
-    // console.log(
-    //   "Compiling LaTeX document:",
-    //   contentToCompile.substring(0, 200) + "..."
-    // );
-
     const response = await axios.post(`${API_URL}/api/compile`, {
       content: contentToCompile,
       projectId: currentProject.id,
     });
+
+    let fileName = null; // 1. Initialize fileName variable
 
     if (response.data.success) {
       const pdfBlob = new Blob(
@@ -245,15 +240,9 @@ export const compileDocument = async (
       compilationStatus = "success";
       compilationMessage = "PDF compiled successfully!";
 
-      // console.log(
-      //   "\nStatus:",
-      //   compilationStatus,
-      //   "\nMessage:",
-      //   compilationMessage
-      // );
-      // window.open(pdfUrl, "_blank");
+      // 2. CAPTURE THE FILENAME FROM SERVER RESPONSE
+      fileName = response.data.fileName;
 
-      // Auto-save after successful compilation
       await saveProject(
         currentProject,
         activeFile,
@@ -268,11 +257,13 @@ export const compileDocument = async (
       console.log("Compilation details:", response.data);
     }
 
-    return { pdfUrl, compilationStatus, compilationMessage };
+    // 3. RETURN THE FILENAME SO EDITORPAGE CAN USE IT
+    return { pdfUrl, compilationStatus, compilationMessage, fileName };
   } catch (error) {
     compilationStatus = "error";
     compilationMessage = "Compilation failed: " + error.message;
     console.error("Compilation error:", error);
+    return { pdfUrl, compilationStatus, compilationMessage, fileName: null };
   } finally {
     isCompiling = false;
     setTimeout(() => {

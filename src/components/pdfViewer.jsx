@@ -4,22 +4,66 @@ import SyncIcon from "../assets/icons/syncIcon.svg?react";
 import IncIcon from "../assets/icons/inc.svg?react";
 import DecIcon from "../assets/icons/dec.svg?react";
 import DownloadIcon from "../assets/icons/download.svg?react";
+import axios from "axios";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "../assets/styles/pdfViewer.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
-const PdfViewer = ({ pdfUrl }) => {
+const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
   const pageRefs = useRef([]);
 
+  const getPdfFileName = () => {
+    // Use the pdfFileName prop if available (from server compile response)
+    // This is the correct filename like "{projectId}.pdf"
+    if (pdfFileName) return pdfFileName;
+    if (!pdfUrl) return null;
+    return pdfUrl.split("/").pop();
+  };
+
   const zoomIn = () => setScale((s) => Math.min(3, s + 0.2));
   const zoomOut = () => setScale((s) => Math.max(0.5, s - 0.2));
   const nextPage = () => setPageNumber((p) => Math.min(numPages, p + 1));
   const prevPage = () => setPageNumber((p) => Math.max(1, p - 1));
+
+  const handlePageClick = async (event, pageIndex) => {
+    if (!pdfUrl || !onLineJump) return;
+
+    // Use pdfFileName prop (from server compile response) which contains the correct
+    // project ID-based filename. Fallback to extracting from pdfUrl for backwards compatibility.
+    const fileName = pdfFileName || pdfUrl.split("/").pop();
+    
+    if (!fileName) {
+      console.error("SyncTeX: No filename available");
+      return;
+    }
+    
+    const pageNum = pageIndex + 1;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / scale;
+    const y = (event.clientY - bounds.top) / scale;
+
+    try {
+      console.log(`🔎 SyncTeX lookup for: ${fileName}`);
+      const response = await axios.post("http://localhost:5000/api/synctex", {
+        pdfFile: fileName,
+        page: pageNum,
+        x: x,
+        y: y,
+      });
+
+      if (response.data.success) {
+        console.log("📍 SyncTeX Jump to Line:", response.data.line);
+        onLineJump(response.data.line);
+      }
+    } catch (error) {
+      console.error("SyncTeX failed:", error);
+    }
+  };
 
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
@@ -110,7 +154,12 @@ const PdfViewer = ({ pdfUrl }) => {
               }
             >
               {Array.from(new Array(numPages), (_, index) => (
-                <div key={index} ref={(el) => (pageRefs.current[index] = el)}>
+                <div
+                  key={index}
+                  ref={(el) => (pageRefs.current[index] = el)}
+                  onClick={(e) => handlePageClick(e, index)}
+                  className="cursor-text"
+                >
                   <Page
                     pageNumber={index + 1}
                     scale={scale}

@@ -1,11 +1,107 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import MonacoEditorPanel from "./monacoEditor";
 import RichTextEditorPanel from "./textEditor";
 import latexUtility from "../utils/latexUtility";
+import TableDesigner from "./tableDesigner";
+import "../assets/styles/synctex.css";
+import axios from "axios";
+
+const SERVER_URL = "http://localhost:5000";
+
+// ==========================================
+// 4. DELETE CONFIRMATION MODAL (MATCHING STYLE)
+// ==========================================
+const DeleteConfirmationModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  sectionName,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] backdrop-blur-sm"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose(e);
+      }}
+    >
+      <div
+        className="bg-white rounded-xl p-6 w-96 shadow-2xl border border-gray-100"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-bold text-gray-900 mb-3">Delete Section</h3>
+
+        <p className="text-sm text-gray-600 mb-6">
+          Are you sure you want to delete
+          <span className="font-semibold">
+            {" "}
+            "{sectionName || "Untitled Section"}"
+          </span>
+          ? This action cannot be undone.
+        </p>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ==========================================
 // 1. ICONS
 // ==========================================
+const LoaderIcon = () => (
+  <svg
+    className="animate-spin"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="#5f6368"
+      strokeWidth="4"
+      className="opacity-25"
+    />
+    <path
+      fill="#5f6368"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
 const PlayIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="10" stroke="#5f6368" strokeWidth="2" />
@@ -99,8 +195,15 @@ const SectionEditor = ({
   isOnline,
   sectionToRichText,
   richTextToSection,
+  preamble,
+  globalHighlightLine,
+  onHighlightClear,
 }) => {
   const [focusedSectionId, setFocusedSectionId] = useState(null);
+  const [syncHighlight, setSyncHighlight] = useState({
+    sectionId: null,
+    line: null,
+  });
 
   useEffect(() => {
     if (!sections || sections.length === 0) {
@@ -115,6 +218,103 @@ const SectionEditor = ({
       ]);
     }
   }, []);
+
+  const handlePdfLineJump = (globalLineNumber) => {
+    // Build a flat list of all sections with their line ranges
+    // This is more accurate than cumulative counting during recursion
+    
+    const preambleLines = (preamble || "").split("\n").length;
+    let currentLine = preambleLines;
+    
+    // Flatten all sections and calculate their line ranges
+    const flattenSections = (sectionList, result = []) => {
+      for (const sec of sectionList) {
+        // Skip preamble/postamble
+        if (sec.type === "preamble" || sec.type === "postamble") continue;
+        
+        // Calculate header/wrapper lines based on section type
+        // - Environments (abstract, IEEEkeywords, etc.) have \begin{...} AND \end{...} = 2 lines
+        // - Regular sections (\section{...}) = 1 line
+        // - Also account for blank line before each section
+        let wrapperLines = 1; // Default for \section{...}
+        let blankLinesBefore = 1; // Usually 1 blank line before sections
+        
+        if (sec.subtype === "env") {
+          // \begin{env} + \end{env} = 2 lines
+          wrapperLines = 2;
+        } else if (sec.subtype === "table") {
+          // Tables have more complex structure
+          wrapperLines = 2;
+        }
+        
+        const contentLines = (sec.content || "").split("\n").length;
+        
+        const startLine = currentLine + blankLinesBefore;
+        const endLine = currentLine + blankLinesBefore + wrapperLines + contentLines;
+        
+        result.push({
+          id: sec.id,
+          name: sec.name,
+          type: sec.type,
+          subtype: sec.subtype,
+          startLine,
+          endLine,
+        });
+        
+        currentLine = endLine;
+        
+        // Process children BEFORE moving to next sibling
+        // (children appear in the LaTeX right after their parent content)
+        if (sec.children && sec.children.length > 0) {
+          flattenSections(sec.children, result);
+        }
+      }
+      return result;
+    };
+    
+    const allSections = flattenSections(sections);
+    
+    console.log(`🔎 SyncTeX: Looking for line ${globalLineNumber}`);
+    console.log(`📊 Section line ranges:`, allSections.map(s => 
+      `${s.name || s.type}: ${s.startLine}-${s.endLine}`
+    ));
+    
+    // Find the section that contains this line
+    const matchedSection = allSections.find(
+      sec => globalLineNumber >= sec.startLine && globalLineNumber <= sec.endLine
+    );
+    
+    if (matchedSection) {
+      console.log(
+        `📍 SyncTeX: Found section "${matchedSection.name}" (lines ${matchedSection.startLine}-${matchedSection.endLine})`,
+      );
+      setSyncHighlight({ sectionId: matchedSection.id, line: globalLineNumber });
+      setFocusedSectionId(matchedSection.id);
+    } else {
+      // If no exact match, find the closest section before the line
+      const closestSection = allSections
+        .filter(sec => sec.startLine <= globalLineNumber)
+        .pop();
+        
+      if (closestSection) {
+        console.log(
+          `📍 SyncTeX: Closest section "${closestSection.name}" (line ${globalLineNumber} is after line ${closestSection.endLine})`,
+        );
+        setSyncHighlight({ sectionId: closestSection.id, line: globalLineNumber });
+        setFocusedSectionId(closestSection.id);
+      } else {
+        console.warn("⚠️ SyncTeX: Could not map line to a specific section");
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (globalHighlightLine) {
+      handlePdfLineJump(globalHighlightLine); // Internal logic to map line -> section
+      // After finding it, you might want to call onHighlightClear()
+      // but usually best to let the user clear it by clicking/typing.
+    }
+  }, [globalHighlightLine]);
 
   // --- ROOT HANDLERS ---
   const handleRootUpdate = (updatedSection) => {
@@ -152,14 +352,29 @@ const SectionEditor = ({
     onSectionsChange(newSections);
   };
 
-  const handleRootAddAfter = (index) => {
-    const newSection = {
-      id: Date.now() + Math.random(),
-      type: "section",
-      name: "",
-      content: "",
-      children: [],
-    };
+  const handleRootAddAfter = (index, type = "section") => {
+    let newSection;
+
+    if (type === "table") {
+      newSection = {
+        id: Date.now() + Math.random(),
+        type: "section",
+        subtype: "table",
+        name: "New Table",
+        content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n 1 & 2 \\\\ \\hline\n 3 & 4 \\\\ \\hline\n\\end{tabular}\n\\end{table}`,
+        children: [],
+      };
+    } else {
+      // Standard Section
+      newSection = {
+        id: Date.now() + Math.random(),
+        type: "section",
+        name: "",
+        content: "",
+        children: [],
+      };
+    }
+
     const newSections = [...sections];
     newSections.splice(index + 1, 0, newSection);
     onSectionsChange(newSections);
@@ -208,13 +423,18 @@ const SectionEditor = ({
                 onMoveUp={() => handleRootMove(index, -1)}
                 onMoveDown={() => handleRootMove(index, 1)}
                 onDuplicate={() => handleRootDuplicate(section, index)}
-                onAddAfter={() => handleRootAddAfter(index)}
+                onAddAfter={(type) => handleRootAddAfter(index, type)}
                 // Props
                 projectId={projectId}
                 token={token}
                 isOnline={isOnline}
+                preamble={preamble}
                 sectionToRichText={sectionToRichText}
                 richTextToSection={richTextToSection}
+                syncHighlight={syncHighlight}
+                onHighlightClear={() =>
+                  setSyncHighlight({ sectionId: null, line: null })
+                }
               />
             );
           })}
@@ -251,16 +471,53 @@ const RecursiveSection = ({
   projectId,
   token,
   isOnline,
+  preamble,
   sectionToRichText,
   richTextToSection,
+  syncHighlight,
+  onHighlightClear,
 }) => {
   const isFocused = focusedSectionId === section.id;
   const [isEditingName, setIsEditingName] = useState(false);
   const [isCodeMode, setIsCodeMode] = useState(false);
   const [richTextContent, setRichTextContent] = useState("");
 
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const isHighlightedSection = syncHighlight?.sectionId === section.id;
+  const lineToHighlight = isHighlightedSection ? syncHighlight.line : null;
+
+  // Ref for scrolling section into view
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    if (isHighlightedSection) {
+      setIsCodeMode(true);
+      // Scroll section into view when highlighted by SyncTeX
+      if (sectionRef.current) {
+        sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log(`📍 SyncTeX: Scrolling to section "${section.name || 'Untitled'}"`);
+      }
+    }
+  }, [isHighlightedSection]);
+
+  const handleDeleteConfirm = (e) => {
+    e.stopPropagation();
+    onDelete();
+    setShowDeleteModal(false);
+  };
+
   // STORE HIDDEN PARTS (Preamble/Postamble) HERE
   const hiddenParts = React.useRef({ preamble: "", postamble: "" });
+
+  useEffect(() => {
+    if (isFocused && !section.name) {
+      setIsEditingName(true);
+    }
+  }, [isFocused, section.name]);
 
   useEffect(() => {
     if (!isCodeMode) {
@@ -282,6 +539,20 @@ const RecursiveSection = ({
     }
   }, [section.content, isCodeMode, sectionToRichText]);
 
+  const handleAddTable = () => {
+    const newTable = {
+      id: Date.now() + Math.random(),
+      type: "section",
+      subtype: "table",
+      name: "New Table",
+      // Default content for a 2x2 table
+      content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n Cell 1 & Cell 2 \\\\ \\hline\n Cell 3 & Cell 4 \\\\ \\hline\n\\end{tabular}\n\\caption{New Table}\n\\end{table}`,
+      children: [],
+    };
+    // to accept an optional 'template' argument.
+    props.onAddAfter(props.index, newTable);
+  };
+
   const handleRichTextChange = (html) => {
     setRichTextContent(html);
 
@@ -298,6 +569,79 @@ const RecursiveSection = ({
       hiddenParts.current.preamble + bodyLatex + hiddenParts.current.postamble;
 
     onUpdate({ ...section, content: fullLatex });
+  };
+
+  const handleRunSection = async (e) => {
+    e.stopPropagation();
+
+    if (!section.content || section.content.trim() === "") return;
+
+    setIsLoadingPreview(true);
+    setPreviewError(null);
+    setPreviewUrl(null);
+
+    try {
+      // 1. RECONSTRUCT THE WRAPPER
+      // We take the clean content and wrap it back in its LaTeX command
+      // so the compiler knows how to render it (Bold title, italic keywords, etc.)
+
+      let contentToCompile = section.content;
+
+      if (section.subtype === "env") {
+        // === ENVIRONMENT CASE (Abstract, Keywords) ===
+        const tag = section.envTag || section.name.toLowerCase(); // e.g., "IEEEkeywords"
+
+        // Add the \begin{tag}
+        // We prepend it to the content
+        contentToCompile = `\\begin{${tag}}\n${contentToCompile}`;
+
+        // Check if \end{tag} is missing (it usually is in the visual editor)
+        // Only append if it's not already there to avoid double ending
+        if (!contentToCompile.includes(`\\end{${tag}}`)) {
+          contentToCompile = `${contentToCompile}\n\\end{${tag}}`;
+        }
+      } else {
+        // === STANDARD SECTION CASE (\section, \subsection) ===
+        // If we just compile the text, it looks like a paragraph.
+        // We want to see the Heading Style too.
+
+        if (section.subtype === "starred") {
+          contentToCompile = `\\${section.type}*{${section.name}}\n${contentToCompile}`;
+        } else {
+          contentToCompile = `\\${section.type}{${section.name}}\n${contentToCompile}`;
+        }
+      }
+
+      // 2. SEND TO SERVER
+      const response = await axios.post(`${SERVER_URL}/api/latex/compile`, {
+        latex: contentToCompile, // <--- Send the wrapped content
+        preamble: preamble,
+        format: "image",
+        type: "section",
+        fileName: `preview_${section.id}`,
+        isTemp: true,
+      });
+
+      if (response.data.success) {
+        setPreviewUrl(`${SERVER_URL}${response.data.pdfUrl}?t=${Date.now()}`);
+      } else {
+        console.error("Server Compilation Failed:", response.data);
+        const serverMsg = response.data.error || "Compilation failed";
+        setPreviewError(serverMsg);
+      }
+    } catch (error) {
+      console.error("Preview error:", error);
+      const errMsg = error.response?.data?.error || "Error generating preview";
+      setPreviewError(errMsg);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  const handleClosePreview = (e) => {
+    e.stopPropagation();
+    setPreviewUrl(null);
+    setPreviewError(null);
   };
 
   // ... (Rest of your component handlers: handleChildUpdate, addChild, rendering, etc. remain EXACTLY THE SAME)
@@ -337,14 +681,32 @@ const RecursiveSection = ({
     onUpdate({ ...section, children: newChildren });
   };
 
-  const handleChildAddAfter = (childIndex, siblingType) => {
-    const newSibling = {
-      id: Date.now() + Math.random(),
-      type: siblingType,
-      name: "",
-      content: "",
-      children: [],
-    };
+  const handleChildAddAfter = (
+    childIndex,
+    siblingType,
+    specificType = null,
+  ) => {
+    let newSibling;
+
+    if (specificType === "table") {
+      newSibling = {
+        id: Date.now() + Math.random(),
+        type: "section", // Tables sit at the same hierarchy as sections usually
+        subtype: "table",
+        name: "New Table",
+        content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n 1 & 2 \\\\ \\hline\n 3 & 4 \\\\ \\hline\n\\end{tabular}\n\\end{table}`,
+        children: [],
+      };
+    } else {
+      newSibling = {
+        id: Date.now() + Math.random(),
+        type: siblingType,
+        name: "",
+        content: "",
+        children: [],
+      };
+    }
+
     const newChildren = [...section.children];
     newChildren.splice(childIndex + 1, 0, newSibling);
     onUpdate({ ...section, children: newChildren });
@@ -381,8 +743,15 @@ const RecursiveSection = ({
 
   const cardBorder = isFocused ? "border-gray-400" : "border-gray-200";
 
+  // Visual feedback for SyncTeX highlight
+  const highlightBorder = isHighlightedSection ? 'ring-2 ring-yellow-400 ring-offset-2' : '';
+
   return (
-    <div className={`relative mb-4 transition-all duration-200`}>
+    <div 
+      ref={sectionRef}
+      id={`section-${section.id}`}
+      className={`relative mb-4 transition-all duration-200 ${highlightBorder}`}
+    >
       {isFocused && (
         <div className="absolute -top-5 right-8 flex gap-0.5 bg-gray-50 rounded border border-gray-300 p-1 shadow-md z-20">
           <button
@@ -440,7 +809,7 @@ const RecursiveSection = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              setShowDeleteModal(true);
             }}
             disabled={totalSections <= 1 && level === 0}
             className={`w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 ${
@@ -462,10 +831,12 @@ const RecursiveSection = ({
       >
         <div className="w-8 bg-gray-50 border-r border-gray-200 flex flex-col items-center pt-2 flex-shrink-0 gap-2">
           <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded"
-            title="Run"
+            className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 rounded transition-colors"
+            title="Compile Section Preview"
+            onClick={handleRunSection}
+            disabled={isLoadingPreview}
           >
-            <PlayIcon />
+            {isLoadingPreview ? <LoaderIcon /> : <PlayIcon />}
           </button>
           <span className="text-[10px] uppercase font-bold text-gray-400 [writing-mode:vertical-rl] rotate-180 mt-2 tracking-widest">
             {section.type}
@@ -485,29 +856,42 @@ const RecursiveSection = ({
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
+                // 👇 ADDED: Exit edit mode on click away (Blur)
+                onBlur={() => setIsEditingName(false)}
+                // 👇 ADDED: Exit edit mode on Enter key
+                onKeyDown={(e) => {
+                  e.stopPropagation(); // Prevent triggering parent handlers
+                  if (e.key === "Enter") {
+                    setIsEditingName(false);
+                  }
+                }}
               />
             </div>
           )}
-
           {section.name && !isEditingName && (
             <div className="mb-2 text-sm font-semibold text-gray-700 flex justify-between items-center">
               <span>{section.name}</span>
-              {isFocused && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCodeMode(!isCodeMode);
-                  }}
-                  className="text-[10px] text-blue-500 hover:underline cursor-pointer"
-                >
-                  {isCodeMode ? "Switch to Visual" : "Switch to LaTeX Code"}
-                </button>
-              )}
             </div>
+          )}
+          {isFocused && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCodeMode(!isCodeMode);
+              }}
+              className="text-[10px] text-blue-500 hover:underline cursor-pointer"
+            >
+              {isCodeMode
+                ? section.subtype === "table"
+                  ? "Switch to Designer"
+                  : "Switch to Visual"
+                : "Switch to LaTeX Code"}
+            </button>
           )}
 
           <div className="min-h-[80px]">
             {isCodeMode ? (
+              // 1. CODE VIEW (Shared by Tables & Sections)
               <div
                 className="h-64 border border-gray-200 rounded"
                 onKeyDown={(e) => e.stopPropagation()}
@@ -517,12 +901,26 @@ const RecursiveSection = ({
                   handleLatexChange={(val) =>
                     onUpdate({ ...section, content: val })
                   }
+                  highlightLine={lineToHighlight}
+                  onHighlightClear={onHighlightClear}
                   projectId={projectId}
                   token={token}
                   isOnline={isOnline}
                 />
               </div>
+            ) : section.subtype === "table" ? (
+              // 2. TABLE DESIGNER (Only for Tables)
+              <div onClick={(e) => e.stopPropagation()}>
+                <TableDesigner
+                  initialContent={section.content}
+                  onSave={(newLatex) => {
+                    onUpdate({ ...section, content: newLatex });
+                  }}
+                  onCancel={() => {}}
+                />
+              </div>
             ) : (
+              // 3. RICH TEXT (Only for Standard Sections)
               <div onKeyDown={(e) => e.stopPropagation()}>
                 <RichTextEditorPanel
                   value={richTextContent}
@@ -534,16 +932,52 @@ const RecursiveSection = ({
                       ["code-block"],
                     ],
                   }}
+                  highlightLine={lineToHighlight}
+                  onHighlightClear={onHighlightClear}
                 />
               </div>
             )}
           </div>
+          {(previewUrl || previewError) && (
+            <div className="mt-4 p-4 border border-dashed border-gray-300 rounded bg-gray-50 relative group">
+              <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-1">
+                <span className="text-xs font-bold text-gray-500 uppercase">
+                  Compiled Preview
+                </span>
+                <button
+                  onClick={handleClosePreview}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+
+              {previewUrl && (
+                <div className="flex justify-center bg-white p-2 border border-gray-100 shadow-sm">
+                  <img
+                    src={previewUrl}
+                    alt="Section Preview"
+                    className="max-w-full h-auto object-contain"
+                    style={{ maxHeight: "400px" }}
+                  />
+                </div>
+              )}
+
+              {previewError && (
+                <div className="text-xs text-red-500 font-mono bg-red-50 p-2 rounded">
+                  {previewError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div
         className={`flex gap-2 pt-2 pb-2 justify-center transition-all duration-200 overflow-hidden ${
-          isFocused ? "opacity-100 max-h-16" : "opacity-0 max-h-0"
+          isFocused
+            ? "opacity-100 max-h-16 pointer-events-auto" // <--- ADD pointer-events-auto
+            : "opacity-0 max-h-0 pointer-events-none" // <--- ADD pointer-events-none
         }`}
       >
         <button
@@ -554,6 +988,17 @@ const RecursiveSection = ({
           className="px-4 py-1.5 bg-transparent border border-gray-300 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all duration-150 outline-none flex items-center gap-1"
         >
           <PlusIcon /> {getSiblingLabel()}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            // You need to update the `onAddAfter` logic to accept a type/template!
+            // See Step 3 below for the parent fix.
+            onAddAfter("table");
+          }}
+          className="px-4 py-1.5 bg-white border border-green-300 text-green-600 rounded-full text-sm hover:bg-green-50 flex items-center gap-1"
+        >
+          <PlusIcon /> Add Table
         </button>
 
         {level < 2 && (
@@ -569,6 +1014,15 @@ const RecursiveSection = ({
           </button>
         )}
       </div>
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        sectionName={section.name}
+        onClose={(e) => {
+          e && e.stopPropagation();
+          setShowDeleteModal(false);
+        }}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {section.children && section.children.length > 0 && (
         <div className="mt-2 ml-4 pl-4 border-l-2 border-gray-200">
@@ -588,12 +1042,17 @@ const RecursiveSection = ({
               onMoveUp={() => handleChildMove(i, -1)}
               onMoveDown={() => handleChildMove(i, 1)}
               onDuplicate={() => handleChildDuplicate(child, i)}
-              onAddAfter={() => handleChildAddAfter(i, child.type)}
+              onAddAfter={(specificType) =>
+                handleChildAddAfter(i, child.type, specificType)
+              }
               projectId={projectId}
               token={token}
               isOnline={isOnline}
               sectionToRichText={sectionToRichText}
               richTextToSection={richTextToSection}
+              preamble={preamble}
+              syncHighlight={syncHighlight}
+              onHighlightClear={onHighlightClear}
             />
           ))}
         </div>

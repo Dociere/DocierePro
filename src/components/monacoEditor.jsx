@@ -1,6 +1,7 @@
 import React, { useEffect, useContext, useRef, useState } from "react";
 import MonacoEditor from "@monaco-editor/react";
 import { useYjsMonaco } from "../hooks/useYjsMonaco";
+import { registerLatexLanguage, defineLatexTheme } from "../utils/latexMonarchLanguage.jsx";
 
 const MonacoEditorPanel = ({
   value = "",
@@ -11,9 +12,37 @@ const MonacoEditorPanel = ({
   isOnline = null,
   user = null,
   activeEditor = "monaco",
+  highlightLine = null, // New Prop: line number to jump to
+  onHighlightClear = () => {}, // New Prop: callback when user clicks
 }) => {
   const editorInstanceRef = useRef(null);
+  const decorationsRef = useRef([]);
   const [editorReady, setEditorReady] = useState(false);
+
+  useEffect(() => {
+    if (editorInstanceRef.current && highlightLine) {
+      const editor = editorInstanceRef.current;
+
+      // 1. Reveal the line
+      editor.revealLineInCenter(highlightLine);
+      editor.setPosition({ lineNumber: highlightLine, column: 1 });
+      editor.focus();
+
+      // 2. Add Decoration (CSS class)
+      // Note: You need to define '.synctex-highlight' in your global CSS
+      const newDecorations = editor.deltaDecorations(decorationsRef.current, [
+        {
+          range: new monaco.Range(highlightLine, 1, highlightLine, 1),
+          options: {
+            isWholeLine: true,
+            className: "synctex-highlight", // We will define this CSS below
+            linesDecorationsClassName: "synctex-gutter-highlight",
+          },
+        },
+      ]);
+      decorationsRef.current = newDecorations;
+    }
+  }, [highlightLine]);
 
   useEffect(() => {
     // Only update editor content if NOT using Yjs sync (isOnline)
@@ -33,19 +62,34 @@ const MonacoEditorPanel = ({
     monacoEditorRef.current = editor;
     editorInstanceRef.current = editor;
 
-    monaco.editor.defineTheme("customLight", {
-      base: "vs",
-      inherit: true,
-      rules: [],
-      colors: {
-        "editorLineNumber.foreground": "#888888",
-        "editorLineNumber.activeForeground": "#000000",
-      },
-    });
-    monaco.editor.setTheme("customLight");
+    // Register LaTeX language with Monarch tokenizer for syntax highlighting
+    registerLatexLanguage(monaco);
+    
+    // Define and apply the LaTeX theme with Overleaf-like colors
+    defineLatexTheme(monaco);
+    monaco.editor.setTheme("latex-light");
 
     // Mark editor as ready AFTER mount
     console.log("✅ Monaco editor mounted and ready");
+
+    editor.onMouseDown(() => {
+      if (decorationsRef.current.length > 0) {
+        decorationsRef.current = editor.deltaDecorations(
+          decorationsRef.current,
+          [],
+        );
+        onHighlightClear();
+      }
+    });
+    editor.onKeyDown(() => {
+      if (decorationsRef.current.length > 0) {
+        decorationsRef.current = editor.deltaDecorations(
+          decorationsRef.current,
+          [],
+        );
+        onHighlightClear();
+      }
+    });
     setEditorReady(true);
   };
 
