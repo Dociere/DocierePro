@@ -1,6 +1,7 @@
 import React, { useEffect, useContext, useRef, useState } from "react";
 import MonacoEditor from "@monaco-editor/react";
 import { useYjsMonaco } from "../hooks/useYjsMonaco";
+import { registerLatexLanguage, defineLatexTheme } from "../utils/latexMonarchLanguage.jsx";
 
 const MonacoEditorPanel = ({
   value = "",
@@ -68,16 +69,12 @@ const MonacoEditorPanel = ({
     monacoEditorRef.current = editor;
     editorInstanceRef.current = editor;
 
-    monaco.editor.defineTheme("customLight", {
-      base: "vs",
-      inherit: true,
-      rules: [],
-      colors: {
-        "editorLineNumber.foreground": "#888888",
-        "editorLineNumber.activeForeground": "#000000",
-      },
-    });
-    monaco.editor.setTheme("customLight");
+    // Register LaTeX language with Monarch tokenizer for syntax highlighting
+    registerLatexLanguage(monaco);
+    
+    // Define and apply the LaTeX theme with Overleaf-like colors
+    defineLatexTheme(monaco);
+    monaco.editor.setTheme("latex-light");
 
     // Mark editor as ready AFTER mount
     console.log("✅ Monaco editor mounted and ready");
