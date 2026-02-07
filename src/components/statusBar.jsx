@@ -29,7 +29,6 @@ const StatusBar = () => {
             <p>Sync</p> */}
           </div>
           <div className="flex flex-row gap-5">
-            <p className="p-0 m-0 text-black font-inter font-medium text-[11px]">AI CHAT</p>
             <LayoutIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
             <HelpIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
           </div>
