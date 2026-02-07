@@ -35,7 +35,6 @@ import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth.jsx";
 import axios from "axios";
 
-// const API_URL = "http://localhost:5025";
 
 const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -253,12 +252,6 @@ const EditorPage = () => {
           {},
           { withCredentials: true }, // Sends httpOnly cookie
         );
-
-        // const response = await axios.post(
-        //   `http://localhost:5025/api/projects/${projectId}/get-collab-token`,
-        //   {},
-        //   { withCredentials: true }, // Sends httpOnly cookie
-        // );
 
         const token = response.data.collaborationToken;
         console.log("✓ Got collaboration token for owner");
@@ -693,13 +686,13 @@ const EditorPage = () => {
 
   return (
     <div
-      className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-11 ${
-        isSectionSpaceOpen ? "ml-64" : "ml-0"
+      className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-7 ${
+        isSectionSpaceOpen ? "ml-60" : "ml-0"
       }`}
     >
       <LeaveSession projectId={projectDetails.currentProject?.id} />
       {/* Left side of the screen */}
-      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-12 pb-[3.2vh]">
+      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-10 pb-[3.2vh]">
         <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center">
             <button

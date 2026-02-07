@@ -137,7 +137,7 @@ const SectionSpace = () => {
 
   return (
     <div
-      className={`fixed top-11 left-12 h-[calc(100vh-2.75rem)] w-64 border-r transition-colors duration-300 z-30 ${
+      className={`fixed top-7 left-10 h-[calc(100vh-2.75rem)] w-64 border-r transition-colors duration-300 z-30 ${
         isDark
           ? "bg-[#252525] border-[#404040] text-[#e5e5e5]"
           : "bg-[#F9F9F9] border-[#CFCFCF] text-[#585858]"

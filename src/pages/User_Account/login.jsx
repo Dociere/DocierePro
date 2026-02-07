@@ -28,13 +28,6 @@ function Login() {
           withCredentials: true,
         }
       );
-      // const res = await axios.post(
-      //   `http://localhost:8080/api/login`,
-      //   userData,
-      //   {
-      //     withCredentials: true,
-      //   }
-      // );
       console.log("Login successful");
       navigate("/");
     } catch (err) {
