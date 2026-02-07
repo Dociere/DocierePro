@@ -8,6 +8,12 @@ import { useState } from "react";
 
 const PageLayout = () => {
   const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
+  const handleOpenAIChat = () => {
+    setIsAIChatOpen(true);
+  };
+
   return (
     <>
       <NavBar />
@@ -16,11 +22,14 @@ const PageLayout = () => {
           <SideBar
             isSectionSpaceOpen={isSectionSpaceOpen}
             setIsSectionSpaceOpen={setIsSectionSpaceOpen}
+            onOpenAIChat={handleOpenAIChat}
           />
         </div>
         <div>{isSectionSpaceOpen && <SectionSpace />}</div>
         <div className="w-full h-auto">
-          <Outlet context={{ isSectionSpaceOpen }} />
+          <Outlet
+            context={{ isSectionSpaceOpen, isAIChatOpen, setIsAIChatOpen }}
+          />
         </div>
       </div>
       <StatusBar />

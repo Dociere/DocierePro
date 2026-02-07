@@ -9,7 +9,9 @@ import MonacoEditorPanel from "../components/monacoEditor";
 import RichTextEditorPanel from "../components/textEditor";
 import SectionEditor from "../components/sectionEditor.jsx";
 import LeaveSession from "../components/LeaveSession.jsx";
+import { compileDocument } from "../api/projectHandling";
 import AIChatPanel from "../components/aiChatPanel.jsx";
+import GoBack from "../assets/icons/goBack.svg?react";
 import "react-quill-new/dist/quill.snow.css";
 import "../App.css";
 import {
@@ -35,15 +37,15 @@ import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth.jsx";
 import axios from "axios";
 
-
 const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
-  const { isSectionSpaceOpen } = useOutletContext();
+  const { isSectionSpaceOpen, isAIChatOpen, setIsAIChatOpen } =
+    useOutletContext();
   const [searchParams] = useSearchParams();
   const [remoteProject, setRemoteProject] = useState(null);
   const effectiveProjectDetails = remoteProject || projectDetails;
   const [collaborationToken, setCollaborationToken] = useState(null);
-  const { user } = useAuth();
+  const { user, isServerConnected, isAuthenticated } = useAuth();
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -66,6 +68,16 @@ const EditorPage = () => {
 
   const [syncTexLine, setSyncTexLine] = useState(null);
 
+  const {
+    currentProject,
+    activeFile,
+    isCompiling,
+    compilationStatus,
+    compilationMessage,
+    pdfUrl,
+    latexContent,
+  } = projectDetails;
+
   // 2. Add helper function to log messages:
   const addDebugLog = (message, type = "info", details = null) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -86,23 +98,20 @@ const EditorPage = () => {
     });
   };
 
-  // const checkServerHealth = async () => {
-  //   try {
-  //     await axios.get(`${API_URL}/api/health`);
-  //   } catch (error) {
-  //     updateProjectDetails({
-  //       error:
-  //         "Cannot connect to server. Please make sure the backend is running.",
-  //     });
-  //   }
-  // };
-
   useEffect(() => {
     if (effectiveProjectDetails.latexContent) {
       const { preamble } = splitLatex(effectiveProjectDetails.latexContent);
       setDocPreamble(preamble);
     }
   }, [effectiveProjectDetails.latexContent]);
+
+  // Handle AI Chat open from sidebar
+  useEffect(() => {
+    if (isAIChatOpen) {
+      setActiveRightView("aichat");
+      setIsAIChatOpen(false); // Reset so it can be triggered again
+    }
+  }, [isAIChatOpen, setIsAIChatOpen]);
 
   useEffect(() => {
     console.log("🔍 EditorPage effect triggered");
@@ -642,6 +651,29 @@ const EditorPage = () => {
     }
   };
 
+  const handleCompile = async () => {
+    const response = await compileDocument(
+      currentProject,
+      activeFile,
+      isCompiling,
+      compilationStatus,
+      compilationMessage,
+      pdfUrl,
+      latexContent,
+      isServerConnected,
+      isAuthenticated,
+    );
+
+    console.log("handleCompile response", response.pdfUrl);
+
+    updateProjectDetails({
+      pdfUrl: response.pdfUrl,
+      compilationStatus: response.compilationStatus,
+      compilationMessage: response.compilationMessage,
+      pdfFileName: response.fileName,
+    });
+  };
+
   const quillModules = {
     toolbar: {
       container: [
@@ -779,7 +811,7 @@ const EditorPage = () => {
       {/* Right side of the screen */}
       <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden">
         {/* Comment the below code when intgerating the new UI */}
-        <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
+        {/* <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setActiveRightView("preview")}
@@ -812,23 +844,39 @@ const EditorPage = () => {
               AI Chat
             </button>
           </div>
-        </div>
-
+        </div> */}
         {activeRightView === "preview" && (
           <div className="flex-1 overflow-hidden relative">
             <PdfViewer
               pdfUrl={projectDetails.pdfUrl}
               pdfFileName={projectDetails.pdfFileName}
               onLineJump={handlePdfLineJump}
+              onCompile={handleCompile}
+              fileTitle={projectDetails.currentProject.title}
+              onShowLogs={() => setActiveRightView("logs")}
             />
           </div>
         )}
 
         {activeRightView === "logs" && (
-          <div className="flex-1 overflow-y-auto px-10 py-4 font-mono">
-            {logs.map((log, i) => (
-              <div key={i}>{log}</div>
-            ))}
+          <div className="flex-1 overflow-y-auto bg-[#FAFAFA]">
+            <button
+              onClick={() => setActiveRightView("preview")}
+              className="font-inter w-32 ml-4 pl-3 pb-1 mt-1 pt-1 mb-1 rounded-full text-sm hover:bg-gray-100 sticky text-gray-800 flex cursor-pointer"
+            >
+              <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5 mr-4" />
+              Go Back
+            </button>
+            <div className="px-10 py-4 font-mono text-sm">
+              {logs.map((log, i) => (
+                <div key={i} className="mb-1 border-b border-gray-100 pb-1">
+                  {log}
+                </div>
+              ))}
+              {logs.length === 0 && (
+                <div className="text-gray-400 italic">No logs available.</div>
+              )}
+            </div>
           </div>
         )}
         {activeRightView === "aichat" && (
@@ -836,6 +884,7 @@ const EditorPage = () => {
             <AIChatPanel
               projectDetails={projectDetails}
               onApplyChanges={handleLatexChange}
+              onClose={() => setActiveRightView("preview")}
             />
           </div>
         )}

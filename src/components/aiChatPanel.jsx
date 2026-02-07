@@ -5,8 +5,9 @@ import {
   loadChatHistory,
 } from "../api/projectHandling";
 import { projectContext } from "../context/useProject";
+import GoBack from "../assets/icons/goBack.svg?react";
 
-const AIChatPanel = ({ projectDetails, onApplyChanges }) => {
+const AIChatPanel = ({ projectDetails, onApplyChanges, onClose }) => {
   const { updateProjectDetails } = useContext(projectContext);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
@@ -156,6 +157,13 @@ const AIChatPanel = ({ projectDetails, onApplyChanges }) => {
 
   return (
     <div className="flex flex-col h-full bg-[#FAFAFA] font-inter">
+      <button
+        onClick={onClose}
+        className="font-inter w-32 ml-4 pl-3 pb-1 mt-1 pt-1 mb-1 rounded-full text-sm hover:bg-gray-100 sticky text-gray-800 flex cursor-pointer"
+      >
+        <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5 mr-4" />
+        Go Back
+      </button>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div

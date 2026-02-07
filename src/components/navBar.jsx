@@ -246,8 +246,6 @@ const NavBar = () => {
     link.href = projectDetails.pdfUrl;
     link.download = `${projectDetails.currentProject?.title || "document"}.pdf`;
     link.click();
-
-    alert("PDF download started!");
   };
 
   const handleCloseProject = () => {
@@ -766,7 +764,9 @@ const NavBar = () => {
             </div>
           ) : (
             <div>
-              <p className="font-playfair text-sm font-medium mt-1">Docière Pro</p>
+              <p className="font-playfair text-sm font-medium mt-1">
+                Docière Pro
+              </p>
             </div>
           )}
 
