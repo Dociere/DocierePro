@@ -220,34 +220,53 @@ const SettingsPage = () => {
                 >
                   Enter your API token for AI-powered features
                 </p>
-                <div className="relative max-w-md">
-                  <input
-                    type={showToken ? "text" : "password"}
-                    value={settings.configuration.llmApiToken}
-                    onChange={(e) =>
-                      handleSettingChange(
-                        "configuration",
-                        "llmApiToken",
-                        e.target.value,
-                      )
-                    }
-                    placeholder="Enter your API token"
-                    className={`w-full px-4 py-2 pr-24 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] focus:border-transparent ${
-                      isDark
-                        ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5] placeholder-[#666]"
-                        : "bg-white border-[#CFCFCF] text-[#212121] placeholder-gray-400"
-                    }`}
-                  />
-                  <button
-                    onClick={() => setShowToken(!showToken)}
-                    className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-inter ${
-                      isDark
-                        ? "text-[#a0a0a0] hover:text-[#e5e5e5]"
-                        : "text-[#7D7D7D] hover:text-[#212121]"
-                    }`}
-                  >
-                    {showToken ? "Hide" : "Show"}
-                  </button>
+                <div className="flex">
+                  <div className="relative max-w-md">
+                    <input
+                      type={showToken ? "text" : "password"}
+                      value={settings.configuration.llmApiToken}
+                      onChange={(e) =>
+                        handleSettingChange(
+                          "configuration",
+                          "llmApiToken",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Enter your API token"
+                      className={`w-full px-4 py-2 pr-24 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] focus:border-transparent ${
+                        isDark
+                          ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5] placeholder-[#666]"
+                          : "bg-white border-[#CFCFCF] text-[#212121] placeholder-gray-400"
+                      }`}
+                    />
+                    <button
+                      onClick={() => setShowToken(!showToken)}
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-inter ${
+                        isDark
+                          ? "text-[#a0a0a0] hover:text-[#e5e5e5]"
+                          : "text-[#7D7D7D] hover:text-[#212121]"
+                      }`}
+                    >
+                      {showToken ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <div>
+                    <select
+                      name="aiProvider"
+                      defaultValue=""
+                      class="w-full border rounded-md ml-5 border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 font-inter select-none
+         focus:ring-2 focus:ring-[#AB2D2D] outline-none focus:border-transparent"
+                    >
+                      <option value="" disabled>
+                        Select AI Provider
+                      </option>
+                      <option value="openai">OpenAI</option>
+                      <option value="gemini">Google Gemini</option>
+                      <option value="claude">Anthropic Claude</option>
+                      <option value="mistral">Mistral</option>
+                      <option value="deepseek">DeepSeek</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
