@@ -234,7 +234,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAICha
             </div>
 
             {/* Compile */}
-            <div onClick={handleCompile}>
+            {/* <div onClick={handleCompile}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Compile"
@@ -247,7 +247,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAICha
                   <div className="text-xl text-[#929292]">►</div>
                 )}
               </span>
-            </div>
+            </div> */}
           </div>
           <div className="flex flex-col mb-2">
             {/* Settings */}

@@ -732,8 +732,8 @@ const EditorPage = () => {
             {projectDetails.activeFile}
           </div>
           <select
-            className="rounded-md ml-5 bg-white px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
-         focus:ring-2 focus:ring-[#0a0a0a] outline-none focus:border-transparent font-medium"
+            className="rounded-sm ml-5 bg-white px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
+         focus:ring-2 focus:ring-[#0a0a0a] outline-none focus:border-transparent font-medium hover:bg-gray-100"
             value={activeView}
             onChange={(e) => setActiveView(e.target.value)}
           >
@@ -879,11 +879,12 @@ const EditorPage = () => {
           <div className="flex-1 overflow-y-auto bg-[#FAFAFA]">
             <button
               onClick={() => setActiveRightView("preview")}
-              className="font-inter w-32 ml-4 pl-3 pb-1 mt-1 pt-1 mb-1 rounded-full text-sm hover:bg-gray-100 sticky text-gray-800 flex cursor-pointer"
+              className="font-inter w-32 ml-4 pl-3 pb-1 mt-1 pt-1 mb-1 rounded-full text-sm hover:bg-gray-100 sticky text-gray-800 flex cursor-pointer font-medium h-6"
             >
               <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5 mr-4" />
               Go Back
             </button>
+            <hr />
             <div className="px-10 py-4 font-mono text-sm">
               {logs.map((log, i) => (
                 <div key={i} className="mb-1 border-b border-gray-100 pb-1">

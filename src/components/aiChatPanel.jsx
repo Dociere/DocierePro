@@ -159,11 +159,12 @@ const AIChatPanel = ({ projectDetails, onApplyChanges, onClose }) => {
     <div className="flex flex-col h-full bg-[#FAFAFA] font-inter">
       <button
         onClick={onClose}
-        className="font-inter w-32 ml-4 pl-3 pb-1 mt-1 pt-1 mb-1 rounded-full text-sm hover:bg-gray-100 sticky text-gray-800 flex cursor-pointer"
+        className="font-inter w-32 ml-4 pl-3 pb-1 mt-1 h-6 pt-1 mb-1 rounded-full text-sm hover:bg-gray-100 sticky text-gray-800 flex cursor-pointer font-medium"
       >
         <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5 mr-4" />
         Go Back
       </button>
+      <hr />
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div
