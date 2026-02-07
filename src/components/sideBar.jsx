@@ -21,7 +21,7 @@ import { compileDocument } from "../api/projectHandling";
 import { useAuth } from "../context/useAuth";
 import axios from "axios";
 
-const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
+const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAIChat }) => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -224,7 +224,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen }) => {
             </div>
 
             {/* AI Chat */}
-            <div onClick={() => setIsVersionModalOpen(true)}>
+            <div onClick={onOpenAIChat}>
               <span
                 className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group font-poppins text-sm`}
                 title="AI Chat"

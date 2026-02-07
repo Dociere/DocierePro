@@ -3,6 +3,9 @@ import { projectContext } from "../context/useProject";
 import { useSettings } from "../context/useSettings";
 import { saveProject } from "../api/projectHandling";
 import { useAuth } from "../context/useAuth";
+import AddFileIcon from "../assets/icons/addFile.svg?react";
+import AddFolderIcon from "../assets/icons/addFolder.svg?react";
+import UploadFileIcon from "../assets/icons/upload.svg?react";
 import axios from "axios";
 
 const SectionSpace = () => {
@@ -148,26 +151,30 @@ const SectionSpace = () => {
         <div
           className={`flex items-center justify-between p-4 border-b ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}
         >
-          <span className="font-semibold text-sm">Project Files</span>
-          <button
-            onClick={() => setIsCreatingFile(true)}
-            className={`p-1 rounded hover:bg-opacity-20 ${isDark ? "hover:bg-white" : "hover:bg-black"}`}
-            title="New File"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <span className="font-medium text-black font-inter text-sm">
+            Project Files
+          </span>
+          <div className="space-x-3">
+            <button
+              onClick={() => setIsCreatingFile(true)}
+              className={`p-1 rounded hover:bg-opacity-20 ${isDark ? "hover:bg-white" : "hover:bg-black"}`}
+              title="New File"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
+              <AddFileIcon
+                style={{ fill: "#9BC59D" }}
+                className="w-[14px] h-[14px]"
               />
-            </svg>
-          </button>
+            </button>
+            <button>
+              <AddFolderIcon
+                style={{ fill: "#9BC59D" }}
+                className="w-[14px] h-[14px]"
+              />
+            </button>
+            <button>
+              <UploadFileIcon style={{ fill: "#0a0a0a" }} className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* New File Input */}

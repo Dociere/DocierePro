@@ -11,7 +11,14 @@ import "../assets/styles/pdfViewer.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
-const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
+const PdfViewer = ({
+  pdfUrl,
+  pdfFileName,
+  onLineJump,
+  onCompile,
+  fileTitle,
+  onShowLogs,
+}) => {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
@@ -36,12 +43,12 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
     // Use pdfFileName prop (from server compile response) which contains the correct
     // project ID-based filename. Fallback to extracting from pdfUrl for backwards compatibility.
     const fileName = pdfFileName || pdfUrl.split("/").pop();
-    
+
     if (!fileName) {
       console.error("SyncTeX: No filename available");
       return;
     }
-    
+
     const pageNum = pageIndex + 1;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = (event.clientX - bounds.left) / scale;
@@ -69,6 +76,19 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
     setNumPages(numPages);
   }
 
+  const handleExportPDF = () => {
+    if (!pdfUrl) {
+      alert("Please compile your document first to generate a PDF");
+      return;
+    }
+
+    // Trigger PDF download
+    const link = document.createElement("a");
+    link.href = pdfUrl;
+    link.download = `${fileTitle || "document"}.pdf`;
+    link.click();
+  };
+
   useEffect(() => {
     const page = pageRefs.current[pageNumber - 1];
     page?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -76,21 +96,32 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      {pdfUrl && (
-        <div className="flex items-center justify-between px-4 py-1 bg-gray-100 border-b border-gray-300 font-poppins">
-          <div className="flex items-center">
-            <button className="flex border-2 border-gray-300 px-2 rounded-sm py-[2px] cursor-pointer">
-              <SyncIcon
-                style={{ fill: "#4F4F4F" }}
-                className="mt-[1px] w-4 h-4"
-              />
-              <p className="px-2 font-poppins text-sm font-light">Compile</p>
-            </button>
-            <p className="font-poppins font-light text-sm ml-3 cursor-pointer">
+      {/* Toolbar - Compile button always visible, rest only when PDF exists */}
+      <div className="flex items-center justify-between px-4 py-1 bg-gray-100 border-b border-gray-300 font-poppins">
+        {/* Compile button - always visible */}
+        <div className="flex items-center">
+          <button
+            onClick={onCompile}
+            className="flex border-2 border-gray-300 px-2 rounded-sm py-[2px] cursor-pointer hover:bg-gray-50"
+          >
+            <SyncIcon
+              style={{ fill: "#4F4F4F" }}
+              className="mt-[1px] w-4 h-4"
+            />
+            <p className="px-2 font-poppins text-sm font-light">Compile</p>
+          </button>
+          {pdfUrl && (
+            <p 
+              onClick={onShowLogs}
+              className="font-poppins font-light text-sm ml-3 cursor-pointer hover:underline"
+            >
               Logs
             </p>
-          </div>
+          )}
+        </div>
+
+        {/* Page navigation - only visible when PDF exists */}
+        {pdfUrl && (
           <div className="flex items-center gap-2">
             <button
               onClick={prevPage}
@@ -111,7 +142,10 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
               &gt;
             </button>
           </div>
+        )}
 
+        {/* Zoom and download controls - only visible when PDF exists */}
+        {pdfUrl && (
           <div className="flex items-center gap-2">
             <button onClick={zoomOut} className="rounded hover:bg-gray-50">
               <DecIcon
@@ -128,15 +162,15 @@ const PdfViewer = ({ pdfUrl, pdfFileName, onLineJump }) => {
                 className="mt-[1px] w-4 h-4"
               />
             </button>
-            <button>
-            <DownloadIcon
-              style={{ fill: "#4F4F4F" }}
-              className="mt-[1px] w-5 h-5 ml-5"
-            />
+            <button onClick={handleExportPDF}>
+              <DownloadIcon
+                style={{ fill: "#4F4F4F" }}
+                className="mt-[1px] w-5 h-5 ml-5"
+              />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* PDF Viewer */}
       <div
