@@ -12,6 +12,7 @@ import LeaveSession from "../components/LeaveSession.jsx";
 import { compileDocument } from "../api/projectHandling";
 import AIChatPanel from "../components/aiChatPanel.jsx";
 import GoBack from "../assets/icons/goBack.svg?react";
+import FileIcon from "../assets/icons/file.svg?react";
 import "react-quill-new/dist/quill.snow.css";
 import "../App.css";
 import {
@@ -725,7 +726,23 @@ const EditorPage = () => {
       <LeaveSession projectId={projectDetails.currentProject?.id} />
       {/* Left side of the screen */}
       <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-10 pb-[3.2vh]">
-        <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
+        <div className="flex justify-between border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10 items-center h-8">
+          <div className="ml-2 text-[12px] font-inter text-gray-700 font-light border-2 border-gray-300 px-2 py-[1px] rounded-lg flex">
+            <FileIcon style={{ fill: "#4F4F4F" }} className="w-4 h-4 mr-2" />
+            {projectDetails.activeFile}
+          </div>
+          <select
+            className="rounded-md ml-5 bg-white px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
+         focus:ring-2 focus:ring-[#0a0a0a] outline-none focus:border-transparent font-medium"
+            value={activeView}
+            onChange={(e) => setActiveView(e.target.value)}
+          >
+            <option value="code">Code Editor</option>
+            <option value="section">Section View</option>
+            <option value="text">Text View</option>
+          </select>
+        </div>
+        {/* <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center">
             <button
               onClick={() => setActiveView("code")}
@@ -759,7 +776,7 @@ const EditorPage = () => {
             </button>
           </div>
           {/* <DebugPanel debugLogs={debugLogs} onClear={() => setDebugLogs([])} /> */}
-        </div>
+        {/* </div> */}
 
         <div className="flex-1 overflow-hidden relative">
           {activeView === "code" && (
