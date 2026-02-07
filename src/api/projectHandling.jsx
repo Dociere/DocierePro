@@ -204,12 +204,25 @@ export const compileDocument = async (
 ) => {
   if (!currentProject || !activeFile) return;
 
+  //Logic (Clint):
+  // 1. activeFile will be the root file. Validate if the content of activeFile is valid LaTeX
+  // 2. Send all the dependend file to the backend (Basically project.json via currentProject.file)
+
+  const rootFile = activeFile;
+
+  //For Debugging (FIXME: Delete Later)
+  console.log("currentProject", currentProject);
+  console.log("pdfUrl", pdfUrl);
+  console.log("ProjectId", currentProject.id);
+  console.log("currentProject Content", currentProject.files[rootFile].content);
+  // console.log("latexContent", latexContent);
+
   isCompiling = true;
   compilationStatus = "compiling";
   compilationMessage = "Compiling document...";
 
   try {
-    const contentToCompile = latexContent;
+    const contentToCompile = currentProject.files[rootFile].content;
 
     if (
       !contentToCompile.includes("\\begin{document}") ||
@@ -220,10 +233,11 @@ export const compileDocument = async (
 
     const response = await axios.post(`${API_URL}/api/compile`, {
       content: contentToCompile,
+      files: currentProject.files,
       projectId: currentProject.id,
     });
 
-    let fileName = null; // 1. Initialize fileName variable
+    let fileName = null;
 
     if (response.data.success) {
       const pdfBlob = new Blob(
@@ -239,8 +253,6 @@ export const compileDocument = async (
       pdfUrl = newPdfUrl;
       compilationStatus = "success";
       compilationMessage = "PDF compiled successfully!";
-
-      // 2. CAPTURE THE FILENAME FROM SERVER RESPONSE
       fileName = response.data.fileName;
 
       await saveProject(

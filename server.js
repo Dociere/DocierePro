@@ -880,7 +880,7 @@ app.get("/api/projects/:id/chat", async (req, res) => {
 
 app.post("/api/compile", async (req, res) => {
   console.log("\n" + "=".repeat(60));
-  console.log("📝 NEW COMPILATION REQUEST");
+  console.log("NEW COMPILATION REQUEST");
   console.log("=".repeat(60));
 
   if (!PDFLATEX_PATH) {
@@ -892,7 +892,7 @@ app.post("/api/compile", async (req, res) => {
   }
 
   try {
-    const { content, projectId } = req.body;
+    const { content, projectId, files } = req.body;
 
     if (!content) {
       return res
@@ -900,50 +900,80 @@ app.post("/api/compile", async (req, res) => {
         .json({ success: false, error: "No LaTeX content" });
     }
 
-    // -----------------------------------------------------
-    // 1. CRITICAL FIX: USE PROJECT ID AS FILENAME
-    // -----------------------------------------------------
-    // If projectId is missing, we fallback to 'temp_project' to avoid random timestamps
     const filename = projectId ? projectId : `temp_project_${Date.now()}`;
 
-    console.log(`🆔 Project ID: ${projectId}`);
-    console.log(`📂 Target Filename: ${filename}`); // Check this log!
+    console.log(`Project ID: ${projectId}`);
+    console.log(`Target Filename: ${filename}`);
 
-    const texPath = path.join(TEMP_DIR, `${filename}.tex`);
+    // Write all project files to TEMP_DIR
+    let mainTexFile = "main.tex"; // Default to main.tex
+    for (const fileName in files) {
+      const file = files[fileName];
+      console.log("Writing file:", file.name);
+      const filePath = path.join(TEMP_DIR, file.name);
+      await fs.writeFile(filePath, file.content, "utf8");
+
+      // Track which file is the main tex file (first .tex file or main.tex) (FIXME: This code may change as i am planning to take input from user to decide which is going to be the root file)
+      if (file.name === "main.tex") {
+        mainTexFile = file.name;
+      }
+    }
+
+    const texPath = path.join(TEMP_DIR, mainTexFile);
     const pdfPath = path.join(OUTPUT_DIR, `${filename}.pdf`);
     const logPath = path.join(OUTPUT_DIR, `${filename}.log`);
 
-    // 2. Write File
-    await fs.writeFile(texPath, content, "utf8");
-
-    // 3. Remove old PDF/SyncTeX to ensure fresh compile
+    // Remove old PDF/SyncTeX to ensure fresh compile
     try {
       await fs.remove(pdfPath);
       await fs.remove(path.join(OUTPUT_DIR, `${filename}.synctex.gz`));
     } catch (e) {}
 
-    // 4. Compile
     console.log("🔄 Running PDFLaTeX...");
     const result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
 
-    // 5. Check Result
-    let pdfExists = await fs.pathExists(pdfPath);
+    // PDFLaTeX outputs based on input filename (main.tex -> main.pdf)
+    const mainTexBaseName = path.basename(mainTexFile, ".tex");
+    const generatedPdfPath = path.join(OUTPUT_DIR, `${mainTexBaseName}.pdf`);
+    const generatedSynctexPath = path.join(
+      OUTPUT_DIR,
+      `${mainTexBaseName}.synctex.gz`,
+    );
+
+    // Check if pdflatex generated the PDF (with main.tex's name)
+    let pdfExists = await fs.pathExists(generatedPdfPath);
 
     // (Optional Second Pass for References)
     if (pdfExists) {
       await runPdfLatexPermissive(texPath, OUTPUT_DIR);
     }
 
-    pdfExists = await fs.pathExists(pdfPath);
+    pdfExists = await fs.pathExists(generatedPdfPath);
 
     if (pdfExists) {
+      // Rename generated PDF to the expected projectId-based name if different
+      if (generatedPdfPath !== pdfPath) {
+        await fs.move(generatedPdfPath, pdfPath, { overwrite: true });
+
+        // Also rename synctex file if it exists
+        if (await fs.pathExists(generatedSynctexPath)) {
+          const targetSynctexPath = path.join(
+            OUTPUT_DIR,
+            `${filename}.synctex.gz`,
+          );
+          await fs.move(generatedSynctexPath, targetSynctexPath, {
+            overwrite: true,
+          });
+        }
+      }
+
       const pdfBuffer = await fs.readFile(pdfPath);
       console.log(`✅ PDF Generated: ${filename}.pdf`);
 
       res.json({
         success: true,
         pdf: pdfBuffer.toString("base64"),
-        fileName: `${filename}.pdf`, // Tell frontend the exact name
+        fileName: `${filename}.pdf`,
         message: "Compiled successfully",
         log: result1.stdout,
       });
@@ -955,13 +985,9 @@ app.post("/api/compile", async (req, res) => {
       });
     }
 
-    // -----------------------------------------------------
-    // 6. DISABLE CLEANUP FOR OUTPUT FILES
-    // -----------------------------------------------------
     // Only clean the TEMP .tex file, KEEP the .pdf and .synctex.gz
     setTimeout(() => {
       cleanupFiles(filename, TEMP_DIR);
-      // Do NOT clean OUTPUT_DIR
     }, 60000);
   } catch (error) {
     console.error("Server Error:", error);
