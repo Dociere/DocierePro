@@ -334,6 +334,11 @@ const NavBar = () => {
       action: handleExportPDF,
       disabled: !hasProject || !projectDetails.pdfUrl,
     },
+    {
+      label: "Export as .zip",
+      action: handleExportPDF,
+      disabled: !hasProject || !projectDetails.pdfUrl,
+    },
     { divider: true },
     {
       label: "Close Project",
@@ -680,7 +685,7 @@ const NavBar = () => {
         <div className="bg-[#F9F9F9] h-7 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex">
           {/* Left Part - Title bar Menus */}
           <div
-            className="flex flex-1 gap-7 text-[13px] pl-5 text-[#212121]"
+            className="flex flex-1 gap-7 text-[13px] pl-5 text-[#212121] mt-1"
             style={{ WebkitAppRegion: "no-drag" }}
           >
             <button
