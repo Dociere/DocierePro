@@ -6,7 +6,6 @@ import ShortcutsModal from "./shortcutsModal";
 import { projectContext } from "../context/useProject";
 import EditIcon from "../assets/icons/edit.svg?react";
 import TickIcon from "../assets/icons/tickIcon.svg?react";
-import dociereLogo from "../../public/dociere.png";
 import ToMaxIcon from "../assets/icons/minmaxIcon.svg?react";
 import ToMinIcon from "../assets/icons/minmaxIcon1.svg?react";
 import axios from "axios";
@@ -680,10 +679,10 @@ const NavBar = () => {
           WebkitAppRegion: "drag",
         }}
       >
-        <div className="bg-[#F9F9F9] h-11 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex">
+        <div className="bg-[#F9F9F9] h-7 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex">
           {/* Left Part - Title bar Menus */}
           <div
-            className="flex flex-1 gap-7 text-sm pl-5 text-[#212121]"
+            className="flex flex-1 gap-7 text-[13px] pl-5 text-[#212121]"
             style={{ WebkitAppRegion: "no-drag" }}
           >
             <button
@@ -767,7 +766,7 @@ const NavBar = () => {
             </div>
           ) : (
             <div>
-              <img src={dociereLogo} alt="" className="w-[70px] mt-2" />
+              <p className="font-playfair text-sm font-medium mt-1">Docière Pro</p>
             </div>
           )}
 
@@ -777,14 +776,14 @@ const NavBar = () => {
             style={{ WebkitAppRegion: "no-drag" }}
           >
             <button
-              className="hover:bg-gray-200 mb-2 rounded-md px-3"
+              className="hover:bg-gray-200 -mt-2 rounded-full px-2"
               onClick={() => window.electronAPI.minimize()}
             >
               _
             </button>
 
             <button
-              className="hover:bg-gray-200 my-2 rounded-md px-3"
+              className="hover:bg-gray-200 rounded-full px-2"
               onClick={() => window.electronAPI.maximize()}
             >
               {isMaximized ? (
@@ -800,7 +799,7 @@ const NavBar = () => {
               )}
             </button>
             <button
-              className="hover:bg-gray-200 my-2 rounded-md px-3 text-[#0a0a0a]"
+              className="hover:bg-gray-200 rounded-full px-2 text-[#0a0a0a]"
               onClick={() => window.electronAPI.close()}
             >
               ✕

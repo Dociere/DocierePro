@@ -18,7 +18,6 @@ const PageLayout = () => {
             setIsSectionSpaceOpen={setIsSectionSpaceOpen}
           />
         </div>
-        {/* This is where the SectionSpace can be implemented */}
         <div>{isSectionSpaceOpen && <SectionSpace />}</div>
         <div className="w-full h-auto">
           <Outlet context={{ isSectionSpaceOpen }} />
