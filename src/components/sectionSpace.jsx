@@ -7,6 +7,57 @@ import AddFileIcon from "../assets/icons/addFile.svg?react";
 import AddFolderIcon from "../assets/icons/addFolder.svg?react";
 import UploadFileIcon from "../assets/icons/upload.svg?react";
 import axios from "axios";
+import { TbAlertTriangle, TbCheck, TbX } from "react-icons/tb";
+
+// Confirmation Modal Component
+const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+        <div className="flex items-center gap-3 mb-4">
+          <TbAlertTriangle className="text-amber-500" size={24} />
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        </div>
+        <p className="text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button onClick={onCancel} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">Cancel</button>
+          <button onClick={onConfirm} className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium">Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Alert Modal Component
+const AlertModal = ({ isOpen, message, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+        <div className="flex items-center gap-3 mb-4">
+          <TbAlertTriangle className="text-amber-500" size={24} />
+          <h3 className="text-lg font-semibold text-gray-900">Notice</h3>
+        </div>
+        <p className="text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium">OK</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Toast Component
+const Toast = ({ message, isVisible }) => {
+  if (!isVisible) return null;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
+      <TbCheck size={16} className="text-green-400" />
+      <span className="text-sm">{message}</span>
+    </div>
+  );
+};
 
 const SectionSpace = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -18,6 +69,14 @@ const SectionSpace = () => {
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [error, setError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [alertMessage, setAlertMessage] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", onConfirm: null });
+  const [uploadPendingFiles, setUploadPendingFiles] = useState([]);
+  const [uploadOverwriteFile, setUploadOverwriteFile] = useState(null);
+
+  const fileInputRef = React.useRef(null);
 
   const isDark = settings.appearance.mode === "dark";
 
@@ -97,40 +156,149 @@ const SectionSpace = () => {
     }
   };
 
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  };
+
   const handleDeleteFile = async (e, fileName) => {
     e.stopPropagation(); // Prevent file selection when clicking delete
 
     if (fileName === "main.tex") {
-      alert("Cannot delete the main root file.");
+      setAlertMessage("Cannot delete the main root file.");
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete ${fileName}?`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete File",
+      message: `Are you sure you want to delete ${fileName}?`,
+      onConfirm: async () => {
+        setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null });
+        try {
+          const response = await axios.delete(
+            `http://localhost:5000/api/projects/${currentProject.id}/files/${fileName}`,
+          );
+
+          if (response.data.success) {
+            // Determine next file to focus if we deleted the active one
+            let nextActiveFile = activeFile;
+            if (activeFile === fileName) {
+              nextActiveFile = "main.tex";
+            }
+
+            updateProjectDetails({
+              currentProject: response.data.project,
+              activeFile: nextActiveFile,
+              latexContent:
+                response.data.project.files[nextActiveFile]?.content || "",
+            });
+            showToast(`Deleted ${fileName}`);
+          }
+        } catch (err) {
+          console.error("Delete failed:", err);
+          setError("Failed to delete file");
+        }
+      },
+    });
+  };
+
+  // Handle file upload - reads file client-side and adds to project
+  const handleFileUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !currentProject) return;
+
+    setIsUploading(true);
+    setError("");
 
     try {
-      const response = await axios.delete(
-        `http://localhost:5000/api/projects/${currentProject.id}/files/${fileName}`,
-      );
-
-      if (response.data.success) {
-        // Determine next file to focus if we deleted the active one
-        let nextActiveFile = activeFile;
-        if (activeFile === fileName) {
-          nextActiveFile = "main.tex";
+      const newFiles = { ...currentProject.files };
+      const filesToProcess = Array.from(files);
+      let skippedCount = 0;
+      
+      for (const file of filesToProcess) {
+        const fileName = file.name;
+        
+        // Check if file already exists - skip with info (no blocking confirm)
+        if (newFiles[fileName]) {
+          // Overwrite silently if same name
+          console.log(`Overwriting existing file: ${fileName}`);
         }
-
-        updateProjectDetails({
-          currentProject: response.data.project,
-          activeFile: nextActiveFile,
-          latexContent:
-            response.data.project.files[nextActiveFile]?.content || "",
-        });
+        
+        // Determine file type
+        const isImage = /\.(png|jpg|jpeg|gif|svg|pdf|eps)$/i.test(fileName);
+        const isText = /\.(tex|bib|sty|cls|txt)$/i.test(fileName);
+        
+        if (isImage) {
+          // Read as base64 data URL
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          
+          newFiles[fileName] = {
+            name: fileName,
+            content: dataUrl,
+            type: fileName.split(".").pop(),
+            isImage: true,
+          };
+        } else if (isText) {
+          // Read as text
+          const content = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+          
+          newFiles[fileName] = {
+            name: fileName,
+            content: content,
+            type: fileName.split(".").pop(),
+          };
+        } else {
+          // Unsupported file type
+          console.warn(`Skipping unsupported file type: ${fileName}`);
+          skippedCount++;
+          continue;
+        }
       }
+      
+      // Update project with new files
+      const updatedProject = {
+        ...currentProject,
+        files: newFiles,
+      };
+      
+      updateProjectDetails({
+        currentProject: updatedProject,
+      });
+      
+      // Save to server
+      await saveProject(
+        updatedProject,
+        activeFile,
+        compilationStatus,
+        compilationMessage,
+        isServerConnected,
+        isAuthenticated
+      );
+      
+      const uploadedCount = filesToProcess.length - skippedCount;
+      if (uploadedCount > 0) {
+        showToast(`Uploaded ${uploadedCount} file${uploadedCount > 1 ? 's' : ''}`);
+      }
+      
     } catch (err) {
-      console.error("Delete failed:", err);
-      setError("Failed to delete file");
+      console.error("Upload failed:", err);
+      setError("Failed to upload file: " + err.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -171,9 +339,30 @@ const SectionSpace = () => {
                 className="w-[14px] h-[14px]"
               />
             </button>
-            <button>
-              <UploadFileIcon style={{ fill: "#0a0a0a" }} className="w-4 h-4" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className={`p-1 rounded hover:bg-opacity-20 ${isDark ? "hover:bg-white" : "hover:bg-black"} ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+              title="Upload File"
+            >
+              {isUploading ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="#9BC59D" strokeWidth="2" opacity="0.3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#9BC59D" strokeWidth="2" />
+                </svg>
+              ) : (
+                <UploadFileIcon style={{ fill: "#0a0a0a" }} className="w-4 h-4" />
+              )}
             </button>
+            {/* Hidden file input for uploads */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".png,.jpg,.jpeg,.pdf,.eps,.svg,.tex,.bib,.sty,.cls"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
           </div>
         </div>
 
@@ -330,6 +519,16 @@ const SectionSpace = () => {
           )}
         </div>
       </div>
+      
+      <Toast message={toast} isVisible={!!toast} />
+      <AlertModal isOpen={!!alertMessage} message={alertMessage} onClose={() => setAlertMessage(null)} />
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen} 
+        title={confirmModal.title} 
+        message={confirmModal.message} 
+        onConfirm={confirmModal.onConfirm} 
+        onCancel={() => setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null })} 
+      />
     </div>
   );
 };

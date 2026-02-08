@@ -1,0 +1,614 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { TbX, TbPhoto, TbCopy, TbCheck, TbPlayerPlay, TbAlertTriangle } from "react-icons/tb";
+
+const API_BASE_URL = "http://localhost:5000";
+
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+const parseLatexFigure = (latex) => {
+  if (!latex) return null;
+
+  try {
+    const posMatch = latex.match(/\\begin\{figure\}\[([^\]]*)\]/);
+    const positioning = posMatch ? posMatch[1] : "h";
+
+    const captionMatch = latex.match(/\\caption\{([^}]*)\}/);
+    const caption = captionMatch ? captionMatch[1] : "";
+
+    const labelMatch = latex.match(/\\label\{([^}]*)\}/);
+    const label = labelMatch ? labelMatch[1] : "";
+
+    // Parse width - extract number and unit separately
+    const widthMatch = latex.match(/width\s*=\s*([\d.]+)(\\?[a-z]+|cm|mm|in|pt)?/i);
+    const widthValue = widthMatch ? widthMatch[1] : "";
+    const widthUnit = widthMatch && widthMatch[2] ? widthMatch[2] : "";
+
+    // Parse height
+    const heightMatch = latex.match(/height\s*=\s*([\d.]+)(\\?[a-z]+|cm|mm|in|pt)?/i);
+    const heightValue = heightMatch ? heightMatch[1] : "";
+    const heightUnit = heightMatch && heightMatch[2] ? heightMatch[2] : "";
+
+    const scaleMatch = latex.match(/scale\s*=\s*([\d.]+)/i);
+    const scale = scaleMatch ? scaleMatch[1] : "";
+
+    const imagePathMatch = latex.match(/\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}/);
+    const imagePath = imagePathMatch ? imagePathMatch[1] : "";
+
+    const captionBeforeInclude = latex.indexOf("\\caption") < latex.indexOf("\\includegraphics");
+    const captionPosition = captionBeforeInclude ? "top" : "bottom";
+
+    const centering = latex.includes("\\centering");
+
+    return {
+      positioning,
+      caption,
+      label,
+      widthValue,
+      widthUnit,
+      heightValue,
+      heightUnit,
+      scale,
+      imagePath,
+      captionPosition,
+      centering,
+    };
+  } catch (e) {
+    console.error("Failed to parse figure:", e);
+    return null;
+  }
+};
+
+const generateLatexFigure = ({
+  imagePath,
+  widthValue,
+  widthUnit,
+  heightValue,
+  heightUnit,
+  scale,
+  positioning,
+  caption,
+  label,
+  captionPosition,
+  centering,
+  sizeMode,
+}) => {
+  let optionsArr = [];
+  
+  if (sizeMode === "width" && widthValue) {
+    optionsArr.push(`width=${widthValue}${widthUnit}`);
+  } else if (sizeMode === "height" && heightValue) {
+    optionsArr.push(`height=${heightValue}${heightUnit}`);
+  } else if (sizeMode === "scale" && scale) {
+    optionsArr.push(`scale=${scale}`);
+  }
+  
+  const options = optionsArr.length > 0 ? `[${optionsArr.join(", ")}]` : "";
+
+  const captionStr = caption ? `\\caption{${caption}}\n` : "";
+  const labelStr = label ? `\\label{${label}}\n` : "";
+  const centeringStr = centering ? "\\centering\n" : "";
+
+  let result = `\\begin{figure}[${positioning}]\n${centeringStr}`;
+  
+  if (captionPosition === "top") {
+    result += captionStr + labelStr;
+  }
+  
+  result += `\\includegraphics${options}{${imagePath}}\n`;
+  
+  if (captionPosition === "bottom" || !captionPosition) {
+    result += captionStr + labelStr;
+  }
+  
+  result += "\\end{figure}";
+
+  return result;
+};
+
+// Width unit presets
+const WIDTH_PRESETS = [
+  { label: "0.5×Text", value: "0.5", unit: "\\textwidth" },
+  { label: "0.8×Text", value: "0.8", unit: "\\textwidth" },
+  { label: "Full Text", value: "1", unit: "\\textwidth" },
+  { label: "Column", value: "1", unit: "\\columnwidth" },
+  { label: "0.8×Col", value: "0.8", unit: "\\columnwidth" },
+  { label: "Line", value: "1", unit: "\\linewidth" },
+];
+
+const HEIGHT_PRESETS = [
+  { label: "3cm", value: "3", unit: "cm" },
+  { label: "5cm", value: "5", unit: "cm" },
+  { label: "8cm", value: "8", unit: "cm" },
+  { label: "10cm", value: "10", unit: "cm" },
+  { label: "0.3×Text", value: "0.3", unit: "\\textheight" },
+  { label: "0.5×Text", value: "0.5", unit: "\\textheight" },
+];
+
+const SCALE_PRESETS = [
+  { label: "50%", value: "0.5" },
+  { label: "75%", value: "0.75" },
+  { label: "100%", value: "1.0" },
+  { label: "125%", value: "1.25" },
+];
+
+// ==========================================
+// TOAST COMPONENT
+// ==========================================
+const Toast = ({ message, isVisible }) => {
+  if (!isVisible) return null;
+  
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
+      <TbCheck size={16} className="text-green-400" />
+      <span className="text-sm">{message}</span>
+    </div>
+  );
+};
+
+// ==========================================
+// ALERT MODAL
+// ==========================================
+const AlertModal = ({ isOpen, message, onClose }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+        <div className="flex items-center gap-3 mb-4">
+          <TbAlertTriangle className="text-amber-500" size={24} />
+          <h3 className="text-lg font-semibold text-gray-900">Notice</h3>
+        </div>
+        <p className="text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
+const ImageInsertModal = ({
+  isOpen,
+  onClose,
+  onInsert,
+  initialData = null,
+  projectFiles = [],
+}) => {
+  const [imagePath, setImagePath] = useState("");
+  const [widthValue, setWidthValue] = useState("0.8");
+  const [widthUnit, setWidthUnit] = useState("\\textwidth");
+  const [heightValue, setHeightValue] = useState("5");
+  const [heightUnit, setHeightUnit] = useState("cm");
+  const [scale, setScale] = useState("1.0");
+  const [sizeMode, setSizeMode] = useState("width");
+  const [positioning, setPositioning] = useState("h");
+  const [caption, setCaption] = useState("");
+  const [label, setLabel] = useState("");
+  const [captionPosition, setCaptionPosition] = useState("bottom");
+  const [centering, setCentering] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [alertMessage, setAlertMessage] = useState(null);
+  const [compiledPreviewUrl, setCompiledPreviewUrl] = useState(null);
+  const [isCompiling, setIsCompiling] = useState(false);
+
+  const imageFiles = projectFiles.filter(file => 
+    /\.(png|jpg|jpeg|gif|svg|pdf|eps)$/i.test(file)
+  );
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  };
+
+  useEffect(() => {
+    if (isOpen && initialData) {
+      const parsed = typeof initialData === "string" 
+        ? parseLatexFigure(initialData) 
+        : initialData;
+      
+      if (parsed) {
+        setImagePath(parsed.imagePath || "");
+        setWidthValue(parsed.widthValue || "0.8");
+        setWidthUnit(parsed.widthUnit || "\\textwidth");
+        setHeightValue(parsed.heightValue || "5");
+        setHeightUnit(parsed.heightUnit || "cm");
+        setScale(parsed.scale || "1.0");
+        setPositioning(parsed.positioning || "h");
+        setCaption(parsed.caption || "");
+        setLabel(parsed.label || "");
+        setCaptionPosition(parsed.captionPosition || "bottom");
+        setCentering(parsed.centering !== false);
+        setCompiledPreviewUrl(null);
+        
+        if (parsed.scale) setSizeMode("scale");
+        else if (parsed.heightValue) setSizeMode("height");
+        else setSizeMode("width");
+      }
+    } else if (isOpen && !initialData) {
+      setImagePath("");
+      setWidthValue("0.8");
+      setWidthUnit("\\textwidth");
+      setHeightValue("5");
+      setHeightUnit("cm");
+      setScale("1.0");
+      setSizeMode("width");
+      setPositioning("h");
+      setCaption("");
+      setLabel("");
+      setCaptionPosition("bottom");
+      setCentering(true);
+      setCompiledPreviewUrl(null);
+    }
+  }, [isOpen, initialData]);
+
+  const getLatex = () => {
+    return generateLatexFigure({
+      imagePath,
+      widthValue,
+      widthUnit,
+      heightValue,
+      heightUnit,
+      scale,
+      positioning,
+      caption,
+      label,
+      captionPosition,
+      centering,
+      sizeMode,
+    });
+  };
+
+  const handleCompilePreview = async () => {
+    if (!imagePath.trim()) {
+      setAlertMessage("Please enter an image path first");
+      return;
+    }
+    
+    const latex = getLatex();
+    setIsCompiling(true);
+    setCompiledPreviewUrl(null);
+    
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/latex/compile`, {
+        latex: latex,
+        isTemp: true,
+        fileName: "figure-preview",
+        format: "image",
+        type: "figure",
+      });
+      
+      if (res.data.success && res.data.pdfUrl) {
+        setCompiledPreviewUrl(`${API_BASE_URL}${res.data.pdfUrl}?t=${Date.now()}`);
+      } else {
+        showToast("Preview failed");
+      }
+    } catch (e) {
+      console.error("Failed to compile figure:", e);
+      showToast("Preview failed - image may not exist");
+    } finally {
+      setIsCompiling(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (!imagePath.trim()) {
+      setAlertMessage("Please enter an image path first");
+      return;
+    }
+    navigator.clipboard.writeText(getLatex());
+    showToast("LaTeX copied to clipboard!");
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-xl flex flex-col overflow-hidden max-h-[90vh]">
+        {/* Header */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2 font-inter">
+            <TbPhoto className="text-gray-700" />
+            {initialData ? "Edit Figure" : "Insert Figure"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-900 transition-colors p-1 rounded-full hover:bg-gray-100"
+          >
+            <TbX size={24} />
+          </button>
+        </div>
+
+        {/* Main Content */}
+        <div className="p-5 space-y-4 overflow-y-auto">
+          {/* Image Selection */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Image File</label>
+            {imageFiles.length > 0 ? (
+              <select
+                value={imagePath}
+                onChange={(e) => setImagePath(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+              >
+                <option value="">Select an image...</option>
+                {imageFiles.map((file) => (
+                  <option key={file} value={file}>{file}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-xs text-gray-500 mb-1">No images in project. Upload via sidebar.</div>
+            )}
+            <input
+              type="text"
+              value={imagePath}
+              onChange={(e) => setImagePath(e.target.value)}
+              placeholder="path/to/image.png"
+              className="w-full mt-2 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 font-mono"
+            />
+          </div>
+
+          {/* Size Options */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Size</label>
+            <div className="flex gap-1 mb-3">
+              {["width", "height", "scale"].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setSizeMode(mode)}
+                  className={`px-3 py-1.5 text-xs rounded font-medium transition-colors ${
+                    sizeMode === mode 
+                      ? "bg-black text-white" 
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
+            
+            {sizeMode === "width" && (
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={widthValue}
+                    onChange={(e) => setWidthValue(e.target.value)}
+                    className="w-24 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    placeholder="0.8"
+                  />
+                  <select
+                    value={widthUnit}
+                    onChange={(e) => setWidthUnit(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  >
+                    <option value="\\textwidth">\textwidth</option>
+                    <option value="\\columnwidth">\columnwidth</option>
+                    <option value="\\linewidth">\linewidth</option>
+                    <option value="\\paperwidth">\paperwidth</option>
+                    <option value="cm">cm</option>
+                    <option value="mm">mm</option>
+                    <option value="in">inches</option>
+                    <option value="pt">points</option>
+                  </select>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {WIDTH_PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => { setWidthValue(preset.value); setWidthUnit(preset.unit); }}
+                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {sizeMode === "height" && (
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={heightValue}
+                    onChange={(e) => setHeightValue(e.target.value)}
+                    className="w-24 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    placeholder="5"
+                  />
+                  <select
+                    value={heightUnit}
+                    onChange={(e) => setHeightUnit(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  >
+                    <option value="cm">cm</option>
+                    <option value="mm">mm</option>
+                    <option value="in">inches</option>
+                    <option value="pt">points</option>
+                    <option value="\\textheight">\textheight</option>
+                    <option value="\\paperheight">\paperheight</option>
+                  </select>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {HEIGHT_PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => { setHeightValue(preset.value); setHeightUnit(preset.unit); }}
+                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {sizeMode === "scale" && (
+              <div className="space-y-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="3"
+                  value={scale}
+                  onChange={(e) => setScale(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  placeholder="1.0"
+                />
+                <div className="flex gap-1">
+                  {SCALE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => setScale(preset.value)}
+                      className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Layout Row */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Position</label>
+              <select
+                value={positioning}
+                onChange={(e) => setPositioning(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+              >
+                <option value="h">Here [h]</option>
+                <option value="t">Top [t]</option>
+                <option value="b">Bottom [b]</option>
+                <option value="H">Exact [H]</option>
+                <option value="!htbp">Force [!htbp]</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Options</label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 py-2">
+                <input
+                  type="checkbox"
+                  checked={centering}
+                  onChange={(e) => setCentering(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                Center image
+              </label>
+            </div>
+          </div>
+
+          {/* Caption & Label */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Caption</label>
+            <input
+              type="text"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="Figure caption..."
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
+            <div className="flex gap-2 mt-2">
+              <input
+                type="text"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="fig:label"
+                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+              />
+              <select
+                value={captionPosition}
+                onChange={(e) => setCaptionPosition(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+              >
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Preview Section */}
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-xs font-bold text-gray-500 uppercase">Preview</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="text-xs text-gray-600 hover:text-black px-2 py-1 hover:bg-gray-200 rounded"
+                >
+                  {showPreview ? "Hide Code" : "Code"}
+                </button>
+                <button
+                  onClick={handleCompilePreview}
+                  disabled={isCompiling || !imagePath}
+                  className="text-xs bg-gray-800 text-white px-3 py-1 rounded hover:bg-black disabled:opacity-50 flex items-center gap-1"
+                >
+                  <TbPlayerPlay size={12} />
+                  {isCompiling ? "..." : "Compile"}
+                </button>
+              </div>
+            </div>
+            {showPreview && (
+              <pre className="bg-gray-900 text-gray-100 p-2 rounded text-xs overflow-x-auto max-h-[80px] font-mono mb-2">
+                {getLatex()}
+              </pre>
+            )}
+            {compiledPreviewUrl && (
+              <div className="bg-white border border-gray-200 rounded p-2 text-center overflow-auto">
+                <img src={compiledPreviewUrl} alt="Figure preview" className="max-h-[100px] mx-auto" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer - Copy only, no Insert */}
+        <div className="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+          <div className="text-xs text-gray-500">Copy and paste into your document</div>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-1.5 text-gray-600 hover:bg-gray-100 rounded font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={copyToClipboard}
+              className="flex items-center gap-1.5 px-5 py-1.5 bg-black text-white rounded hover:bg-gray-800 font-medium"
+            >
+              <TbCopy size={16} /> Copy LaTeX
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <Toast message={toast} isVisible={!!toast} />
+      <AlertModal 
+        isOpen={!!alertMessage} 
+        message={alertMessage} 
+        onClose={() => setAlertMessage(null)} 
+      />
+    </div>
+  );
+};
+
+export default ImageInsertModal;
+export { parseLatexFigure, generateLatexFigure };

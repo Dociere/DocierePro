@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import MonacoEditorPanel from "./monacoEditor";
-import RichTextEditorPanel from "./textEditor";
+// RichTextEditorPanel import removed - Monaco only now
 import latexUtility from "../utils/latexUtility";
-import TableDesigner from "./tableDesigner";
+import TableDesignerModal from "./TableDesignerModal";
+import ImageInsertModal from "./ImageInsertModal";
 import "../assets/styles/synctex.css";
 import axios from "axios";
 
@@ -184,6 +185,40 @@ const CornerDownRightIcon = () => (
   </svg>
 );
 
+// Table icon for toolbar
+const TableIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#5f6368"
+    strokeWidth="2"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <line x1="3" y1="9" x2="21" y2="9" />
+    <line x1="3" y1="15" x2="21" y2="15" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+    <line x1="15" y1="3" x2="15" y2="21" />
+  </svg>
+);
+
+// Image icon for toolbar
+const ImageIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#5f6368"
+    strokeWidth="2"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
 // ==========================================
 // 2. MAIN PARENT COMPONENT
 // ==========================================
@@ -198,6 +233,7 @@ const SectionEditor = ({
   preamble,
   globalHighlightLine,
   onHighlightClear,
+  projectFiles = [],
 }) => {
   const [focusedSectionId, setFocusedSectionId] = useState(null);
   const [syncHighlight, setSyncHighlight] = useState({
@@ -220,6 +256,12 @@ const SectionEditor = ({
   }, []);
 
   const handlePdfLineJump = (globalLineNumber) => {
+    // Safety guard - if no sections, don't try to process
+    if (!sections || sections.length === 0) {
+      console.warn("⚠️ SyncTeX: No sections available");
+      return;
+    }
+    
     // Build a flat list of all sections with their line ranges
     // This is more accurate than cumulative counting during recursion
     
@@ -309,12 +351,16 @@ const SectionEditor = ({
   };
 
   useEffect(() => {
-    if (globalHighlightLine) {
+    if (globalHighlightLine && sections && sections.length > 0) {
       handlePdfLineJump(globalHighlightLine); // Internal logic to map line -> section
-      // After finding it, you might want to call onHighlightClear()
-      // but usually best to let the user clear it by clicking/typing.
+      
+      // Clear the global highlight line so it doesn't re-trigger when sections update
+      // creating a "sticky" highlight effect
+      if (onHighlightClear) {
+        onHighlightClear();
+      }
     }
-  }, [globalHighlightLine]);
+  }, [globalHighlightLine, sections]);
 
   // --- ROOT HANDLERS ---
   const handleRootUpdate = (updatedSection) => {
@@ -432,6 +478,7 @@ const SectionEditor = ({
                 sectionToRichText={sectionToRichText}
                 richTextToSection={richTextToSection}
                 syncHighlight={syncHighlight}
+                projectFiles={projectFiles}
                 onHighlightClear={() =>
                   setSyncHighlight({ sectionId: null, line: null })
                 }
@@ -476,16 +523,25 @@ const RecursiveSection = ({
   richTextToSection,
   syncHighlight,
   onHighlightClear,
+  projectFiles = [],
 }) => {
   const isFocused = focusedSectionId === section.id;
   const [isEditingName, setIsEditingName] = useState(false);
-  const [isCodeMode, setIsCodeMode] = useState(false);
-  const [richTextContent, setRichTextContent] = useState("");
+  // Removed isCodeMode - Monaco only now
 
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Modal states for table and image insertion
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [editingTableData, setEditingTableData] = useState(null);
+  const [editingImageData, setEditingImageData] = useState(null);
+
+  // Ref for Monaco editor to insert at cursor
+  const monacoRef = useRef(null);
 
   const isHighlightedSection = syncHighlight?.sectionId === section.id;
   const lineToHighlight = isHighlightedSection ? syncHighlight.line : null;
@@ -495,7 +551,6 @@ const RecursiveSection = ({
 
   useEffect(() => {
     if (isHighlightedSection) {
-      setIsCodeMode(true);
       // Scroll section into view when highlighted by SyncTeX
       if (sectionRef.current) {
         sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -519,57 +574,9 @@ const RecursiveSection = ({
     }
   }, [isFocused, section.name]);
 
-  useEffect(() => {
-    if (!isCodeMode) {
-      // 1. SPLIT CONTENT
-      const { preamble, body, postamble } = latexUtility.splitLatex(
-        section.content,
-      );
+  // Removed RichText conversion logic - Monaco only now
 
-      // 2. SAVE HIDDEN PARTS TO REF
-      hiddenParts.current = { preamble, postamble };
-
-      if (sectionToRichText) {
-        const html = sectionToRichText({ content: body });
-        setRichTextContent(html);
-      } else {
-        // Fallback if prop missing
-        setRichTextContent(latexUtility.latexToRichText(body));
-      }
-    }
-  }, [section.content, isCodeMode, sectionToRichText]);
-
-  const handleAddTable = () => {
-    const newTable = {
-      id: Date.now() + Math.random(),
-      type: "section",
-      subtype: "table",
-      name: "New Table",
-      // Default content for a 2x2 table
-      content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n Cell 1 & Cell 2 \\\\ \\hline\n Cell 3 & Cell 4 \\\\ \\hline\n\\end{tabular}\n\\caption{New Table}\n\\end{table}`,
-      children: [],
-    };
-    // to accept an optional 'template' argument.
-    props.onAddAfter(props.index, newTable);
-  };
-
-  const handleRichTextChange = (html) => {
-    setRichTextContent(html);
-
-    // 1. CONVERT HTML TO BODY LATEX
-    let bodyLatex = "";
-    if (richTextToSection) {
-      bodyLatex = richTextToSection(html);
-    } else {
-      bodyLatex = latexUtility.richTextToLatex(html);
-    }
-
-    // 2. RECOMBINE WITH HIDDEN PARTS
-    const fullLatex =
-      hiddenParts.current.preamble + bodyLatex + hiddenParts.current.postamble;
-
-    onUpdate({ ...section, content: fullLatex });
-  };
+  // handleAddTable removed - tables are now inserted via toolbar modal
 
   const handleRunSection = async (e) => {
     e.stopPropagation();
@@ -786,15 +793,29 @@ const RecursiveSection = ({
           >
             AI
           </button> */}
+          {/* Table Insert Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setIsEditingName(!isEditingName);
+              setEditingTableData(null);
+              setShowTableModal(true);
             }}
-            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200"
-            title="Edit Name"
+            className="w-8 h-8 flex items-center justify-center rounded hover:bg-blue-100 hover:text-blue-600"
+            title="Insert Table"
           >
-            <GearIcon />
+            <TableIcon />
+          </button>
+          {/* Image Insert Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingImageData(null);
+              setShowImageModal(true);
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded hover:bg-green-100 hover:text-green-600"
+            title="Insert Image"
+          >
+            <ImageIcon />
           </button>
           <button
             onClick={(e) => {
@@ -845,98 +866,140 @@ const RecursiveSection = ({
 
         <div className="flex-1 p-3 sm:p-4 relative">
           {(isEditingName || (!section.name && isFocused)) && (
-            <div className="mb-3 p-2 bg-gray-50 rounded border border-gray-300">
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Section Name
-              </label>
-              <input
-                value={section.name}
-                onChange={(e) => onUpdate({ ...section, name: e.target.value })}
-                placeholder="Unnamed Section"
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-                // 👇 ADDED: Exit edit mode on click away (Blur)
-                onBlur={() => setIsEditingName(false)}
-                // 👇 ADDED: Exit edit mode on Enter key
-                onKeyDown={(e) => {
-                  e.stopPropagation(); // Prevent triggering parent handlers
-                  if (e.key === "Enter") {
+            <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-300">
+              <div className="flex flex-col gap-3">
+                {/* Section Name Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                    Section Name
+                  </label>
+                  <input
+                    value={section.name}
+                    onChange={(e) => onUpdate({ ...section, name: e.target.value })}
+                    placeholder="Unnamed Section"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") {
+                        setIsEditingName(false);
+                      }
+                    }}
+                  />
+                </div>
+                
+                {/* Numbered/Unnumbered Toggle - Only for section/subsection/subsubsection */}
+                {["section", "subsection", "subsubsection"].includes(section.type) && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-gray-600">Numbering:</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({ ...section, subtype: "standard" });
+                        }}
+                        className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                          section.subtype !== "starred"
+                            ? "bg-black text-white"
+                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                        }`}
+                      >
+                        Numbered
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({ ...section, subtype: "starred" });
+                        }}
+                        className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                          section.subtype === "starred"
+                            ? "bg-black text-white"
+                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                        }`}
+                      >
+                        Unnumbered
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Done button */}
+              <div className="flex justify-end mt-3">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setIsEditingName(false);
-                  }
-                }}
-              />
+                  }}
+                  className="px-3 py-1 text-xs bg-gray-800 text-white rounded hover:bg-black"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           )}
           {section.name && !isEditingName && (
-            <div className="mb-2 text-sm font-semibold text-gray-700 flex justify-between items-center">
+            <div className="mb-2 text-sm font-semibold text-gray-700 flex items-center gap-2">
               <span>{section.name}</span>
+              {section.subtype === "starred" && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-500">unnumbered</span>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingName(true);
+                }}
+                className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Edit section name"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
             </div>
           )}
-          {isFocused && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCodeMode(!isCodeMode);
-              }}
-              className="text-[10px] text-blue-500 hover:underline cursor-pointer"
-            >
-              {isCodeMode
-                ? section.subtype === "table"
-                  ? "Switch to Designer"
-                  : "Switch to Visual"
-                : "Switch to LaTeX Code"}
-            </button>
-          )}
+          {/* Removed visual mode toggle - Monaco only now */}
 
-          <div className="min-h-[80px]">
-            {isCodeMode ? (
-              // 1. CODE VIEW (Shared by Tables & Sections)
-              <div
-                className="h-64 border border-gray-200 rounded"
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <MonacoEditorPanel
-                  value={section.content}
-                  handleLatexChange={(val) =>
-                    onUpdate({ ...section, content: val })
-                  }
-                  highlightLine={lineToHighlight}
-                  onHighlightClear={onHighlightClear}
-                  projectId={projectId}
-                  token={token}
-                  isOnline={isOnline}
-                />
-              </div>
-            ) : section.subtype === "table" ? (
-              // 2. TABLE DESIGNER (Only for Tables)
-              <div onClick={(e) => e.stopPropagation()}>
-                <TableDesigner
-                  initialContent={section.content}
-                  onSave={(newLatex) => {
-                    onUpdate({ ...section, content: newLatex });
-                  }}
-                  onCancel={() => {}}
-                />
-              </div>
-            ) : (
-              // 3. RICH TEXT (Only for Standard Sections)
-              <div onKeyDown={(e) => e.stopPropagation()}>
-                <RichTextEditorPanel
-                  value={richTextContent}
-                  onChange={handleRichTextChange}
-                  quillModules={{
-                    toolbar: [
-                      ["bold", "italic", "underline"],
-                      [{ list: "ordered" }, { list: "bullet" }],
-                      ["code-block"],
-                    ],
-                  }}
-                  highlightLine={lineToHighlight}
-                  onHighlightClear={onHighlightClear}
-                />
-              </div>
-            )}
+          <div className="min-h-[80px] overflow-hidden">
+            {/* Monaco Code View - Only option */}
+            <div
+              className="h-64 border border-gray-200 rounded w-full overflow-hidden"
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <MonacoEditorPanel
+                monacoEditorRef={monacoRef}
+                value={section.content}
+                handleLatexChange={(val) =>
+                  onUpdate({ ...section, content: val })
+                }
+                highlightLine={lineToHighlight}
+                onHighlightClear={onHighlightClear}
+                projectId={projectId}
+                token={token}
+                isOnline={isOnline}
+                onOpenTableModal={() => {
+                  setEditingTableData(null);
+                  setShowTableModal(true);
+                }}
+                onOpenImageModal={() => {
+                  setEditingImageData(null);
+                  setShowImageModal(true);
+                }}
+                onEditTable={(content) => {
+                  setEditingTableData(content);
+                  setShowTableModal(true);
+                }}
+                onEditImage={(content) => {
+                  setEditingImageData(content);
+                  setShowImageModal(true);
+                }}
+              />
+            </div>
           </div>
           {(previewUrl || previewError) && (
             <div className="mt-4 p-4 border border-dashed border-gray-300 rounded bg-gray-50 relative group">
@@ -989,17 +1052,7 @@ const RecursiveSection = ({
         >
           <PlusIcon /> {getSiblingLabel()}
         </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            // You need to update the `onAddAfter` logic to accept a type/template!
-            // See Step 3 below for the parent fix.
-            onAddAfter("table");
-          }}
-          className="px-4 py-1.5 bg-white border border-green-300 text-green-600 rounded-full text-sm hover:bg-green-50 flex items-center gap-1"
-        >
-          <PlusIcon /> Add Table
-        </button>
+        {/* Removed Add Table pill button - Table is now in toolbar */}
 
         {level < 2 && (
           <button
@@ -1022,6 +1075,47 @@ const RecursiveSection = ({
           setShowDeleteModal(false);
         }}
         onConfirm={handleDeleteConfirm}
+      />
+
+      {/* Table Designer Modal */}
+      <TableDesignerModal
+        isOpen={showTableModal}
+        onClose={() => {
+          setShowTableModal(false);
+          setEditingTableData(null);
+        }}
+        initialData={editingTableData}
+        onInsert={(latex) => {
+          // Insert at cursor position in Monaco editor or append to content
+          if (monacoRef.current && monacoRef.current.insertAtCursor) {
+            monacoRef.current.insertAtCursor(latex);
+          } else {
+            // Fallback: append to section content
+            const newContent = section.content + "\n\n" + latex;
+            onUpdate({ ...section, content: newContent });
+          }
+        }}
+      />
+
+      {/* Image Insert Modal */}
+      <ImageInsertModal
+        isOpen={showImageModal}
+        onClose={() => {
+          setShowImageModal(false);
+          setEditingImageData(null);
+        }}
+        initialData={editingImageData}
+        projectFiles={projectFiles}
+        onInsert={(latex) => {
+          // Insert at cursor position in Monaco editor or append to content
+          if (monacoRef.current && monacoRef.current.insertAtCursor) {
+            monacoRef.current.insertAtCursor(latex);
+          } else {
+            // Fallback: append to section content
+            const newContent = section.content + "\n\n" + latex;
+            onUpdate({ ...section, content: newContent });
+          }
+        }}
       />
 
       {section.children && section.children.length > 0 && (
@@ -1051,6 +1145,7 @@ const RecursiveSection = ({
               sectionToRichText={sectionToRichText}
               richTextToSection={richTextToSection}
               preamble={preamble}
+              projectFiles={projectFiles}
               syncHighlight={syncHighlight}
               onHighlightClear={onHighlightClear}
             />

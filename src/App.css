@@ -680,3 +680,38 @@
   z-index: 100;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
+/* =========================================
+   Monaco Table/Figure Highlighting
+   ========================================= */
+
+/* Table highlighting - subtle cyan */
+.monaco-table-highlight {
+  background: rgba(173, 216, 230, 0.25) !important;
+  border-left: 3px solid rgba(100, 180, 210, 0.6) !important;
+}
+
+.monaco-table-glyph {
+  background: rgba(100, 180, 210, 0.8);
+  width: 4px !important;
+  margin-left: 3px;
+}
+
+/* Figure highlighting - subtle green */
+.monaco-figure-highlight {
+  background: rgba(144, 238, 144, 0.2) !important;
+  border-left: 3px solid rgba(100, 200, 100, 0.6) !important;
+}
+
+.monaco-figure-glyph {
+  background: rgba(100, 200, 100, 0.8);
+  width: 4px !important;
+  margin-left: 3px;
+}
+
+/* Hover effect on highlighted regions */
+.monaco-table-highlight:hover,
+.monaco-figure-highlight:hover {
+  filter: brightness(0.97);
+}
+

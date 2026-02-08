@@ -911,7 +911,22 @@ app.post("/api/compile", async (req, res) => {
       const file = files[fileName];
       console.log("Writing file:", file.name);
       const filePath = path.join(TEMP_DIR, file.name);
-      await fs.writeFile(filePath, file.content, "utf8");
+      
+      // Check if file is a base64 image (data URL format)
+      if (file.isImage && file.content && file.content.startsWith('data:')) {
+        // Extract base64 data from data URL
+        const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
+        if (base64Match) {
+          const base64Data = base64Match[1];
+          const buffer = Buffer.from(base64Data, 'base64');
+          await fs.writeFile(filePath, buffer);
+          console.log(`✅ Written image file as binary: ${file.name}`);
+        } else {
+          await fs.writeFile(filePath, file.content, "utf8");
+        }
+      } else {
+        await fs.writeFile(filePath, file.content, "utf8");
+      }
 
       // Track which file is the main tex file (first .tex file or main.tex) (FIXME: This code may change as i am planning to take input from user to decide which is going to be the root file)
       if (file.name === "main.tex") {
@@ -1065,6 +1080,27 @@ app.post("/api/latex/compile", async (req, res) => {
       // We just append the section content and the closing tag.
       minimalLatexDocument = `${preamble}\n${latex}\n\\end{document}`;
       console.log(minimalLatexDocument);
+    } else if (type === "table") {
+      // 📊 OPTION for TABLE preview
+      minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
+\\usepackage{amsmath}
+\\usepackage{amsfonts}
+\\usepackage{amssymb}
+\\usepackage{graphicx}
+\\usepackage{multirow}
+\\usepackage{xcolor}
+\\usepackage{caption}
+\\begin{document}
+${latex}
+\\end{document}`;
+    } else if (type === "figure") {
+      // 🖼️ OPTION for FIGURE preview
+      minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
+\\usepackage{graphicx}
+\\usepackage{caption}
+\\begin{document}
+${latex}
+\\end{document}`;
     } else if (type === "section") {
       // ⚠️ OPTION B: Fallback Section Template (if no preamble found)
       minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
