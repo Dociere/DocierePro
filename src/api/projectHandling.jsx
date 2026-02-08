@@ -4,6 +4,7 @@
 - loadProject()
 - saveProject()
 - compileDocument():
+- checkServerConnection();
 */
 
 import axios from "axios";
@@ -153,6 +154,8 @@ export const saveProject = async (
 ) => {
   if (!currentProject) return;
   console.log("From saveProject", currentProject);
+  console.log("From saveProject", isServerConnected);
+  console.log("From saveProject", isAuthenticated);
 
   try {
     await axios.put(`${API_URL}/api/projects/${currentProject.id}`, {
@@ -205,7 +208,7 @@ export const compileDocument = async (
   if (!currentProject || !activeFile) return;
 
   //Logic (Clint):
-  // 1. activeFile will be the root file. Validate if the content of activeFile is valid LaTeX
+  // 1. rootFile will be the root file. Validate if the content of activeFile is valid LaTeX
   // 2. Send all the dependend file to the backend (Basically project.json via currentProject.file)
 
   const rootFile = activeFile;
@@ -295,103 +298,3 @@ export const checkServerConnection = async () => {
     return false;
   }
 };
-
-// const saveProject = async () => {
-//     if (!projectDetails.currentProject) return;
-
-//     try {
-//       await axios.put(
-//         `${API_URL}/api/projects/${projectDetails.currentProject.id}`,
-//         {
-//           files: projectDetails.currentProject.files,
-//           activeFile: projectDetails.activeFile,
-//         }
-//       );
-
-//       updateProjectDetails({
-//         compilationStatus: "success",
-//         compilationMessage: "Project saved successfully",
-//       });
-
-//       setTimeout(() => {
-//         updateProjectDetails({
-//           compilationStatus: "",
-//           compilationMessage: "",
-//         });
-//       }, 3000);
-//     } catch (error) {
-//       updateProjectDetails({
-//         error: "Failed to save project: " + error.message,
-//       });
-//     }
-//   };
-
-//   const compileDocument = async () => {
-//     if (!projectDetails.currentProject || !projectDetails.activeFile) return;
-
-//     updateProjectDetails({
-//       isCompiling: true,
-//       compilationStatus: "compiling",
-//       compilationMessage: "Compiling document...",
-//     });
-
-//     try {
-//       const contentToCompile = projectDetails.latexContent;
-
-//       if (
-//         !contentToCompile.includes("\\begin{document}") ||
-//         !contentToCompile.includes("\\end{document}")
-//       ) {
-//         throw new Error("Invalid LaTeX document structure");
-//       }
-
-//       console.log(
-//         "Compiling LaTeX document:",
-//         contentToCompile.substring(0, 200) + "..."
-//       );
-
-//       const response = await axios.post(`${API_URL}/api/compile`, {
-//         content: contentToCompile,
-//         projectId: projectDetails.currentProject.id,
-//       });
-
-//       if (response.data.success) {
-//         const pdfBlob = new Blob(
-//           [Uint8Array.from(atob(response.data.pdf), (c) => c.charCodeAt(0))],
-//           { type: "application/pdf" }
-//         );
-//         const newPdfUrl = URL.createObjectURL(pdfBlob);
-
-//         if (projectDetails.pdfUrl) {
-//           URL.revokeObjectURL(projectDetails.pdfUrl);
-//         }
-
-//         updateProjectDetails({
-//           pdfUrl: newPdfUrl,
-//           compilationStatus: "success",
-//           compilationMessage: "PDF compiled successfully!",
-//         });
-
-//         await saveProject();
-//       } else {
-//         updateProjectDetails({
-//           compilationStatus: "error",
-//           compilationMessage: `Compilation failed: ${response.data.error}`,
-//         });
-//       }
-//     } catch (error) {
-//       updateProjectDetails({
-//         compilationStatus: "error",
-//         compilationMessage: "Compilation failed: " + error.message,
-//       });
-//       console.error("Compilation error:", error);
-//     } finally {
-//       updateProjectDetails({ isCompiling: false });
-//       setTimeout(() => {
-//         updateProjectDetails({
-//           compilationStatus: "",
-//           compilationMessage: "",
-//         });
-//       }, 8000);
-//     }
-//   };

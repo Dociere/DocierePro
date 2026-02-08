@@ -5,9 +5,12 @@ import MenuDropdown from "./menuDropdown";
 import ShortcutsModal from "./shortcutsModal";
 import { projectContext } from "../context/useProject";
 import EditIcon from "../assets/icons/edit.svg?react";
+import { saveProject } from "../api/projectHandling";
 import TickIcon from "../assets/icons/tickIcon.svg?react";
 import ToMaxIcon from "../assets/icons/minmaxIcon.svg?react";
 import ToMinIcon from "../assets/icons/minmaxIcon1.svg?react";
+import { useAuth } from "../context/useAuth";
+import { useToast } from "../hooks/useToast";
 import axios from "axios";
 
 const API_URL = "http://localhost:5000";
@@ -22,6 +25,8 @@ const NavBar = () => {
   const [renameProject, setRenameProject] = useState(false);
   const [updatetitle, setUpdateTitle] = useState("");
   const menuRefs = useRef({});
+  const showToast = useToast();
+  const { isServerConnected, isAuthenticated } = useAuth();
 
   const hasProject = projectDetails.currentProject !== null;
   // File Menu Actions
@@ -48,101 +53,87 @@ const NavBar = () => {
     }
 
     try {
-      await axios.put(
-        `${API_URL}/api/projects/${projectDetails.currentProject.id}`,
-        {
-          files: projectDetails.currentProject.files,
-          activeFile: projectDetails.activeFile,
-        },
+      await saveProject(
+        projectDetails.currentProject,
+        projectDetails.currentProject.activeFile,
+        undefined,
+        undefined,
+        isServerConnected,
+        isAuthenticated,
       );
-
-      updateProjectDetails({
-        compilationStatus: "success",
-        compilationMessage: "Project saved successfully!",
-      });
-
-      setTimeout(() => {
-        updateProjectDetails({
-          compilationStatus: "",
-          compilationMessage: "",
-        });
-      }, 2000);
+      showToast("success", "Project saved successfully!");
     } catch (error) {
       console.error("Save failed:", error);
-      updateProjectDetails({
-        compilationStatus: "error",
-        compilationMessage: "Failed to save project",
-      });
-
-      setTimeout(() => {
-        updateProjectDetails({
-          compilationStatus: "",
-          compilationMessage: "",
-        });
-      }, 3000);
     }
   };
 
-  const handleSaveAs = async () => {
-    if (!projectDetails.currentProject) {
-      alert("No project to save");
-      return;
-    }
+  // const handleSaveAs = async () => {
+  //   if (!projectDetails.currentProject) {
+  //     alert("No project to save");
+  //     return;
+  //   }
 
-    const newTitle = prompt(
-      "Enter new project title:",
-      `${projectDetails.currentProject.title} - Copy`,
-    );
+  //   const newTitle = prompt(
+  //     "Enter new project title:",
+  //     `${projectDetails.currentProject.title} - Copy`,
+  //   );
 
-    if (!newTitle || newTitle.trim() === "") {
-      return;
-    }
+  //   if (!newTitle || newTitle.trim() === "") {
+  //     return;
+  //   }
 
-    try {
-      const response = await axios.post(`${API_URL}/api/projects`, {
-        title: newTitle.trim(),
-        template: projectDetails.currentProject.template,
-        files: projectDetails.currentProject.files,
-      });
+  //   try {
+  //     const response = await axios.post(`${API_URL}/api/projects`, {
+  //       title: newTitle.trim(),
+  //       template: projectDetails.currentProject.template,
+  //       files: projectDetails.currentProject.files,
+  //     });
 
-      updateProjectDetails({
-        currentProject: response.data.project,
-        compilationStatus: "success",
-        compilationMessage: `Project saved as "${newTitle}"`,
-      });
+  //     updateProjectDetails({
+  //       currentProject: response.data.project,
+  //       compilationStatus: "success",
+  //       compilationMessage: `Project saved as "${newTitle}"`,
+  //     });
 
-      setTimeout(() => {
-        updateProjectDetails({
-          compilationStatus: "",
-          compilationMessage: "",
-        });
-      }, 2000);
+  //     setTimeout(() => {
+  //       updateProjectDetails({
+  //         compilationStatus: "",
+  //         compilationMessage: "",
+  //       });
+  //     }, 2000);
 
-      navigate("/canvas");
-    } catch (error) {
-      console.error("Save As failed:", error);
-      updateProjectDetails({
-        compilationStatus: "error",
-        compilationMessage: "Failed to save project as new",
-      });
+  //     navigate("/canvas");
+  //   } catch (error) {
+  //     console.error("Save As failed:", error);
+  //     updateProjectDetails({
+  //       compilationStatus: "error",
+  //       compilationMessage: "Failed to save project as new",
+  //     });
 
-      setTimeout(() => {
-        updateProjectDetails({
-          compilationStatus: "",
-          compilationMessage: "",
-        });
-      }, 3000);
-    }
-  };
+  //     setTimeout(() => {
+  //       updateProjectDetails({
+  //         compilationStatus: "",
+  //         compilationMessage: "",
+  //       });
+  //     }, 3000);
+  //   }
+  // };
 
   // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = async (e) => {
       // Ctrl+S or Cmd+S - Save
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         if (hasProject) {
-          handleSaveProject();
+          await saveProject(
+            projectDetails.currentProject,
+            projectDetails.currentProject.activeFile,
+            undefined,
+            undefined,
+            isServerConnected,
+            isAuthenticated,
+          );
         }
       }
 
@@ -159,12 +150,12 @@ const NavBar = () => {
       }
 
       // Ctrl+Shift+S or Cmd+Shift+S - Save As
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "S") {
-        e.preventDefault();
-        if (hasProject) {
-          handleSaveAs();
-        }
-      }
+      // if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "S") {
+      //   e.preventDefault();
+      //   if (hasProject) {
+      //     handleSaveAs();
+      //   }
+      // }
 
       // Escape - Close menu
       if (e.key === "Escape") {
@@ -322,12 +313,12 @@ const NavBar = () => {
       action: handleSaveProject,
       disabled: !hasProject,
     },
-    {
-      label: "Save As...",
-      shortcut: "Ctrl+Shift+S",
-      action: handleSaveAs,
-      disabled: !hasProject,
-    },
+    // {
+    //   label: "Save As...",
+    //   shortcut: "Ctrl+Shift+S",
+    //   action: handleSaveAs,
+    //   disabled: !hasProject,
+    // },
     { divider: true },
     {
       label: "Export as PDF",
@@ -674,6 +665,31 @@ const NavBar = () => {
     },
   ];
 
+  const renameTitle = async () => {
+    console.log("from renameTitle", isServerConnected);
+    console.log("from renameTitle", isAuthenticated);
+    const updatedProject = {
+      currentProject: {
+        ...projectDetails.currentProject,
+        title: updatetitle,
+      },
+    };
+    await saveProject(
+      updatedProject.currentProject,
+      projectDetails.currentProject.activeFile,
+      undefined,
+      undefined,
+      isServerConnected,
+      isAuthenticated,
+    );
+    updateProjectDetails({
+      currentProject: {
+        ...projectDetails.currentProject,
+        title: updatetitle,
+      },
+    });
+  };
+
   return (
     <>
       <div
@@ -755,14 +771,7 @@ const NavBar = () => {
                   <TickIcon
                     style={{ fill: "#585858", WebkitAppRegion: "no-drag" }}
                     className="w-4 h-4 ml-2"
-                    onClick={() =>
-                      updateProjectDetails({
-                        currentProject: {
-                          ...projectDetails.currentProject,
-                          title: updatetitle,
-                        },
-                      })
-                    }
+                    onClick={renameTitle}
                   />
                 </div>
               )}

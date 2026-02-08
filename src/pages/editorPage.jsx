@@ -742,7 +742,7 @@ const EditorPage = () => {
           </div>
           <select
             className="rounded-sm ml-5 bg-white px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
-         focus:ring-2 focus:ring-[#0a0a0a] outline-none focus:border-transparent font-medium hover:bg-gray-100"
+         focus:ring-2 focus:ring-gray-100 outline-none focus:border-transparent font-medium hover:bg-gray-100"
             value={activeView}
             onChange={(e) => setActiveView(e.target.value)}
           >
@@ -751,41 +751,6 @@ const EditorPage = () => {
             <option value="text">Text View</option>
           </select>
         </div>
-        {/* <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
-          <div className="flex items-center">
-            <button
-              onClick={() => setActiveView("code")}
-              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
-                activeView === "code"
-                  ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Code Editor
-            </button>
-            <button
-              onClick={() => setActiveView("text")}
-              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
-                activeView === "text"
-                  ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Full Text View
-            </button>
-            <button
-              onClick={() => setActiveView("section")}
-              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
-                activeView === "section"
-                  ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Section View
-            </button>
-          </div>
-          {/* <DebugPanel debugLogs={debugLogs} onClear={() => setDebugLogs([])} /> */}
-        {/* </div> */}
 
         <div className="flex-1 overflow-hidden relative">
           {activeView === "code" && (
@@ -822,7 +787,11 @@ const EditorPage = () => {
                   setEditingRange(range);
                   setShowImageModal(true);
                 }}
-                projectFiles={projectDetails.currentProject?.files ? Object.keys(projectDetails.currentProject.files) : []}
+                projectFiles={
+                  projectDetails.currentProject?.files
+                    ? Object.keys(projectDetails.currentProject.files)
+                    : []
+                }
               />
             </div>
           )}
@@ -849,7 +818,11 @@ const EditorPage = () => {
                 richTextToSection={richTextToSection}
                 globalHighlightLine={syncTexLine}
                 onHighlightClear={clearSyncTex}
-                projectFiles={projectDetails.currentProject?.files ? Object.keys(projectDetails.currentProject.files) : []}
+                projectFiles={
+                  projectDetails.currentProject?.files
+                    ? Object.keys(projectDetails.currentProject.files)
+                    : []
+                }
               />
             </div>
           )}
@@ -858,41 +831,6 @@ const EditorPage = () => {
 
       {/* Right side of the screen */}
       <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden">
-        {/* Comment the below code when intgerating the new UI */}
-        {/* <div className="border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setActiveRightView("preview")}
-              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
-                activeRightView === "preview"
-                  ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Preview
-            </button>
-            <button
-              onClick={() => setActiveRightView("logs")}
-              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
-                activeRightView === "logs"
-                  ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Logs
-            </button>
-            <button
-              onClick={() => setActiveRightView("aichat")}
-              className={`py-2 cursor-pointer flex-1 text-[13px] text-nowrap ${
-                activeRightView === "aichat"
-                  ? "bg-[#F5F5F5] border border-[#CFCFCF] border-b-0"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              AI Chat
-            </button>
-          </div>
-        </div> */}
         {activeRightView === "preview" && (
           <div className="flex-1 overflow-hidden relative">
             <PdfViewer
@@ -968,7 +906,13 @@ const EditorPage = () => {
           setEditingRange(null);
         }}
         initialData={editingImageData}
-        projectFiles={projectDetails.currentProject?.files ? Object.keys(projectDetails.currentProject.files).filter(f => /\.(png|jpg|jpeg|pdf|eps|svg)$/i.test(f)) : []}
+        projectFiles={
+          projectDetails.currentProject?.files
+            ? Object.keys(projectDetails.currentProject.files).filter((f) =>
+                /\.(png|jpg|jpeg|pdf|eps|svg)$/i.test(f),
+              )
+            : []
+        }
         onInsert={(latex) => {
           if (monacoEditorRef.current) {
             if (editingRange) {

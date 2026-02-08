@@ -20,6 +20,7 @@ function TemplateSelect() {
   // ];
 
   const templates = {
+    "Blank Document": "blank",
     "AI4X Conference": "ai4x",
     "MLA Format": "mla",
     "Springer Nature Journal": "springer_nature",

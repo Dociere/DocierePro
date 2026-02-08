@@ -27,7 +27,7 @@ const DetailsPage = () => {
   useEffect(() => {
     let isValid = false;
 
-    if (templateTitle === "Blank Document") {
+    if (templateTitle === "blank") {
       // Only title is required for Blank Document
       isValid = title.trim() !== "";
     } else {
@@ -114,7 +114,7 @@ const DetailsPage = () => {
         />
 
         {/* Author Details */}
-        {templateTitle !== "Blank Document" && (
+        {templateTitle !== "blank" && (
           <div className="my-6">
             <h2 className="text-[#343434] text-lg font-semibold font-inter mb-3">
               Author Details
