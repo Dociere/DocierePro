@@ -61,7 +61,7 @@ const NavBar = () => {
         isServerConnected,
         isAuthenticated,
       );
-      showToast("success", "Project saved successfully!");
+      showToast("success", "Saved Project");
     } catch (error) {
       console.error("Save failed:", error);
     }
@@ -134,6 +134,7 @@ const NavBar = () => {
             isServerConnected,
             isAuthenticated,
           );
+          showToast("success", "Saved Project");
         }
       }
 

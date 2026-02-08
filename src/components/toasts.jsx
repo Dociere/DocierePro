@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import TickIcon from "../assets/icons/tickIcon.svg?react";
 
 const Toast = ({ type, message, onClose }) => {
   useEffect(() => {
@@ -12,9 +13,16 @@ const Toast = ({ type, message, onClose }) => {
   if (!message) return null;
 
   let bgColor;
+  let icon;
   switch (type) {
     case "success":
-      bgColor = "bg-green-500";
+      bgColor = "bg-white";
+      icon = (
+        <TickIcon
+          style={{ fill: "#296623", WebkitAppRegion: "no-drag" }}
+          className="w-4 h-4 ml-2"
+        />
+      );
       break;
     case "error":
       bgColor = "bg-red-500";
@@ -28,13 +36,14 @@ const Toast = ({ type, message, onClose }) => {
 
   return (
     <div
-      className={`fixed right-5 top-5 px-4 py-2 rounded-md text-white transition-opacity duration-300 z-[9999] ${bgColor}`}
+      className={`fixed bottom-5 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pl-4 pr-7 text-[12px] py-2 rounded-md text-gray-700 border-2 border-gray-200 transition-opacity duration-300 z-[9999] font-inter uppercase ${bgColor}`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-center">
+        <div className="mr-2">{icon}</div>
         <span>{message}</span>
-        <button className="ml-2" onClick={onClose}>
+        {/* <button className="ml-2" onClick={onClose}>
           &times;
-        </button>
+        </button> */}
       </div>
     </div>
   );
