@@ -11,6 +11,8 @@ import SectionEditor from "../components/sectionEditor.jsx";
 import LeaveSession from "../components/LeaveSession.jsx";
 import { compileDocument } from "../api/projectHandling";
 import AIChatPanel from "../components/aiChatPanel.jsx";
+import TableDesignerModal from "../components/TableDesignerModal";
+import ImageInsertModal from "../components/ImageInsertModal";
 import GoBack from "../assets/icons/goBack.svg?react";
 import FileIcon from "../assets/icons/file.svg?react";
 import "react-quill-new/dist/quill.snow.css";
@@ -68,6 +70,13 @@ const EditorPage = () => {
   const [docPreamble, setDocPreamble] = useState("");
 
   const [syncTexLine, setSyncTexLine] = useState(null);
+
+  // Table and Image modal state for main Monaco editor
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [editingTableData, setEditingTableData] = useState(null);
+  const [editingImageData, setEditingImageData] = useState(null);
+  const [editingRange, setEditingRange] = useState(null);
 
   const {
     currentProject,
@@ -793,6 +802,27 @@ const EditorPage = () => {
                 activeEditor={activeView === "code" ? "monaco" : "other"}
                 highlightLine={syncTexLine}
                 onHighlightClear={clearSyncTex}
+                onOpenTableModal={() => {
+                  setEditingTableData(null);
+                  setEditingRange(null);
+                  setShowTableModal(true);
+                }}
+                onOpenImageModal={() => {
+                  setEditingImageData(null);
+                  setEditingRange(null);
+                  setShowImageModal(true);
+                }}
+                onEditTable={(content, range) => {
+                  setEditingTableData(content);
+                  setEditingRange(range);
+                  setShowTableModal(true);
+                }}
+                onEditImage={(content, range) => {
+                  setEditingImageData(content);
+                  setEditingRange(range);
+                  setShowImageModal(true);
+                }}
+                projectFiles={projectDetails.currentProject?.files ? Object.keys(projectDetails.currentProject.files) : []}
               />
             </div>
           )}
@@ -819,6 +849,7 @@ const EditorPage = () => {
                 richTextToSection={richTextToSection}
                 globalHighlightLine={syncTexLine}
                 onHighlightClear={clearSyncTex}
+                projectFiles={projectDetails.currentProject?.files ? Object.keys(projectDetails.currentProject.files) : []}
               />
             </div>
           )}
@@ -907,6 +938,47 @@ const EditorPage = () => {
           </div>
         )}
       </div>
+
+      {/* Table Designer Modal for main Monaco editor */}
+      <TableDesignerModal
+        isOpen={showTableModal}
+        onClose={() => {
+          setShowTableModal(false);
+          setEditingTableData(null);
+          setEditingRange(null);
+        }}
+        initialData={editingTableData}
+        onInsert={(latex) => {
+          if (monacoEditorRef.current) {
+            if (editingRange) {
+              monacoEditorRef.current.replaceRange(editingRange, latex);
+            } else if (monacoEditorRef.current.insertAtCursor) {
+              monacoEditorRef.current.insertAtCursor(latex);
+            }
+          }
+        }}
+      />
+
+      {/* Image Insert Modal for main Monaco editor */}
+      <ImageInsertModal
+        isOpen={showImageModal}
+        onClose={() => {
+          setShowImageModal(false);
+          setEditingImageData(null);
+          setEditingRange(null);
+        }}
+        initialData={editingImageData}
+        projectFiles={projectDetails.currentProject?.files ? Object.keys(projectDetails.currentProject.files).filter(f => /\.(png|jpg|jpeg|pdf|eps|svg)$/i.test(f)) : []}
+        onInsert={(latex) => {
+          if (monacoEditorRef.current) {
+            if (editingRange) {
+              monacoEditorRef.current.replaceRange(editingRange, latex);
+            } else if (monacoEditorRef.current.insertAtCursor) {
+              monacoEditorRef.current.insertAtCursor(latex);
+            }
+          }
+        }}
+      />
     </div>
   );
 };

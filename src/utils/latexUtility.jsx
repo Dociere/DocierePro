@@ -1,8 +1,9 @@
 import React from "react";
 
 // ============ CONSTANTS ============
+// NOTE: table, wraptable, figure are NOT included - they stay within parent sections
 const SPECIAL_ENVS_PATTERN =
-  "abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix|wraptable|table|figure";
+  "abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix";
 
 // Matches the start of any Section OR Special Environment
 const SECTION_REGEX = new RegExp(
@@ -193,9 +194,9 @@ export const latexToSections = (latexDoc) => {
 
   const { preamble, body, postamble } = splitLatex(latexDoc);
 
-  // Updated REGEX to include specific environments + starred sections
+  // Updated REGEX - does NOT split on table/figure (they stay within parent section)
   const SECTION_REGEX =
-    /(\\(?:section|subsection|subsubsection)\*?\{[^}]*\}|\\begin\{(?:abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix|wraptable|table|figure)\})/i;
+    /(\\(?:section|subsection|subsubsection)\*?\{[^}]*\}|\\begin\{(?:abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix)\})/i;
 
   const parts = body.split(SECTION_REGEX);
 
@@ -215,7 +216,7 @@ export const latexToSections = (latexDoc) => {
 
   for (let i = 1; i < parts.length; i += 2) {
     const delimiter = parts[i];
-    let content = parts[i + 1] || "";
+    let content = (parts[i + 1] || "").trim();
 
     let type = "section";
     let name = "Untitled";
@@ -317,14 +318,22 @@ export const sectionsToLatex = (sections) => {
       } else if (node.subtype === "env") {
         // USE THE STORED TAG (e.g. "IEEEkeywords"), or fallback to lowercase name
         const tag = node.envTag || node.name.toLowerCase();
-        header = `\n\\begin{${tag}}`;
+        header = `\\begin{${tag}}`;
       } else if (node.subtype === "starred") {
-        header = `\n\\${node.type}*{${node.name}}`;
+        header = `\\${node.type}*{${node.name}}`;
       } else {
-        header = `\n\\${node.type}{${node.name}}`;
+        header = `\\${node.type}{${node.name}}`;
       }
 
-      latex += header + "\n";
+      // Add double newline before section headers (if not at very start)
+      // Check if we need padding
+      if (latex.length > 0 && !latex.endsWith("\n\n")) {
+        if (latex.endsWith("\n")) latex += "\n";
+        else latex += "\n\n";
+      }
+      
+      latex += header;
+      if (header) latex += "\n"; // Newline after header
     }
 
     if (node.content && node.type !== "preamble") {

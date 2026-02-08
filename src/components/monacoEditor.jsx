@@ -1,8 +1,67 @@
-import React, { useEffect, useContext, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import MonacoEditor from "@monaco-editor/react";
 import { useYjsMonaco } from "../hooks/useYjsMonaco";
 import { registerLatexLanguage, defineLatexTheme } from "../utils/latexMonarchLanguage.jsx";
 
+// ==========================================
+// HELPER: Find table and figure ranges
+// ==========================================
+const findEnvironmentRanges = (model, envName) => {
+  const ranges = [];
+  const text = model.getValue();
+  const lines = text.split("\n");
+  
+  let startLine = null;
+  let depth = 0;
+  const beginRegex = new RegExp(`\\\\begin\\{${envName}\\}`);
+  const endRegex = new RegExp(`\\\\end\\{${envName}\\}`);
+  
+  lines.forEach((line, idx) => {
+    const lineNumber = idx + 1;
+    
+    if (beginRegex.test(line)) {
+      if (depth === 0) {
+        startLine = lineNumber;
+      }
+      depth++;
+    }
+    
+    if (endRegex.test(line)) {
+      depth--;
+      if (depth === 0 && startLine !== null) {
+        ranges.push({
+          startLineNumber: startLine,
+          startColumn: 1,
+          endLineNumber: lineNumber,
+          endColumn: model.getLineMaxColumn(lineNumber),
+        });
+        startLine = null;
+      }
+    }
+  });
+  
+  return ranges;
+};
+
+// Extract LaTeX block at cursor position
+const getEnvironmentAtPosition = (model, position, envName) => {
+  const ranges = findEnvironmentRanges(model, envName);
+  
+  for (const range of ranges) {
+    if (position.lineNumber >= range.startLineNumber && 
+        position.lineNumber <= range.endLineNumber) {
+      return {
+        range,
+        content: model.getValueInRange(range),
+      };
+    }
+  }
+  return null;
+};
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
 const MonacoEditorPanel = ({
   value = "",
   handleLatexChange = () => console.warn("handleLatexChange not provided"),
@@ -12,30 +71,91 @@ const MonacoEditorPanel = ({
   isOnline = null,
   user = null,
   activeEditor = "monaco",
-  highlightLine = null, // New Prop: line number to jump to
-  onHighlightClear = () => {}, // New Prop: callback when user clicks
+  highlightLine = null,
+  onHighlightClear = () => {},
+  // NEW props for table/image insertion
+  onOpenTableModal = null,
+  onOpenImageModal = null,
+  onEditTable = null,
+  onEditImage = null,
+  projectFiles = [],
 }) => {
   const editorInstanceRef = useRef(null);
+  const monacoRef = useRef(null);
   const decorationsRef = useRef([]);
+  const tableDecorationsRef = useRef([]);
+  const figureDecorationsRef = useRef([]);
   const [editorReady, setEditorReady] = useState(false);
 
-  useEffect(() => {
-    if (editorInstanceRef.current && highlightLine) {
-      const editor = editorInstanceRef.current;
+  // Update table/figure highlighting
+  const updateEnvironmentHighlighting = useCallback(() => {
+    const editor = editorInstanceRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
 
-      // 1. Reveal the line
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Find all table ranges
+    const tableRanges = findEnvironmentRanges(model, "table");
+    const tableDecorations = tableRanges.map((range) => ({
+      range: new monaco.Range(
+        range.startLineNumber,
+        range.startColumn,
+        range.endLineNumber,
+        range.endColumn
+      ),
+      options: {
+        isWholeLine: true,
+        className: "monaco-table-highlight",
+        glyphMarginClassName: "monaco-table-glyph",
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+      },
+    }));
+
+    // Find all figure ranges
+    const figureRanges = findEnvironmentRanges(model, "figure");
+    const figureDecorations = figureRanges.map((range) => ({
+      range: new monaco.Range(
+        range.startLineNumber,
+        range.startColumn,
+        range.endLineNumber,
+        range.endColumn
+      ),
+      options: {
+        isWholeLine: true,
+        className: "monaco-figure-highlight",
+        glyphMarginClassName: "monaco-figure-glyph",
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+      },
+    }));
+
+    // Apply decorations
+    tableDecorationsRef.current = editor.deltaDecorations(
+      tableDecorationsRef.current,
+      tableDecorations
+    );
+    figureDecorationsRef.current = editor.deltaDecorations(
+      figureDecorationsRef.current,
+      figureDecorations
+    );
+  }, []);
+
+  // SyncTeX highlighting
+  useEffect(() => {
+    const editor = editorInstanceRef.current;
+    const monaco = monacoRef.current;
+    if (editor && monaco && highlightLine) {
       editor.revealLineInCenter(highlightLine);
       editor.setPosition({ lineNumber: highlightLine, column: 1 });
       editor.focus();
 
-      // 2. Add Decoration (CSS class)
-      // Note: You need to define '.synctex-highlight' in your global CSS
       const newDecorations = editor.deltaDecorations(decorationsRef.current, [
         {
           range: new monaco.Range(highlightLine, 1, highlightLine, 1),
           options: {
             isWholeLine: true,
-            className: "synctex-highlight", // We will define this CSS below
+            className: "synctex-highlight",
             linesDecorationsClassName: "synctex-gutter-highlight",
           },
         },
@@ -44,70 +164,183 @@ const MonacoEditorPanel = ({
     }
   }, [highlightLine]);
 
+  // Sync content in offline mode
   useEffect(() => {
-    // Only update editor content if NOT using Yjs sync (isOnline)
-    // When Yjs is active, it manages the editor content directly
     if (!isOnline && editorInstanceRef.current && value !== undefined) {
       const currentValue = editorInstanceRef.current.getValue();
       if (currentValue !== value) {
-        console.log(
-          "📝 Updating Monaco editor with new content (offline mode)",
-        );
+        console.log("📝 Updating Monaco editor with new content (offline mode)");
         editorInstanceRef.current.setValue(value);
       }
     }
   }, [value, isOnline]);
 
+  // Update highlighting when content changes
+  useEffect(() => {
+    if (editorReady) {
+      // Debounce the highlighting update
+      const timeout = setTimeout(updateEnvironmentHighlighting, 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [value, editorReady, updateEnvironmentHighlighting]);
+
   const handleEditorMount = (editor, monaco) => {
     monacoEditorRef.current = editor;
     editorInstanceRef.current = editor;
+    monacoRef.current = monaco;
 
-    // Register LaTeX language with Monarch tokenizer for syntax highlighting
+    // Register LaTeX language with Monarch tokenizer
     registerLatexLanguage(monaco);
-    
-    // Define and apply the LaTeX theme with Overleaf-like colors
     defineLatexTheme(monaco);
     monaco.editor.setTheme("latex-light");
 
-    // Mark editor as ready AFTER mount
-    console.log("✅ Monaco editor mounted and ready");
+    // Add context menu actions
+    if (onOpenTableModal) {
+      editor.addAction({
+        id: "insert-table",
+        label: "Insert Table",
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyT],
+        contextMenuGroupId: "1_modification",
+        contextMenuOrder: 1.5,
+        run: () => {
+          onOpenTableModal();
+        },
+      });
+    }
 
-    editor.onMouseDown(() => {
+    if (onOpenImageModal) {
+      editor.addAction({
+        id: "insert-image",
+        label: "Insert Image",
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI],
+        contextMenuGroupId: "1_modification",
+        contextMenuOrder: 1.6,
+        run: () => {
+          onOpenImageModal();
+        },
+      });
+    }
+
+    // Handle click on highlighted regions for editing
+    editor.onMouseDown((e) => {
+      // Clear SyncTeX highlight on any click
       if (decorationsRef.current.length > 0) {
-        decorationsRef.current = editor.deltaDecorations(
-          decorationsRef.current,
-          [],
-        );
+        decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
         onHighlightClear();
       }
+
+      // Check if clicked on a table or figure for editing
+      if (e.target.position && (onEditTable || onEditImage)) {
+        const model = editor.getModel();
+        const position = e.target.position;
+
+        // Check for table
+        if (onEditTable) {
+          const tableEnv = getEnvironmentAtPosition(model, position, "table");
+          if (tableEnv && e.event.detail === 2) { // Double-click to edit
+            onEditTable(tableEnv.content, tableEnv.range);
+            return;
+          }
+        }
+
+        // Check for figure
+        if (onEditImage) {
+          const figureEnv = getEnvironmentAtPosition(model, position, "figure");
+          if (figureEnv && e.event.detail === 2) { // Double-click to edit
+            onEditImage(figureEnv.content, figureEnv.range);
+            return;
+          }
+        }
+      }
     });
+
     editor.onKeyDown(() => {
       if (decorationsRef.current.length > 0) {
-        decorationsRef.current = editor.deltaDecorations(
-          decorationsRef.current,
-          [],
-        );
+        decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
         onHighlightClear();
       }
     });
+
+    // Listen for content changes to update highlighting
+    editor.onDidChangeModelContent(() => {
+      // Debounced in useEffect above
+    });
+
+    console.log("✅ Monaco editor mounted with context menu actions");
     setEditorReady(true);
+    
+    // Initial highlighting
+    setTimeout(updateEnvironmentHighlighting, 100);
   };
 
-  // Only initialize Yjs AFTER editor is ready
+  // Insert text at cursor position
+  const insertAtCursor = useCallback((text) => {
+    const editor = editorInstanceRef.current;
+    if (!editor) return;
+
+    const selection = editor.getSelection();
+    const position = selection ? selection.getStartPosition() : editor.getPosition();
+    
+    editor.executeEdits("insert-latex", [
+      {
+        range: {
+          startLineNumber: position.lineNumber,
+          startColumn: position.column,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        },
+        text: "\n" + text + "\n",
+        forceMoveMarkers: true,
+      },
+    ]);
+
+    editor.focus();
+    
+    // Update highlighting after insert
+    setTimeout(updateEnvironmentHighlighting, 100);
+  }, [updateEnvironmentHighlighting]);
+
+  // Replace a range with new text (for editing)
+  const replaceRange = useCallback((range, newText) => {
+    const editor = editorInstanceRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    editor.executeEdits("replace-latex", [
+      {
+        range: new monaco.Range(
+          range.startLineNumber,
+          range.startColumn,
+          range.endLineNumber,
+          range.endColumn
+        ),
+        text: newText,
+        forceMoveMarkers: true,
+      },
+    ]);
+
+    editor.focus();
+    
+    // Update highlighting after replace
+    setTimeout(updateEnvironmentHighlighting, 100);
+  }, [updateEnvironmentHighlighting]);
+
+  // Expose methods via ref
+  useEffect(() => {
+    if (monacoEditorRef.current) {
+      monacoEditorRef.current.insertAtCursor = insertAtCursor;
+      monacoEditorRef.current.replaceRange = replaceRange;
+    }
+  }, [insertAtCursor, replaceRange]);
+
+  // Yjs collaboration
   const { users, syncStatus } = useYjsMonaco(
     projectId,
     token,
     isOnline,
-    editorReady ? editorInstanceRef.current : null, // Pass null until ready
-    user,
+    editorReady ? editorInstanceRef.current : null,
+    user
   );
-
-  console.log("Monaco render:", {
-    projectId,
-    token: !!token,
-    editorReady,
-    isOnline,
-  });
 
   return (
     <div className="h-full w-full flex-1 flex flex-col">
@@ -134,18 +367,6 @@ const MonacoEditorPanel = ({
         </div>
       )}
 
-      {/* Sync Status Indicator */}
-      {/* <div className="bg-gray-100 px-4 py-1 border-b text-xs">
-        Status:{" "}
-        <span
-          className={
-            syncStatus === "synced" ? "text-green-600" : "text-orange-600"
-          }
-        >
-          {syncStatus}
-        </span>
-      </div> */}
-
       {/* Monaco Editor Container */}
       <div className="flex-1 h-full">
         <MonacoEditor
@@ -156,7 +377,6 @@ const MonacoEditorPanel = ({
           theme="customLight"
           onMount={handleEditorMount}
           options={{
-            // minimap: { enabled: true },
             minimap: { enabled: false },
             fontSize: 14,
             wordWrap: "on",
@@ -173,6 +393,7 @@ const MonacoEditorPanel = ({
             wordBasedSuggestions: true,
             folding: true,
             brackets: "always",
+            glyphMargin: true,
           }}
         />
       </div>
@@ -181,3 +402,4 @@ const MonacoEditorPanel = ({
 };
 
 export default MonacoEditorPanel;
+export { findEnvironmentRanges, getEnvironmentAtPosition };
