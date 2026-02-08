@@ -97,7 +97,7 @@ const PdfViewer = ({
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar - Compile button always visible, rest only when PDF exists */}
-      <div className="flex items-center justify-between px-4 py-1 bg-gray-100 border-b border-gray-300 font-poppins h-8">
+      <div className="flex items-center justify-between px-4 py-1 bg-gray-50 border-b border-gray-300 font-poppins h-8">
         {/* Compile button - always visible */}
         <div className="flex items-center">
           <button

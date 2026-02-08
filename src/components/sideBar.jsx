@@ -29,16 +29,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAICha
   const [isProfileActive, setIsProfileActive] = useState(false);
   // const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
-  const {
-    currentProject,
-    activeFile,
-    isCompiling,
-    compilationStatus,
-    compilationMessage,
-    pdfUrl,
-    latexContent,
-  } = projectDetails;
-  const { user, isServerConnected, isAuthenticated } = useAuth();
+  const { user, isServerConnected} = useAuth();
 
   console.log("user", user);
   console.log("isServerConnected", isServerConnected);
@@ -57,29 +48,6 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAICha
   const handleProfileIconClick = (e) => {
     e.preventDefault();
     setIsProfileActive((prev) => !prev);
-  };
-
-  const handleCompile = async () => {
-    const response = await compileDocument(
-      currentProject,
-      activeFile,
-      isCompiling,
-      compilationStatus,
-      compilationMessage,
-      pdfUrl,
-      latexContent,
-      isServerConnected,
-      isAuthenticated,
-    );
-
-    console.log("handleCompile response", response.pdfUrl);
-
-    updateProjectDetails({
-      pdfUrl: response.pdfUrl,
-      compilationStatus: response.compilationStatus,
-      compilationMessage: response.compilationMessage,
-      pdfFileName: response.fileName,
-    });
   };
 
   const handleCitationIconClick = (e) => {
