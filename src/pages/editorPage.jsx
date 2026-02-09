@@ -840,6 +840,7 @@ const EditorPage = () => {
               onCompile={handleCompile}
               fileTitle={projectDetails.currentProject.title}
               onShowLogs={() => setActiveRightView("logs")}
+              projectDetails={projectDetails}
             />
           </div>
         )}
@@ -854,7 +855,7 @@ const EditorPage = () => {
               Go Back
             </button>
             <hr />
-            <div className="px-10 py-4 font-mono text-sm">
+            <div className="px-10 py-4 font-inter text-sm">
               {logs.map((log, i) => (
                 <div key={i} className="mb-1 border-b border-gray-100 pb-1">
                   {log}

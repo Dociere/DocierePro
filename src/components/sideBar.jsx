@@ -21,7 +21,11 @@ import { compileDocument } from "../api/projectHandling";
 import { useAuth } from "../context/useAuth";
 import axios from "axios";
 
-const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAIChat }) => {
+const DynamicSideBar = ({
+  isSectionSpaceOpen,
+  setIsSectionSpaceOpen,
+  onOpenAIChat,
+}) => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -29,7 +33,7 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAICha
   const [isProfileActive, setIsProfileActive] = useState(false);
   // const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
-  const { user, isServerConnected} = useAuth();
+  const { user, isServerConnected } = useAuth();
 
   console.log("user", user);
   console.log("isServerConnected", isServerConnected);
@@ -200,22 +204,6 @@ const DynamicSideBar = ({ isSectionSpaceOpen, setIsSectionSpaceOpen, onOpenAICha
                 AI
               </span>
             </div>
-
-            {/* Compile */}
-            {/* <div onClick={handleCompile}>
-              <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
-                title="Compile"
-              >
-                {projectDetails.compilationStatus === "error" ? (
-                  <div className="text-xl text-[#ff0000]">►</div>
-                ) : projectDetails.compilationStatus === "success" ? (
-                  <div className="text-xl text-[#16be00]">►</div>
-                ) : (
-                  <div className="text-xl text-[#929292]">►</div>
-                )}
-              </span>
-            </div> */}
           </div>
           <div className="flex flex-col mb-2">
             {/* Settings */}

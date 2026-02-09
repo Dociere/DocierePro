@@ -141,19 +141,19 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-[600px] min-h-[50vh] overflow-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-xl font-inter font-medium text-gray-800">
+          <h2 className="text-xl font-inter font-medium text-black">
             Share Project
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
+            className="px-3 py-1 rounded-full hover:bg-gray-100 transition-colors font-poppins"
           >
             X
           </button>
         </div>
         <button
           onClick={() => setIsOpen(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 ml-20 mt-20"
+          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-900 ml-20 mt-20"
         >
           {isOwner ? "Share Project" : "Join Project"}
         </button>
@@ -173,8 +173,8 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
         {isOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-96 max-w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">
+              <div className="flex justify-between items-center mb-4 text-black font-inter">
+                <h2 className="text-xl font-semibold">
                   {isOwner ? "Share Project" : "Join Project"}
                 </h2>
                 <button
@@ -188,7 +188,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
               {isOwner ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-normal mb-2 text-black font-inter">
                       Collaborator Email
                     </label>
                     <input
@@ -203,7 +203,7 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
                   <button
                     onClick={handleShare}
                     disabled={loading}
-                    className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+                    className="w-full px-4 py-2 bg-black text-white rounded hover:bg-gray-900 disabled:bg-gray-400"
                   >
                     {loading ? "Generating..." : "Generate Share Link"}
                   </button>

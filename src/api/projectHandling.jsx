@@ -268,7 +268,7 @@ export const compileDocument = async (
       );
     } else {
       compilationStatus = "error";
-      compilationMessage = `Compilation failed: ${response.data.error}`;
+      compilationMessage = `Compilation failed: ${response.data.log}`;
       console.log("Compilation details:", response.data);
     }
 

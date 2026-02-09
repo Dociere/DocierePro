@@ -79,9 +79,7 @@ const VersionManager = ({ onClose }) => {
         <div
           className={`p-4 border-b flex items-center justify-between ${isDark ? "border-[#333]" : "border-gray-200"}`}
         >
-          <h2 className="text-xl font-semibold">
-            Version History & Milestones
-          </h2>
+          <h2 className="text-xl font-inter font-semibold">Draft Versions</h2>
           <button
             onClick={onClose}
             className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${isDark ? "hover:bg-[#333]" : "hover:bg-gray-100"}`}
@@ -106,7 +104,7 @@ const VersionManager = ({ onClose }) => {
                 placeholder="Version Name (e.g. V1, Initial Draft)"
                 value={vName}
                 onChange={(e) => setVName(e.target.value)}
-                className={`w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                className={`w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors ${
                   isDark
                     ? "bg-[#1a1a1a] border-[#444] text-white"
                     : "bg-white border-gray-300"
@@ -117,7 +115,7 @@ const VersionManager = ({ onClose }) => {
                 value={vDesc}
                 onChange={(e) => setVDesc(e.target.value)}
                 rows={2}
-                className={`w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                className={`w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors ${
                   isDark
                     ? "bg-[#1a1a1a] border-[#444] text-white"
                     : "bg-white border-gray-300"
@@ -126,7 +124,7 @@ const VersionManager = ({ onClose }) => {
               <button
                 onClick={handlePublish}
                 disabled={isPublishing || !vName.trim()}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50"
+                className="w-full bg-black hover:bg-gray-700 text-white font-normal py-2 rounded-lg transition-colors disabled:opacity-50 font-inter"
               >
                 {isPublishing ? "Publishing..." : "Snapshot Current Draft"}
               </button>
@@ -159,11 +157,11 @@ const VersionManager = ({ onClose }) => {
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-semibold text-blue-500">
+                        <h4 className="font-semibold font-inter text-black">
                           {v.name}
                         </h4>
                         <p
-                          className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                          className={`text-xs mt-1 font-inter ${isDark ? "text-gray-400" : "text-gray-500"}`}
                         >
                           {formatDate(v.timestamp)}
                         </p>
@@ -179,8 +177,8 @@ const VersionManager = ({ onClose }) => {
                         onClick={() => setShowConfirmRestore(v)}
                         className={`text-xs font-medium px-3 py-1.5 rounded-md border transition-all ${
                           isDark
-                            ? "border-blue-900/50 text-blue-400 hover:bg-blue-900/20"
-                            : "border-blue-100 text-blue-600 hover:bg-blue-50"
+                            ? "border-blue-900/50 text-gray-400 hover:bg-blue-900/20"
+                            : "border-blue-100 text-black hover:bg-gray-50"
                         }`}
                       >
                         Restore & Edit
@@ -194,11 +192,11 @@ const VersionManager = ({ onClose }) => {
         </div>
 
         {/* Footer */}
-        <div
+        {/* <div
           className={`p-4 border-t text-center text-xs ${isDark ? "border-[#333] text-gray-500" : "border-gray-200 text-gray-400"}`}
         >
           Version snapshots are stored locally.
-        </div>
+        </div> */}
       </div>
 
       {/* Confirmation Modal */}
@@ -216,7 +214,7 @@ const VersionManager = ({ onClose }) => {
               className={`mb-6 text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}
             >
               Restoring{" "}
-              <span className="font-semibold text-blue-500">
+              <span className="font-semibold text-black">
                 {showConfirmRestore.name}
               </span>{" "}
               will overwrite your current draft content.
