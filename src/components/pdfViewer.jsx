@@ -18,11 +18,13 @@ const PdfViewer = ({
   onCompile,
   fileTitle,
   onShowLogs,
+  projectDetails,
 }) => {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
   const pageRefs = useRef([]);
+  console.log("From PDFViewer", projectDetails);
 
   const getPdfFileName = () => {
     // Use the pdfFileName prop if available (from server compile response)
@@ -110,10 +112,17 @@ const PdfViewer = ({
             />
             <p className="px-2 font-poppins text-sm font-light">Compile</p>
           </button>
-          {pdfUrl && (
-            <p 
+          {projectDetails.compilationStatus === "error" ? (
+            <p
               onClick={onShowLogs}
-              className="font-poppins font-light text-sm ml-3 cursor-pointer hover:underline"
+              className="font-poppins font-medium text-sm ml-3 cursor-pointer hover:underline text-red-600"
+            >
+              Logs
+            </p>
+          ) : (
+            <p
+              onClick={onShowLogs}
+              className="font-poppins font-light text-sm ml-3 cursor-pointer"
             >
               Logs
             </p>
