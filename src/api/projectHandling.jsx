@@ -1,10 +1,15 @@
 /*Functions in this file:
 - createProject()
+- editDocumentWithAI()  //AI Chat
+- saveChatMessage()     //AI Chat
+- loadChatHistory()     //AI Chat
 - loadProjects()
 - loadProject()
+- loadProjectFromServer()
 - saveProject()
 - compileDocument():
 - checkServerConnection();
+- saveDraftVersion()           //Draft Versioning
 */
 
 import axios from "axios";
@@ -57,8 +62,6 @@ export const editDocumentWithAI = async (prompt, currentLatex) => {
     throw error;
   }
 };
-
-// api/projectHandling.jsx
 
 export const saveChatMessage = async (projectId, message) => {
   try {
@@ -296,5 +299,53 @@ export const checkServerConnection = async () => {
   } catch (error) {
     console.log("Error connecting to the Backend Server", error);
     return false;
+  }
+};
+
+export const createDraftVersion = async (
+  projectId,
+  name,
+  description,
+  files,
+  isAuthenticated,
+  isServerConnected,
+) => {
+  if (!projectId) throw new Error("ProjectId is required");
+  try {
+    const response = await axios.post(`${API_URL}/api/drafts/${projectId}`, {
+      name: name,
+      description: description,
+      files: files,
+    });
+
+    console.log(response.data.draftData);
+
+    if (isServerConnected && isAuthenticated) {
+      try {
+        await axios.put(
+          `${import.meta.env.VITE_admin_server}/api/drafts/${projectId}`,
+          {
+            content: response.data.draftData,
+          },
+        );
+      } catch (error) {
+        console.log("Failed to save project to DB: " + error.message);
+      }
+    }
+  } catch (error) {
+    console.error("Error creating Draft:", error);
+    throw error;
+  }
+};
+
+export const loadDraftVersion = async (projectId) => {
+  if (!projectId) throw new Error("ProjectId is required");
+  try {
+    const responses = await axios.get(`${API_URL}/api/drafts/${projectId}`, {});
+
+    return responses.data;
+  } catch (error) {
+    console.error("Error Loading Draft:", error);
+    throw error;
   }
 };

@@ -1,4 +1,4 @@
-  import express from "express";
+import express from "express";
 import cors from "cors";
 import fs from "fs-extra";
 import path from "path";
@@ -911,14 +911,14 @@ app.post("/api/compile", async (req, res) => {
       const file = files[fileName];
       console.log("Writing file:", file.name);
       const filePath = path.join(TEMP_DIR, file.name);
-      
+
       // Check if file is a base64 image (data URL format)
-      if (file.isImage && file.content && file.content.startsWith('data:')) {
+      if (file.isImage && file.content && file.content.startsWith("data:")) {
         // Extract base64 data from data URL
         const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
         if (base64Match) {
           const base64Data = base64Match[1];
-          const buffer = Buffer.from(base64Data, 'base64');
+          const buffer = Buffer.from(base64Data, "base64");
           await fs.writeFile(filePath, buffer);
           console.log(`✅ Written image file as binary: ${file.name}`);
         } else {
@@ -1616,6 +1616,70 @@ app.delete("/api/citation/:filename", async (req, res) => {
     res
       .status(500)
       .json({ error: `Failed to delete citation: ${error.message}` });
+  }
+});
+
+// Create Draft Version
+app.post("/api/drafts/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, files } = req.body;
+    console.log(name, description, files);
+    const draftDir = path.join(PROJECTS_DIR, id);
+    const draftPath = path.join(draftDir, "draft.json");
+    const draftId = uuidv4();
+
+    // Initialize draftData
+    let draftData = {};
+
+    // Check if draft.json exists and load it
+    if (await fs.pathExists(draftPath)) {
+      draftData = await fs.readJSON(draftPath);
+    }
+
+    draftData[draftId] = {
+      name: name,
+      timestamp: new Date().toISOString(),
+      description: description,
+      content: files,
+    };
+
+    // Save updated draft.json
+    await fs.writeJSON(draftPath, draftData, { spaces: 2 });
+
+    // Write each file to disk
+    for (const [fileName, fileInfo] of Object.entries(files)) {
+      const filePath = path.join(draftDir, fileName);
+      await fs.writeFile(filePath, fileInfo.content, "utf8");
+      console.log(`✅ Saved ${fileName} to disk`);
+    }
+
+    console.log("draftData", draftData);
+
+    console.log(`✅ Saved draft: ${name} in (${id})`);
+    res.json({ success: true, message: "Draft saved successfully", draftData });
+  } catch (error) {
+    console.error("❌ Draft save error:", error);
+    res.status(500).json({ success: false, error: "Failed to save draft" });
+  }
+});
+
+// Load Drafts from draft.json
+app.get("/api/drafts/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const draftPath = path.join(PROJECTS_DIR, id, "draft.json");
+
+    if (!(await fs.pathExists(draftPath))) {
+      return res.status(404).json({ success: false, error: "Draft not found" });
+    }
+    const draftData = await fs.readJSON(draftPath);
+
+    console.log(`✅ Loaded Drafts of (${id})`);
+    res.json({ success: true, draft: draftData });
+  } catch (error) {
+    console.error("❌ Draft load error:", error);
+    res.status(500).json({ success: false, error: "Failed to load drafts" });
   }
 });
 

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useSettings } from "../context/useSettings";
 import { useAuth } from "../context/useAuth";
-import { useNavigate, Link } from "react-router-dom";
+import { useOutletContext, useNavigate, Link } from "react-router-dom";
+import GoBack from "../assets/icons/goBack.svg?react";
 
 const SettingsPage = () => {
+  const { isSectionSpaceOpen } = useOutletContext();
   const { settings, updateSetting, resetSettings } = useSettings();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -40,7 +42,9 @@ const SettingsPage = () => {
 
   return (
     <div
-      className={`h-screen overflow-y-auto scrollbar-hide flex flex-col ml-12 pb-10 mt-11 ${isDark ? "bg-[#1a1a1a]" : "bg-[#eaeaea]"}`}
+      className={`h-screen overflow-y-auto scrollbar-hide flex flex-col ml-12 pb-10 mt-11 ${isDark ? "bg-[#1a1a1a]" : "bg-[#eaeaea]"} ${
+        isSectionSpaceOpen ? "ml-96" : "ml-0"
+      }`}
     >
       <div className="max-w-6xl mx-auto w-full px-8 py-8">
         {/* Back Button */}
@@ -49,10 +53,11 @@ const SettingsPage = () => {
           className={`flex items-center gap-2 mb-6 px-4 py-2 rounded-md font-inter text-sm transition-colors ${
             isDark
               ? "text-[#e5e5e5] hover:bg-[#2d2d2d]"
-              : "text-[#7D7D7D] hover:bg-[#F9F9F9] hover:text-[#212121]"
+              : "text-gray-700 hover:bg-[#F9F9F9] hover:text-[#212121]"
           }`}
         >
-          <span>←</span> Back
+          <GoBack style={{ fill: "#374151" }} className="w-5 h-5 mr-1" /> Go
+          Back
         </button>
 
         {/* Header */}

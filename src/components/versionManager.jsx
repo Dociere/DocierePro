@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import { projectContext } from "../context/useProject";
 import { useSettings } from "../context/useSettings";
-import {
-  getVersionHistory,
-  publishVersion,
-  restoreVersion,
-  saveDraft,
-} from "../utils/db";
+import { createDraftVersion, loadDraftVersion } from "../api/projectHandling";
+import { useAuth } from "../context/useAuth";
 
 const VersionManager = ({ onClose }) => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -18,26 +14,42 @@ const VersionManager = ({ onClose }) => {
   const [vDesc, setVDesc] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
   const [showConfirmRestore, setShowConfirmRestore] = useState(null);
+  const { isAuthenticated, isServerConnected } = useAuth();
 
   useEffect(() => {
     loadHistory();
+    console.log(
+      "isAuthenticated, isServerConnected",
+      isAuthenticated,
+      isServerConnected,
+    );
   }, []);
 
   const loadHistory = async () => {
-    const history = await getVersionHistory(projectDetails?.currentProject?.id);
-    setVersions(history);
+    const history = await loadDraftVersion(projectDetails?.currentProject?.id);
+    console.log("history", history.draft);
+
+    setVersions(
+      Object.entries(history.draft).map(([name, data]) => ({
+        _id: name,
+        name,
+        ...data,
+      })),
+    );
   };
 
   const handlePublish = async () => {
     if (!vName.trim()) return;
     setIsPublishing(true);
     try {
-      // First ensure the latest context content is in the draft doc
-      await saveDraft(
+      await createDraftVersion(
         projectDetails?.currentProject?.id,
-        projectDetails.latexContent,
+        vName,
+        vDesc,
+        projectDetails?.currentProject?.files,
+        isAuthenticated,
+        isServerConnected,
       );
-      await publishVersion(projectDetails?.currentProject?.id, vName, vDesc);
       setVName("");
       setVDesc("");
       await loadHistory();
@@ -50,11 +62,17 @@ const VersionManager = ({ onClose }) => {
 
   const handleRestore = async (version) => {
     try {
-      const restoredContent = await restoreVersion(
-        projectDetails?.currentProject?.id,
-        version._id,
-      );
-      updateProjectDetails({ latexContent: restoredContent });
+      // const restoredContent = await restoreVersion(
+      //   projectDetails?.currentProject?.id,
+      //   version._id,
+      // );
+      // updateProjectDetails({ latexContent: restoredContent });
+      updateProjectDetails({
+        currentProject: {
+          ...projectDetails.currentProject,
+          files: version.content,
+        },
+      });
       setShowConfirmRestore(null);
       onClose();
     } catch (error) {
@@ -146,46 +164,49 @@ const VersionManager = ({ onClose }) => {
                   No versions recorded yet.
                 </p>
               ) : (
-                versions.map((v) => (
-                  <div
-                    key={v._id}
-                    className={`p-4 rounded-lg border group relative transition-colors ${
-                      isDark
-                        ? "bg-[#252525] border-[#333] hover:border-[#444]"
-                        : "bg-white border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-semibold font-inter text-black">
-                          {v.name}
-                        </h4>
-                        <p
-                          className={`text-xs mt-1 font-inter ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                        >
-                          {formatDate(v.timestamp)}
-                        </p>
-                        {v.description && (
+                versions
+                  .slice()
+                  .reverse()
+                  .map((v) => (
+                    <div
+                      key={v._id}
+                      className={`p-4 rounded-lg border group relative transition-colors ${
+                        isDark
+                          ? "bg-[#252525] border-[#333] hover:border-[#444]"
+                          : "bg-white border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold font-inter text-black">
+                            {v.name}
+                          </h4>
                           <p
-                            className={`text-sm mt-2 line-clamp-2 ${isDark ? "text-gray-300" : "text-gray-600"}`}
+                            className={`text-xs mt-1 font-inter ${isDark ? "text-gray-400" : "text-gray-500"}`}
                           >
-                            {v.description}
+                            {formatDate(v.timestamp)}
                           </p>
-                        )}
+                          {v.description && (
+                            <p
+                              className={`text-sm mt-2 line-clamp-2 ${isDark ? "text-gray-300" : "text-gray-600"}`}
+                            >
+                              {v.description}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setShowConfirmRestore(v)}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-md border transition-all ${
+                            isDark
+                              ? "border-blue-900/50 text-gray-400 hover:bg-blue-900/20"
+                              : "border-blue-100 text-black hover:bg-gray-50"
+                          }`}
+                        >
+                          Restore
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setShowConfirmRestore(v)}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-md border transition-all ${
-                          isDark
-                            ? "border-blue-900/50 text-gray-400 hover:bg-blue-900/20"
-                            : "border-blue-100 text-black hover:bg-gray-50"
-                        }`}
-                      >
-                        Restore & Edit
-                      </button>
                     </div>
-                  </div>
-                ))
+                  ))
               )}
             </div>
           </section>
