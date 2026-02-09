@@ -729,7 +729,7 @@ const EditorPage = () => {
   return (
     <div
       className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-7 ${
-        isSectionSpaceOpen ? "ml-60" : "ml-0"
+        isSectionSpaceOpen ? "ml-64" : "ml-0"
       }`}
     >
       <LeaveSession projectId={projectDetails.currentProject?.id} />

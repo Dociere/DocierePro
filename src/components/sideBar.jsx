@@ -83,7 +83,7 @@ const DynamicSideBar = ({
         <div className="flex flex-col justify-between h-full">
           <div className="flex flex-col items-center pt-4 space-y-1">
             {/* Current Project file */}
-            <Link to="/canvas">
+            <Link to={`/canvas?project=${projectDetails?.currentProject?.id}`}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Current Project file"
