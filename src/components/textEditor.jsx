@@ -22,45 +22,47 @@ const RichTextEditorPanel = ({
     if (highlightLine && quillRef.current) {
       const editor = quillRef.current.getEditor();
       const text = editor.getText();
-      
+
       // Map LaTeX line number to approximate position in rich text
       // Rich text paragraphs roughly correspond to LaTeX lines
-      const lines = text.split('\n');
-      
+      const lines = text.split("\n");
+
       // Calculate the character index for the target line
       let charIndex = 0;
       const targetLine = Math.min(highlightLine - 1, lines.length - 1);
-      
+
       for (let i = 0; i < targetLine && i < lines.length; i++) {
         charIndex += lines[i].length + 1; // +1 for newline
       }
-      
+
       // Get the length of the target line (for highlighting)
       const lineLength = lines[targetLine]?.length || 1;
-      
+
       // Set cursor position and scroll to it
       editor.setSelection(charIndex, lineLength);
-      
+
       // Store the range for visual highlighting
       setHighlightRange({ index: charIndex, length: Math.max(1, lineLength) });
-      
+
       // Apply visual highlight using Quill's formatting
       editor.formatText(charIndex, Math.max(1, lineLength), {
-        'background': 'rgba(255, 234, 0, 0.4)'
+        background: "rgba(255, 234, 0, 0.4)",
       });
-      
-      console.log(`📍 SyncTeX: Highlighting line ${highlightLine} at char ${charIndex}`);
-      
+
+      console.log(
+        `📍 SyncTeX: Highlighting line ${highlightLine} at char ${charIndex}`,
+      );
+
       // Focus the editor
       editor.focus();
-      
+
       // Remove highlight after 2 seconds
       const timer = setTimeout(() => {
         if (quillRef.current) {
           const ed = quillRef.current.getEditor();
           // Remove the background highlight
           ed.formatText(charIndex, Math.max(1, lineLength), {
-            'background': false
+            background: false,
           });
           setHighlightRange(null);
           onHighlightClear();
@@ -76,7 +78,7 @@ const RichTextEditorPanel = ({
     if (highlightRange && quillRef.current) {
       const editor = quillRef.current.getEditor();
       editor.formatText(highlightRange.index, highlightRange.length, {
-        'background': false
+        background: false,
       });
       setHighlightRange(null);
       onHighlightClear();
@@ -86,10 +88,10 @@ const RichTextEditorPanel = ({
   // Clear highlight when user types
   const handleChange = (content, delta, source, editor) => {
     // Only process user-initiated changes, not our formatting changes
-    if (source === 'user') {
+    if (source === "user") {
       if (highlightRange) {
         editor.formatText(highlightRange.index, highlightRange.length, {
-          'background': false
+          background: false,
         });
         setHighlightRange(null);
       }
@@ -113,7 +115,8 @@ const RichTextEditorPanel = ({
       padding-bottom: 0.3em !important;
       border-bottom: 1px solid #e5e7eb !important;
       color: #111827;
-      font-weight: 600 !important;
+      font-weight: 400 !important;
+      font-family: 'Inter', system-ui, sans-serif !important;
     }
     .ql-editor h3 { border-bottom: none !important; }
   `;
@@ -144,4 +147,3 @@ const RichTextEditorPanel = ({
 };
 
 export default RichTextEditorPanel;
-

@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS = {
     customThemes: {
       dark: {
         background: "#000000",
-        surface: "#121212",
+        surface: "#1a1a1a",
         primary: "#1E90FF",
         secondary: "#FF69B4",
         text: "#FFFFFF",
@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
       },
       light: {
         background: "#F9F9F9",
-        surface: "#FFFFFF",
+        surface: "#eaeaea",
         primary: "#1E90FF",
         secondary: "#FF69B4",
         text: "#000000",

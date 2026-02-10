@@ -5,17 +5,24 @@ import NavBar from "../components/navBar";
 import { Outlet } from "react-router-dom";
 import StatusBar from "../components/statusBar";
 import { useState } from "react";
+import { useSettings } from "../context/useSettings";
 
 const PageLayout = () => {
   const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const { settings } = useSettings();
 
   const handleOpenAIChat = () => {
     setIsAIChatOpen(true);
   };
 
   return (
-    <>
+    <div
+      style={{
+        background:
+          settings.appearance.customThemes[settings.appearance.theme].surface,
+      }}
+    >
       <NavBar />
       <div className="flex flex-row">
         <div>
@@ -33,7 +40,7 @@ const PageLayout = () => {
         </div>
       </div>
       <StatusBar />
-    </>
+    </div>
   );
 };
 

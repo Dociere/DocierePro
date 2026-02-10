@@ -11,6 +11,7 @@ import ToMaxIcon from "../assets/icons/minmaxIcon.svg?react";
 import ToMinIcon from "../assets/icons/minmaxIcon1.svg?react";
 import { useAuth } from "../context/useAuth";
 import { useToast } from "../hooks/useToast";
+import { useSettings } from "../context/useSettings";
 import axios from "axios";
 
 const API_URL = "http://localhost:5000";
@@ -27,6 +28,7 @@ const NavBar = () => {
   const menuRefs = useRef({});
   const showToast = useToast();
   const { isServerConnected, isAuthenticated } = useAuth();
+  const { settings } = useSettings();
 
   const hasProject = projectDetails.currentProject !== null;
   // File Menu Actions
@@ -699,7 +701,14 @@ const NavBar = () => {
           WebkitAppRegion: "drag",
         }}
       >
-        <div className="bg-[#F9F9F9] h-7 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex">
+        <div
+          className="h-7 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex"
+          style={{
+            background:
+              settings.appearance.customThemes[settings.appearance.theme]
+                .background,
+          }}
+        >
           {/* Left Part - Title bar Menus */}
           <div
             className="flex flex-1 gap-7 text-[13px] pl-5 text-[#212121] mt-1"

@@ -3,8 +3,8 @@
     "theme": "light",
     "customThemes": {
       "dark": {
-        "background": "#000000",
-        "surface": "#121212",
+        "background": "#131313",
+        "surface": "#1a1a1a",
         "primary": "#1E90FF",
         "secondary": "#FF69B4",
         "text": "#FFFFFF",
@@ -14,7 +14,7 @@
       },
       "light": {
         "background": "#F9F9F9",
-        "surface": "#FFFFFF",
+        "surface": "#eaeaea",
         "primary": "#1E90FF",
         "secondary": "#FF69B4",
         "text": "#000000",
