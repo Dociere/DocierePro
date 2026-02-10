@@ -1,11 +1,29 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import MonacoEditorPanel from "./monacoEditor";
-// RichTextEditorPanel import removed - Monaco only now
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
+import "../utils/latexBlots.jsx";
 import latexUtility from "../utils/latexUtility";
 import TableDesignerModal from "./TableDesignerModal";
 import ImageInsertModal from "./ImageInsertModal";
 import "../assets/styles/synctex.css";
 import axios from "axios";
+
+// Quill modules matching the main text editor (LaTeX-compatible only)
+const SECTION_QUILL_MODULES = {
+  toolbar: {
+    container: [
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      [{ script: "super" }, { script: "sub" }],
+      ["link", "code"],
+      ["clean"],
+    ],
+  },
+  clipboard: {
+    matchVisual: false,
+  },
+};
 
 const SERVER_URL = "http://localhost:5000";
 
@@ -441,7 +459,7 @@ const SectionEditor = ({
 
   return (
     <div
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 py-5 bg-gray-100 min-h-full cursor-default"
+      className="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-4 py-5 bg-gray-100 min-h-full cursor-default"
       onClick={() => setFocusedSectionId(null)}
     >
       <div className="space-y-6">
@@ -527,9 +545,32 @@ const RecursiveSection = ({
 }) => {
   const isFocused = focusedSectionId === section.id;
   const [isEditingName, setIsEditingName] = useState(false);
-  // Removed isCodeMode - Monaco only now
+  const [isVisualMode, setIsVisualMode] = useState(false);
+  const [richTextValue, setRichTextValue] = useState("");
 
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  // Custom editor styles for section editor (matching main editor)
+  const sectionEditorStyles = `
+    .section-quill .ql-editor {
+      padding: 20px 30px !important;
+      font-family: 'Inter', system-ui, sans-serif !important;
+      line-height: 1.6 !important;
+    }
+    .section-quill .ql-editor p {
+      margin-bottom: 1.2em !important;
+      color: #374151;
+    }
+    .section-quill .ql-editor h1, .section-quill .ql-editor h2, .section-quill .ql-editor h3 {
+      margin-top: 1.2em !important;
+      margin-bottom: 0.6em !important;
+      padding-bottom: 0.2em !important;
+      border-bottom: 1px solid #e5e7eb !important;
+      color: #111827;
+      font-weight: 600 !important;
+    }
+    .section-quill .ql-editor h3 { border-bottom: none !important; }
+  `;
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -943,62 +984,139 @@ const RecursiveSection = ({
             </div>
           )}
           {section.name && !isEditingName && (
-            <div className="mb-2 text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <span>{section.name}</span>
-              {section.subtype === "starred" && (
-                <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-500">unnumbered</span>
-              )}
+            <div className="mb-2 text-sm font-semibold text-gray-700 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span>{section.name}</span>
+                {section.subtype === "starred" && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-500">unnumbered</span>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingName(true);
+                  }}
+                  className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Edit section name"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Visual/Code Toggle Switch */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsEditingName(true);
+                  if (!isVisualMode) {
+                    // Switching TO visual: convert LaTeX → Rich Text
+                    const html = sectionToRichText
+                      ? sectionToRichText(section)
+                      : latexUtility.latexToRichText(section.content || "");
+                    setRichTextValue(html);
+                  } else {
+                    // Switching TO code: convert Rich Text → LaTeX
+                    const latex = richTextToSection
+                      ? richTextToSection(richTextValue)
+                      : latexUtility.richTextToLatex(richTextValue);
+                    onUpdate({ ...section, content: latex });
+                  }
+                  setIsVisualMode(!isVisualMode);
                 }}
-                className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
-                title="Edit section name"
+                className="flex items-center bg-gray-100 rounded-full p-0.5 border border-gray-200 cursor-pointer w-24 relative h-6 transition-all"
+                title={isVisualMode ? "Switch to Code View" : "Switch to Visual View"}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
+                <div 
+                  className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] bg-white rounded-full shadow-sm transition-all duration-200 ${
+                    isVisualMode ? "left-[calc(50%)]" : "left-0.5"
+                  }`}
+                />
+                <span className={`flex-1 text-[10px] font-semibold text-center z-10 transition-colors ${
+                  !isVisualMode ? "text-gray-800" : "text-gray-400"
+                }`}>
+                  Code
+                </span>
+                <span className={`flex-1 text-[10px] font-semibold text-center z-10 transition-colors ${
+                  isVisualMode ? "text-gray-800" : "text-gray-400"
+                }`}>
+                  Visual
+                </span>
               </button>
             </div>
           )}
-          {/* Removed visual mode toggle - Monaco only now */}
+          
+          {/* Removed Visual / Code mode toggle from here - moved up */}
 
-          <div className="min-h-[80px] overflow-hidden">
-            {/* Monaco Code View - Only option */}
-            <div
-              className="h-64 border border-gray-200 rounded w-full overflow-hidden"
-              onKeyDown={(e) => e.stopPropagation()}
+          <div className="relative group/resize">
+            <style>{sectionEditorStyles}</style>
+
+            {/* Resizable Container */}
+            <div 
+              className="resize-y overflow-hidden border border-gray-200 rounded w-full bg-white relative flex flex-col h-[300px] min-h-[300px]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <MonacoEditorPanel
-                monacoEditorRef={monacoRef}
-                value={section.content}
-                handleLatexChange={(val) =>
-                  onUpdate({ ...section, content: val })
-                }
-                highlightLine={lineToHighlight}
-                onHighlightClear={onHighlightClear}
-                projectId={projectId}
-                token={token}
-                isOnline={isOnline}
-                onOpenTableModal={() => {
-                  setEditingTableData(null);
-                  setShowTableModal(true);
-                }}
-                onOpenImageModal={() => {
-                  setEditingImageData(null);
-                  setShowImageModal(true);
-                }}
-                onEditTable={(content) => {
-                  setEditingTableData(content);
-                  setShowTableModal(true);
-                }}
-                onEditImage={(content) => {
-                  setEditingImageData(content);
-                  setShowImageModal(true);
-                }}
-              />
+              {isVisualMode ? (
+                /* Visual / Rich Text View */
+                <div className="section-quill flex-1 h-full overflow-hidden">
+                  <ReactQuill
+                    theme="snow"
+                    value={richTextValue}
+                    onChange={(content, delta, source) => {
+                      if (source === "user") {
+                        setRichTextValue(content);
+                        // Live-sync back to LaTeX
+                        const latex = richTextToSection
+                          ? richTextToSection(content)
+                          : latexUtility.richTextToLatex(content);
+                        onUpdate({ ...section, content: latex });
+                      }
+                    }}
+                    modules={SECTION_QUILL_MODULES}
+                    className="h-full flex flex-col"
+                  />
+                </div>
+              ) : (
+                /* Code View (Monaco) */
+                <div className="flex-1 h-full w-full overflow-hidden relative">
+                  <MonacoEditorPanel
+                    monacoEditorRef={monacoRef}
+                    value={section.content || ""}
+                    handleLatexChange={(val) =>
+                      onUpdate({ ...section, content: val })
+                    }
+                    highlightLine={lineToHighlight}
+                    onHighlightClear={onHighlightClear}
+                    projectId={projectId}
+                    token={token}
+                    isOnline={isOnline}
+                    onOpenTableModal={() => {
+                      setEditingTableData(null);
+                      setShowTableModal(true);
+                    }}
+                    onOpenImageModal={() => {
+                      setEditingImageData(null);
+                      setShowImageModal(true);
+                    }}
+                    onEditTable={(content) => {
+                      setEditingTableData(content);
+                      setShowTableModal(true);
+                    }}
+                    onEditImage={(content) => {
+                      setEditingImageData(content);
+                      setShowImageModal(true);
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Resize Handle Overlay */}
+              <div className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 pointer-events-none group-hover/resize:pointer-events-auto z-10">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-40 group-hover/resize:opacity-100 transition-opacity">
+                  <path d="M8 2L2 8" stroke="#718096" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M8 6L6 8" stroke="#718096" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
             </div>
           </div>
           {(previewUrl || previewError) && (
