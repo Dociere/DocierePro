@@ -5,12 +5,21 @@ import SyncIcon from "../assets/icons/syncIcon.svg?react";
 import HelpIcon from "../assets/icons/helpIcon.svg?react";
 import LayoutIcon from "../assets/icons/layoutIcon.svg?react";
 import { useAuth } from "../context/useAuth";
+import { useSettings } from "../context/useSettings";
 
 const StatusBar = () => {
   const { isServerConnected } = useAuth();
+  const { settings } = useSettings();
   return (
     <>
-      <div className="w-screen z-30 h-5 fixed bottom-0 bg-[#F9F9F9] border-[#CFCFCF] border-[1.5px]">
+      <div
+        className="w-screen z-30 h-5 fixed bottom-0 border-[#CFCFCF] border-[1.5px]"
+        style={{
+          background:
+            settings.appearance.customThemes[settings.appearance.theme]
+              .background,
+        }}
+      >
         <div className="flex flex-row justify-between text-gray-500 mx-5 text-[13px]">
           <div className="flex flex-row gap-5">
             {isServerConnected ? (

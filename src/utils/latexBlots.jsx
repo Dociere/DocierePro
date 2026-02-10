@@ -44,7 +44,7 @@ class LatexBlockBlot extends BlockEmbed {
       display: "block",
       marginBottom: "6px",
     });
-    const icons = { table: "📊 Table", figure: "🖼️ Figure", equation: "📐 Equation" };
+    const icons = { table: "Table", figure: "Figure", equation: "Equation" };
     let labelText = icons[value.type] || "📦 LaTeX Block";
     // Extract caption for tables
     if (value.type === "table") {

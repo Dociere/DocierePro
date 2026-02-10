@@ -20,6 +20,7 @@ import { projectContext } from "../context/useProject";
 import { compileDocument } from "../api/projectHandling";
 import { useAuth } from "../context/useAuth";
 import axios from "axios";
+import { useSettings } from "../context/useSettings";
 
 const DynamicSideBar = ({
   isSectionSpaceOpen,
@@ -34,6 +35,7 @@ const DynamicSideBar = ({
   // const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const { user, isServerConnected } = useAuth();
+  const { settings } = useSettings();
 
   console.log("user", user);
   console.log("isServerConnected", isServerConnected);
@@ -79,7 +81,14 @@ const DynamicSideBar = ({
   };
   return (
     <>
-      <div className="bg-[#F9F9F9] dark:bg-black h-[calc(100vh-3rem)] w-10 fixed top-7 left-0 z-40 border-[#CFCFCF] border-r-[1px] select-none">
+      <div
+        className="h-[calc(100vh-3rem)] w-10 fixed top-7 left-0 z-40 border-[#CFCFCF] border-r-[1px] select-none"
+        style={{
+          background:
+            settings.appearance.customThemes[settings.appearance.theme]
+              .background,
+        }}
+      >
         <div className="flex flex-col justify-between h-full">
           <div className="flex flex-col items-center pt-4 space-y-1">
             {/* Current Project file */}

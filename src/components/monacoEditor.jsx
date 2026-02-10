@@ -5,6 +5,7 @@ import {
   registerLatexLanguage,
   defineLatexTheme,
 } from "../utils/latexMonarchLanguage.jsx";
+import { useSettings } from "../context/useSettings";
 
 // ==========================================
 // HELPER: Find table and figure ranges
@@ -91,6 +92,7 @@ const MonacoEditorPanel = ({
   const tableDecorationsRef = useRef([]);
   const figureDecorationsRef = useRef([]);
   const [editorReady, setEditorReady] = useState(false);
+  const { settings } = useSettings();
 
   // Update table/figure highlighting
   const updateEnvironmentHighlighting = useCallback(() => {
@@ -407,7 +409,7 @@ const MonacoEditorPanel = ({
           onMount={handleEditorMount}
           options={{
             minimap: { enabled: false },
-            fontSize: 14,
+            fontSize: settings.editor.fontSize,
             wordWrap: "on",
             automaticLayout: true,
             stickyScroll: { enabled: false },

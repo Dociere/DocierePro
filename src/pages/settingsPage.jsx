@@ -42,7 +42,7 @@ const SettingsPage = () => {
 
   return (
     <div
-      className={`h-screen overflow-y-auto scrollbar-hide flex flex-col ml-12 pb-10 mt-11 ${isDark ? "bg-[#1a1a1a]" : "bg-[#eaeaea]"} ${
+      className={`h-screen overflow-y-auto scrollbar-hide flex flex-col ml-12 pb-10 mt-11 ${isDark ? "bg-[#131313]" : "bg-[#eaeaea]"} ${
         isSectionSpaceOpen ? "ml-96" : "ml-0"
       }`}
     >
