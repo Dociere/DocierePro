@@ -1,15 +1,18 @@
 /*Functions in this file:
 - createProject()
-- editDocumentWithAI()  //AI Chat
-- saveChatMessage()     //AI Chat
-- loadChatHistory()     //AI Chat
+- editDocumentWithAI()      //AI Chat
+- saveChatMessage()         //AI Chat
+- loadChatHistory()         //AI Chat
 - loadProjects()
 - loadProject()
 - loadProjectFromServer()
 - saveProject()
 - compileDocument():
 - checkServerConnection();
-- saveDraftVersion()           //Draft Versioning
+- saveDraftVersion()        //Draft Versioning
+- loadDraftVersion()        //Draft Versioning
+- saveSettings              //Settings
+- loadSettings              //Settings
 */
 
 import axios from "axios";
@@ -360,6 +363,30 @@ export const loadDraftVersion = async (projectId) => {
     return responses.data;
   } catch (error) {
     console.error("Error Loading Draft:", error);
+    throw error;
+  }
+};
+
+export const saveSettings = async (settings) => {
+  try {
+    const response = await axios.patch(`${API_URL}/api/settings/`, {
+      settings: settings,
+    });
+
+    console.log(response.data);
+  } catch (error) {
+    console.error("Error Updating Settings:", error);
+    throw error;
+  }
+};
+
+export const loadSettings = async () => {
+  try {
+    const responses = await axios.get(`${API_URL}/api/settings`, {});
+
+    return responses.data;
+  } catch (error) {
+    console.error("Error Loading Settings:", error);
     throw error;
   }
 };

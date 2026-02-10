@@ -1,18 +1,52 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
+import { saveSettings, loadSettings } from "../api/projectHandling";
 
 const SettingsContext = createContext();
 
 const DEFAULT_SETTINGS = {
-  editor: {
-    theme: "customLight", // vs-dark, vs, customLight
-    fontSize: 14,
-  },
-  configuration: {
-    llmApiToken: "",
-    hostingMethod: "self-hosted", // 'self-hosted' | 'cloud'
-  },
   appearance: {
-    mode: "light", // 'light' | 'dark'
+    theme: "dark",
+    customThemes: {
+      dark: {
+        background: "#000000",
+        surface: "#121212",
+        primary: "#1E90FF",
+        secondary: "#FF69B4",
+        text: "#FFFFFF",
+        accent: "#FFD700",
+        custom1: "#FFD700",
+        custom2: "#FFD700",
+      },
+      light: {
+        background: "#F9F9F9",
+        surface: "#FFFFFF",
+        primary: "#1E90FF",
+        secondary: "#FF69B4",
+        text: "#000000",
+        accent: "#FFD700",
+        custom1: "#FFD700",
+        custom2: "#FFD700",
+      },
+    },
+  },
+  editor: {
+    fontFamily: "Inter",
+    fontSize: 14,
+    tabSize: 2,
+    wordWrap: true,
+    lineNumbers: "on",
+    autoIndent: "full",
+  },
+  app: {
+    autoSave: true,
+    showLineHighlight: "all",
+    minimap: false,
+  },
+  recentFiles: [],
+  shortcuts: {
+    save: "Ctrl+S",
+    compile: "Ctrl+Shift+B",
   },
 };
 
@@ -21,39 +55,49 @@ export const SettingsProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Load settings from localStorage on mount
+  // This is how to use them in frontend:
+  // style={{ fontSize: settings.editor.fontSize }}
   useEffect(() => {
-    try {
-      const savedSettings = localStorage.getItem("docierePro_settings");
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        setSettings({ ...DEFAULT_SETTINGS, ...parsed });
+    const loadSetting = async () => {
+      try {
+        const response = await loadSettings();
+        console.log("settings from config", response.settings);
+
+        if (response && response.success) {
+          setSettings({ ...DEFAULT_SETTINGS, ...response.settings });
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to load settings from localStorage:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    loadSetting();
   }, []);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
     if (!isLoading) {
-      try {
-        localStorage.setItem("docierePro_settings", JSON.stringify(settings));
-      } catch (error) {
-        console.error("Failed to save settings to localStorage:", error);
-      }
+      const save = async () => {
+        try {
+          console.log("settings", settings);
+          await saveSettings(settings);
+        } catch (error) {
+          console.error("Failed to save settings:", error);
+        }
+      };
+      save();
     }
   }, [settings, isLoading]);
 
-  // Apply dark mode class to document
+  // Apply dark mode class to document (in Tailwind simply use dark:style for theme related changes, example: dark:bg-black)
   useEffect(() => {
-    if (settings.appearance.mode === "dark") {
+    if (settings.appearance.theme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, [settings.appearance.mode]);
+  }, [settings.appearance.theme]);
 
   // Update individual setting
   const updateSetting = (section, key, value) => {
@@ -79,8 +123,7 @@ export const SettingsProvider = ({ children }) => {
 
   // Reset to defaults
   const resetSettings = () => {
-    setSettings(DEFAULT_SETTINGS);
-    localStorage.removeItem("docierePro_settings");
+    saveSettings(DEFAULT_SETTINGS);
   };
 
   const value = {
@@ -109,3 +152,9 @@ export const useSettings = () => {
   }
   return context;
 };
+
+//Logic:
+// - There will be a default theme (set to light mode)
+// - useSettings will populate colorTheme = {} with colors from config.json
+// - Frontend classes will import colorTheme and use it as
+// <div className={`${currentColors.primary} ${currentColors.text} h-20 w-32`}></div>

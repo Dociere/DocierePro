@@ -21,8 +21,18 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
         </div>
         <p className="text-gray-600 mb-6">{message}</p>
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">Cancel</button>
-          <button onClick={onConfirm} className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium">Confirm</button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium"
+          >
+            Confirm
+          </button>
         </div>
       </div>
     </div>
@@ -41,7 +51,12 @@ const AlertModal = ({ isOpen, message, onClose }) => {
         </div>
         <p className="text-gray-600 mb-6">{message}</p>
         <div className="flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium">OK</button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium"
+          >
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -72,7 +87,12 @@ const SectionSpace = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [toast, setToast] = useState(null);
   const [alertMessage, setAlertMessage] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", onConfirm: null });
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
   const [uploadPendingFiles, setUploadPendingFiles] = useState([]);
   const [uploadOverwriteFile, setUploadOverwriteFile] = useState(null);
 
@@ -174,7 +194,12 @@ const SectionSpace = () => {
       title: "Delete File",
       message: `Are you sure you want to delete ${fileName}?`,
       onConfirm: async () => {
-        setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null });
+        setConfirmModal({
+          isOpen: false,
+          title: "",
+          message: "",
+          onConfirm: null,
+        });
         try {
           const response = await axios.delete(
             `http://localhost:5000/api/projects/${currentProject.id}/files/${fileName}`,
@@ -215,20 +240,20 @@ const SectionSpace = () => {
       const newFiles = { ...currentProject.files };
       const filesToProcess = Array.from(files);
       let skippedCount = 0;
-      
+
       for (const file of filesToProcess) {
         const fileName = file.name;
-        
+
         // Check if file already exists - skip with info (no blocking confirm)
         if (newFiles[fileName]) {
           // Overwrite silently if same name
           console.log(`Overwriting existing file: ${fileName}`);
         }
-        
+
         // Determine file type
         const isImage = /\.(png|jpg|jpeg|gif|svg|pdf|eps)$/i.test(fileName);
         const isText = /\.(tex|bib|sty|cls|txt)$/i.test(fileName);
-        
+
         if (isImage) {
           // Read as base64 data URL
           const dataUrl = await new Promise((resolve, reject) => {
@@ -237,7 +262,7 @@ const SectionSpace = () => {
             reader.onerror = reject;
             reader.readAsDataURL(file);
           });
-          
+
           newFiles[fileName] = {
             name: fileName,
             content: dataUrl,
@@ -252,7 +277,7 @@ const SectionSpace = () => {
             reader.onerror = reject;
             reader.readAsText(file);
           });
-          
+
           newFiles[fileName] = {
             name: fileName,
             content: content,
@@ -265,17 +290,17 @@ const SectionSpace = () => {
           continue;
         }
       }
-      
+
       // Update project with new files
       const updatedProject = {
         ...currentProject,
         files: newFiles,
       };
-      
+
       updateProjectDetails({
         currentProject: updatedProject,
       });
-      
+
       // Save to server
       await saveProject(
         updatedProject,
@@ -283,14 +308,15 @@ const SectionSpace = () => {
         compilationStatus,
         compilationMessage,
         isServerConnected,
-        isAuthenticated
+        isAuthenticated,
       );
-      
+
       const uploadedCount = filesToProcess.length - skippedCount;
       if (uploadedCount > 0) {
-        showToast(`Uploaded ${uploadedCount} file${uploadedCount > 1 ? 's' : ''}`);
+        showToast(
+          `Uploaded ${uploadedCount} file${uploadedCount > 1 ? "s" : ""}`,
+        );
       }
-      
     } catch (err) {
       console.error("Upload failed:", err);
       setError("Failed to upload file: " + err.message);
@@ -346,12 +372,30 @@ const SectionSpace = () => {
               title="Upload File"
             >
               {isUploading ? (
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="#9BC59D" strokeWidth="2" opacity="0.3" />
-                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#9BC59D" strokeWidth="2" />
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="#9BC59D"
+                    strokeWidth="2"
+                    opacity="0.3"
+                  />
+                  <path
+                    d="M12 2a10 10 0 0 1 10 10"
+                    stroke="#9BC59D"
+                    strokeWidth="2"
+                  />
                 </svg>
               ) : (
-                <UploadFileIcon style={{ fill: "#0a0a0a" }} className="w-4 h-4" />
+                <UploadFileIcon
+                  style={{ fill: "#0a0a0a" }}
+                  className="w-4 h-4"
+                />
               )}
             </button>
             {/* Hidden file input for uploads */}
@@ -519,15 +563,26 @@ const SectionSpace = () => {
           )}
         </div>
       </div>
-      
+
       <Toast message={toast} isVisible={!!toast} />
-      <AlertModal isOpen={!!alertMessage} message={alertMessage} onClose={() => setAlertMessage(null)} />
-      <ConfirmModal 
-        isOpen={confirmModal.isOpen} 
-        title={confirmModal.title} 
-        message={confirmModal.message} 
-        onConfirm={confirmModal.onConfirm} 
-        onCancel={() => setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null })} 
+      <AlertModal
+        isOpen={!!alertMessage}
+        message={alertMessage}
+        onClose={() => setAlertMessage(null)}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() =>
+          setConfirmModal({
+            isOpen: false,
+            title: "",
+            message: "",
+            onConfirm: null,
+          })
+        }
       />
     </div>
   );

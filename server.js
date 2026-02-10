@@ -32,6 +32,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 // Directories
+const SETTINGS_DIR = path.join(__dirname);
 const PROJECTS_DIR = path.join(__dirname, "projects");
 const TEMP_DIR = path.join(__dirname, "temp");
 const OUTPUT_DIR = path.join(__dirname, "output");
@@ -1680,6 +1681,47 @@ app.get("/api/drafts/:id", async (req, res) => {
   } catch (error) {
     console.error("❌ Draft load error:", error);
     res.status(500).json({ success: false, error: "Failed to load drafts" });
+  }
+});
+
+// Save / Update Settings
+app.patch("/api/settings", async (req, res) => {
+  try {
+    const { settings } = req.body;
+    console.log("settings", settings);
+    const settingsDir = path.join(SETTINGS_DIR, "config.json");
+
+    // Save updated draft.json
+    await fs.writeJSON(settingsDir, settings, { spaces: 2 });
+
+    console.log(`✅ Saved Setting`);
+    res.json({
+      success: true,
+      message: "Settings saved successfully",
+    });
+  } catch (error) {
+    console.error("❌ Setting save error:", error);
+    res.status(500).json({ success: false, error: "Failed to save Setting" });
+  }
+});
+
+// Load Settings from config.json
+app.get("/api/settings", async (req, res) => {
+  try {
+    const settingsDir = path.join(SETTINGS_DIR, "config.json");
+
+    if (!(await fs.pathExists(settingsDir))) {
+      return res
+        .status(404)
+        .json({ success: false, error: "config.json not found" });
+    }
+    const settings = await fs.readJSON(settingsDir);
+
+    console.log(`✅ Loaded Settings`);
+    res.json({ success: true, settings: settings });
+  } catch (error) {
+    console.error("❌ Settings load error:", error);
+    res.status(500).json({ success: false, error: "Failed to load Settings" });
   }
 });
 
