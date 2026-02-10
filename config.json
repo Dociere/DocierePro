@@ -1,0 +1,45 @@
+{
+  "appearance": {
+    "theme": "light",
+    "customThemes": {
+      "dark": {
+        "background": "#000000",
+        "surface": "#121212",
+        "primary": "#1E90FF",
+        "secondary": "#FF69B4",
+        "text": "#FFFFFF",
+        "accent": "#FFD700",
+        "custom1": "#FFD700",
+        "custom2": "#FFD700"
+      },
+      "light": {
+        "background": "#F9F9F9",
+        "surface": "#FFFFFF",
+        "primary": "#1E90FF",
+        "secondary": "#FF69B4",
+        "text": "#000000",
+        "accent": "#FFD700",
+        "custom1": "#FFD700",
+        "custom2": "#FFD700"
+      }
+    }
+  },
+  "editor": {
+    "fontFamily": "Inter",
+    "fontSize": 14,
+    "tabSize": 2,
+    "wordWrap": true,
+    "lineNumbers": "on",
+    "autoIndent": "full"
+  },
+  "app": {
+    "autoSave": true,
+    "showLineHighlight": "all",
+    "minimap": false
+  },
+  "recentFiles": [],
+  "shortcuts": {
+    "save": "Ctrl+S",
+    "compile": "Ctrl+Shift+B"
+  }
+}

@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import MonacoEditor from "@monaco-editor/react";
 import { useYjsMonaco } from "../hooks/useYjsMonaco";
-import { registerLatexLanguage, defineLatexTheme } from "../utils/latexMonarchLanguage.jsx";
+import {
+  registerLatexLanguage,
+  defineLatexTheme,
+} from "../utils/latexMonarchLanguage.jsx";
 
 // ==========================================
 // HELPER: Find table and figure ranges
@@ -10,22 +13,22 @@ const findEnvironmentRanges = (model, envName) => {
   const ranges = [];
   const text = model.getValue();
   const lines = text.split("\n");
-  
+
   let startLine = null;
   let depth = 0;
   const beginRegex = new RegExp(`\\\\begin\\{${envName}\\}`);
   const endRegex = new RegExp(`\\\\end\\{${envName}\\}`);
-  
+
   lines.forEach((line, idx) => {
     const lineNumber = idx + 1;
-    
+
     if (beginRegex.test(line)) {
       if (depth === 0) {
         startLine = lineNumber;
       }
       depth++;
     }
-    
+
     if (endRegex.test(line)) {
       depth--;
       if (depth === 0 && startLine !== null) {
@@ -39,17 +42,19 @@ const findEnvironmentRanges = (model, envName) => {
       }
     }
   });
-  
+
   return ranges;
 };
 
 // Extract LaTeX block at cursor position
 const getEnvironmentAtPosition = (model, position, envName) => {
   const ranges = findEnvironmentRanges(model, envName);
-  
+
   for (const range of ranges) {
-    if (position.lineNumber >= range.startLineNumber && 
-        position.lineNumber <= range.endLineNumber) {
+    if (
+      position.lineNumber >= range.startLineNumber &&
+      position.lineNumber <= range.endLineNumber
+    ) {
       return {
         range,
         content: model.getValueInRange(range),
@@ -103,13 +108,14 @@ const MonacoEditorPanel = ({
         range.startLineNumber,
         range.startColumn,
         range.endLineNumber,
-        range.endColumn
+        range.endColumn,
       ),
       options: {
         isWholeLine: true,
         className: "monaco-table-highlight",
         glyphMarginClassName: "monaco-table-glyph",
-        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+        stickiness:
+          monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
       },
     }));
 
@@ -120,24 +126,25 @@ const MonacoEditorPanel = ({
         range.startLineNumber,
         range.startColumn,
         range.endLineNumber,
-        range.endColumn
+        range.endColumn,
       ),
       options: {
         isWholeLine: true,
         className: "monaco-figure-highlight",
         glyphMarginClassName: "monaco-figure-glyph",
-        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+        stickiness:
+          monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
       },
     }));
 
     // Apply decorations
     tableDecorationsRef.current = editor.deltaDecorations(
       tableDecorationsRef.current,
-      tableDecorations
+      tableDecorations,
     );
     figureDecorationsRef.current = editor.deltaDecorations(
       figureDecorationsRef.current,
-      figureDecorations
+      figureDecorations,
     );
   }, []);
 
@@ -169,7 +176,9 @@ const MonacoEditorPanel = ({
     if (!isOnline && editorInstanceRef.current && value !== undefined) {
       const currentValue = editorInstanceRef.current.getValue();
       if (currentValue !== value) {
-        console.log("📝 Updating Monaco editor with new content (offline mode)");
+        console.log(
+          "📝 Updating Monaco editor with new content (offline mode)",
+        );
         editorInstanceRef.current.setValue(value);
       }
     }
@@ -199,7 +208,9 @@ const MonacoEditorPanel = ({
       editor.addAction({
         id: "insert-table",
         label: "Insert Table",
-        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyT],
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyT,
+        ],
         contextMenuGroupId: "1_modification",
         contextMenuOrder: 1.5,
         run: () => {
@@ -212,7 +223,9 @@ const MonacoEditorPanel = ({
       editor.addAction({
         id: "insert-image",
         label: "Insert Image",
-        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI],
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI,
+        ],
         contextMenuGroupId: "1_modification",
         contextMenuOrder: 1.6,
         run: () => {
@@ -225,7 +238,10 @@ const MonacoEditorPanel = ({
     editor.onMouseDown((e) => {
       // Clear SyncTeX highlight on any click
       if (decorationsRef.current.length > 0) {
-        decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+        decorationsRef.current = editor.deltaDecorations(
+          decorationsRef.current,
+          [],
+        );
         onHighlightClear();
       }
 
@@ -237,7 +253,8 @@ const MonacoEditorPanel = ({
         // Check for table
         if (onEditTable) {
           const tableEnv = getEnvironmentAtPosition(model, position, "table");
-          if (tableEnv && e.event.detail === 2) { // Double-click to edit
+          if (tableEnv && e.event.detail === 2) {
+            // Double-click to edit
             onEditTable(tableEnv.content, tableEnv.range);
             return;
           }
@@ -246,7 +263,8 @@ const MonacoEditorPanel = ({
         // Check for figure
         if (onEditImage) {
           const figureEnv = getEnvironmentAtPosition(model, position, "figure");
-          if (figureEnv && e.event.detail === 2) { // Double-click to edit
+          if (figureEnv && e.event.detail === 2) {
+            // Double-click to edit
             onEditImage(figureEnv.content, figureEnv.range);
             return;
           }
@@ -256,7 +274,10 @@ const MonacoEditorPanel = ({
 
     editor.onKeyDown(() => {
       if (decorationsRef.current.length > 0) {
-        decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+        decorationsRef.current = editor.deltaDecorations(
+          decorationsRef.current,
+          [],
+        );
         onHighlightClear();
       }
     });
@@ -268,62 +289,70 @@ const MonacoEditorPanel = ({
 
     console.log("✅ Monaco editor mounted with context menu actions");
     setEditorReady(true);
-    
+
     // Initial highlighting
     setTimeout(updateEnvironmentHighlighting, 100);
   };
 
   // Insert text at cursor position
-  const insertAtCursor = useCallback((text) => {
-    const editor = editorInstanceRef.current;
-    if (!editor) return;
+  const insertAtCursor = useCallback(
+    (text) => {
+      const editor = editorInstanceRef.current;
+      if (!editor) return;
 
-    const selection = editor.getSelection();
-    const position = selection ? selection.getStartPosition() : editor.getPosition();
-    
-    editor.executeEdits("insert-latex", [
-      {
-        range: {
-          startLineNumber: position.lineNumber,
-          startColumn: position.column,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
+      const selection = editor.getSelection();
+      const position = selection
+        ? selection.getStartPosition()
+        : editor.getPosition();
+
+      editor.executeEdits("insert-latex", [
+        {
+          range: {
+            startLineNumber: position.lineNumber,
+            startColumn: position.column,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column,
+          },
+          text: "\n" + text + "\n",
+          forceMoveMarkers: true,
         },
-        text: "\n" + text + "\n",
-        forceMoveMarkers: true,
-      },
-    ]);
+      ]);
 
-    editor.focus();
-    
-    // Update highlighting after insert
-    setTimeout(updateEnvironmentHighlighting, 100);
-  }, [updateEnvironmentHighlighting]);
+      editor.focus();
+
+      // Update highlighting after insert
+      setTimeout(updateEnvironmentHighlighting, 100);
+    },
+    [updateEnvironmentHighlighting],
+  );
 
   // Replace a range with new text (for editing)
-  const replaceRange = useCallback((range, newText) => {
-    const editor = editorInstanceRef.current;
-    const monaco = monacoRef.current;
-    if (!editor || !monaco) return;
+  const replaceRange = useCallback(
+    (range, newText) => {
+      const editor = editorInstanceRef.current;
+      const monaco = monacoRef.current;
+      if (!editor || !monaco) return;
 
-    editor.executeEdits("replace-latex", [
-      {
-        range: new monaco.Range(
-          range.startLineNumber,
-          range.startColumn,
-          range.endLineNumber,
-          range.endColumn
-        ),
-        text: newText,
-        forceMoveMarkers: true,
-      },
-    ]);
+      editor.executeEdits("replace-latex", [
+        {
+          range: new monaco.Range(
+            range.startLineNumber,
+            range.startColumn,
+            range.endLineNumber,
+            range.endColumn,
+          ),
+          text: newText,
+          forceMoveMarkers: true,
+        },
+      ]);
 
-    editor.focus();
-    
-    // Update highlighting after replace
-    setTimeout(updateEnvironmentHighlighting, 100);
-  }, [updateEnvironmentHighlighting]);
+      editor.focus();
+
+      // Update highlighting after replace
+      setTimeout(updateEnvironmentHighlighting, 100);
+    },
+    [updateEnvironmentHighlighting],
+  );
 
   // Expose methods via ref
   useEffect(() => {
@@ -339,7 +368,7 @@ const MonacoEditorPanel = ({
     token,
     isOnline,
     editorReady ? editorInstanceRef.current : null,
-    user
+    user,
   );
 
   return (
@@ -374,13 +403,14 @@ const MonacoEditorPanel = ({
           defaultLanguage="latex"
           value={value}
           onChange={handleLatexChange}
-          theme="customLight"
+          // theme="customLight"
           onMount={handleEditorMount}
           options={{
             minimap: { enabled: false },
             fontSize: 14,
             wordWrap: "on",
             automaticLayout: true,
+            stickyScroll: { enabled: false },
             scrollBeyondLastLine: false,
             lineNumbers: "on",
             renderLineHighlight: "all",

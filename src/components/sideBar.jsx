@@ -79,7 +79,7 @@ const DynamicSideBar = ({
   };
   return (
     <>
-      <div className="bg-[#F9F9F9] h-[calc(100vh-3rem)] w-10 fixed top-7 left-0 z-40 border-[#CFCFCF] border-r-[1px] select-none">
+      <div className="bg-[#F9F9F9] dark:bg-black h-[calc(100vh-3rem)] w-10 fixed top-7 left-0 z-40 border-[#CFCFCF] border-r-[1px] select-none">
         <div className="flex flex-col justify-between h-full">
           <div className="flex flex-col items-center pt-4 space-y-1">
             {/* Current Project file */}
