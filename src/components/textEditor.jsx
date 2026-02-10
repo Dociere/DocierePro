@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+import "../utils/latexBlots.jsx";
 import "../assets/styles/synctex.css";
 
 const RichTextEditorPanel = ({
@@ -96,8 +97,30 @@ const RichTextEditorPanel = ({
     }
   };
 
+  const docStyles = `
+    .ql-editor {
+      padding: 40px 60px !important;
+      font-family: 'Inter', system-ui, sans-serif !important;
+      line-height: 1.8 !important;
+    }
+    .ql-editor p {
+      margin-bottom: 1.5em !important;
+      color: #374151;
+    }
+    .ql-editor h1, .ql-editor h2, .ql-editor h3 {
+      margin-top: 1.5em !important;
+      margin-bottom: 0.8em !important;
+      padding-bottom: 0.3em !important;
+      border-bottom: 1px solid #e5e7eb !important;
+      color: #111827;
+      font-weight: 600 !important;
+    }
+    .ql-editor h3 { border-bottom: none !important; }
+  `;
+
   return (
     <div className="h-full w-full flex flex-col bg-white">
+      <style>{docStyles}</style>
       {/* Rich Text Editor with proper scrolling */}
       <div className="flex-1 overflow-hidden" onClick={handleClick}>
         <ReactQuill

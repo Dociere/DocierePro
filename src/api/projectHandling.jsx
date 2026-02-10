@@ -29,13 +29,19 @@ export const createProject = async (
   if (!title) return;
 
   try {
+    // Fix boilerplate generation for Blank Document
+    const typeToSend =
+      templateType === "blank" ? "Blank Document" : templateType || "blank";
+
+    console.log("CreateProject Payload:", { title, typeToSend, isGenChecked });
+
     const payload = {
       title,
       authorDetails,
       generateBoilerplate: isGenChecked,
       userIdea: isGenChecked ? userIdea : null,
       Owner: Owner || null,
-      templateType: templateType || "blank",
+      templateType: typeToSend,
     };
 
     const response = await axios.post(
@@ -50,12 +56,20 @@ export const createProject = async (
   }
 };
 
-export const editDocumentWithAI = async (prompt, currentLatex) => {
+export const editDocumentWithAI = async (
+  prompt,
+  currentLatex,
+  signal = null,
+) => {
   try {
-    const response = await axios.post(`${API_URL}/api/edit`, {
-      prompt,
-      latexContent: currentLatex,
-    });
+    const response = await axios.post(
+      `${API_URL}/api/edit`,
+      {
+        prompt,
+        latexContent: currentLatex,
+      },
+      { signal }, // Pass abort signal to axios
+    );
     return response.data; // Returns { success: true, latexContent: "..." }
   } catch (error) {
     console.error("AI Edit Failed:", error);

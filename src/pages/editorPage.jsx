@@ -63,6 +63,7 @@ const EditorPage = () => {
 
   const [activeView, setActiveView] = useState("code");
   const [activeRightView, setActiveRightView] = useState("preview");
+  const [showAIChat, setShowAIChat] = useState(false);
   const [sections, setSections] = useState([]);
   const [logs, setLogs] = useState([]);
 
@@ -118,7 +119,7 @@ const EditorPage = () => {
   // Handle AI Chat open from sidebar
   useEffect(() => {
     if (isAIChatOpen) {
-      setActiveRightView("aichat");
+      setShowAIChat(true);
       setIsAIChatOpen(false); // Reset so it can be triggered again
     }
   }, [isAIChatOpen, setIsAIChatOpen]);
@@ -688,11 +689,10 @@ const EditorPage = () => {
     toolbar: {
       container: [
         [{ header: [2, 3, 4, false] }],
-        ["bold", "italic", "underline"],
+        ["bold", "italic", "underline", "strike"],
         [{ list: "ordered" }, { list: "bullet" }],
-        [{ indent: "-1" }, { indent: "+1" }],
-        ["blockquote", "code-block"],
-        ["link"],
+        [{ script: "super" }, { script: "sub" }],
+        ["link", "code"],
         ["clean"],
       ],
     },
@@ -826,8 +826,23 @@ const EditorPage = () => {
               />
             </div>
           )}
+            {/* AI Chat Panel - Persistent & Overlay */}
+            <div 
+              className={`absolute top-0 right-0 h-full w-full z-20 shadow-xl transition-transform duration-300 ease-in-out transform bg-white border-l border-gray-200 ${
+                showAIChat ? "translate-x-0" : "translate-x-full hidden"
+              }`}
+            >
+              <AIChatPanel
+                projectDetails={projectDetails}
+                onApplyChanges={(newContent) =>
+                  updateAllEditors("monaco", newContent)
+                }
+                onClose={() => setShowAIChat(false)}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+
 
       {/* Right side of the screen */}
       <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden">
@@ -867,15 +882,7 @@ const EditorPage = () => {
             </div>
           </div>
         )}
-        {activeRightView === "aichat" && (
-          <div className="flex-1 overflow-hidden relative">
-            <AIChatPanel
-              projectDetails={projectDetails}
-              onApplyChanges={handleLatexChange}
-              onClose={() => setActiveRightView("preview")}
-            />
-          </div>
-        )}
+
       </div>
 
       {/* Table Designer Modal for main Monaco editor */}

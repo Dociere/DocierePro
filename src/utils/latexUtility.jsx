@@ -381,99 +381,44 @@ export const latexToRichText = (latexBody) => {
   // 3. PROCESS REMAINING BODY
   let processed = stripLatexComments(body);
 
+  // Convert tables and figures to protected Quill blot blocks
   processed = processed.replace(
     /\\begin\{table\}(?:\[.*?\])?([\s\S]*?)\\end\{table\}/g,
-    (match, tableContent) => {
-      // 1. Extract Caption
-      const captionMatch = tableContent.match(/\\caption\{([^}]+)\}/);
-      const captionText = captionMatch ? captionMatch[1] : "";
-
-      // 2. Extract Tabular
-      const tabularMatch = tableContent.match(
-        /\\begin\{tabular\}\{([^}]+)\}([\s\S]*?)\\end\{tabular\}/,
-      );
-
-      if (!tabularMatch) {
-        return `<div class="latex-table" data-latex="${match.replace(/"/g, "&quot;")}">${match}</div>`;
-      }
-
-      const colDef = tabularMatch[1];
-      const rawRows = tabularMatch[2];
-
-      // Count columns from column definition
-      const colCount = (colDef.match(/\|/g) || []).length - 1 || 1;
-
-      // Split rows properly - handle \\ with optional \\hline
-      const rows = rawRows
-        .replace(/\\hline/g, "")
-        .split(/\\\\/)
-        .map((row) => row.trim())
-        .filter(Boolean);
-
-      if (rows.length === 0) {
-        return `<table class="latex-table" data-caption="${captionText}"><caption>${captionText}</caption><tbody><tr><td>Empty table</td></tr></tbody></table>`;
-      }
-
-      // Build HTML table
-      const encodedLatex = btoa(unescape(encodeURIComponent(match)));
-
-      let html = `<table
-  class="latex-table"
-  data-caption="${captionText.replace(/"/g, "&quot;")}"
-  data-latex="${encodedLatex}"
->`;
-
-      if (captionText) {
-        html += `<caption style="font-weight: bold; padding: 5px;">${captionText}</caption>`;
-      }
-
-      html += "<tbody>";
-
-      rows.forEach((row, rowIndex) => {
-        const cells = row
-          .split("&")
-          .map((cell) =>
-            escapeLatexSpecialChars(cell.replace(/\\hline/g, "").trim()),
-          );
-
-        // Ensure we have the right number of cells
-        while (cells.length < colCount) {
-          cells.push("");
-        }
-
-        html += "<tr>";
-        cells.forEach((cell, cellIndex) => {
-          html += `<td style="border: 1px solid #ccc; padding: 8px;">${cell || ""}</td>`;
-        });
-        html += "</tr>";
-      });
-
-      html += "</tbody></table>";
-
-      return html;
+    (match) => {
+      const encoded = btoa(unescape(encodeURIComponent(match)));
+      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="table"></div>`;
     },
   );
 
+  processed = processed.replace(
+    /\\begin\{figure\}(?:\[.*?\])?([\s\S]*?)\\end\{figure\}/g,
+    (match) => {
+      const encoded = btoa(unescape(encodeURIComponent(match)));
+      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="figure"></div>`;
+    },
+  );
+
+  // Convert equations to protected Quill blot blocks
   const equations = [];
   processed = processed
     .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
-      equations.push(match);
-      return `__EQ${equations.length - 1}__`;
+      const encoded = btoa(unescape(encodeURIComponent(match)));
+      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
     })
     .replace(/\$([^$\n]+)\$/g, (match) => {
-      equations.push(match);
-      return `__EQ${equations.length - 1}__`;
+      const encoded = btoa(unescape(encodeURIComponent(match)));
+      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
     })
     .replace(
       /\\begin\{equation\*?\}([\s\S]*?)\\end\{equation\*?\}/g,
       (match) => {
-        equations.push(match);
-        return `__EQ${equations.length - 1}__`;
+        const encoded = btoa(unescape(encodeURIComponent(match)));
+        return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
       },
     )
     .replace(/\\begin\{align\*?\}([\s\S]*?)\\end\{align\*?\}/g, (match) => {
-      equations.push(match);
-      return `__EQ${equations.length - 1}__`;
+      const encoded = btoa(unescape(encodeURIComponent(match)));
+      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
     });
 
   processed = processed.replace(
@@ -530,6 +475,11 @@ export const latexToRichText = (latexBody) => {
     .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>")
     .replace(/\\texttt\{([^}]+)\}/g, "<code>$1</code>")
     .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>")
+    .replace(/\\sout\{([^}]+)\}/g, "<s>$1</s>")
+    .replace(/\\textsuperscript\{([^}]+)\}/g, "<sup>$1</sup>")
+    .replace(/\\textsubscript\{([^}]+)\}/g, "<sub>$1</sub>")
+    .replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '<a href="$1">$2</a>')
+    .replace(/\\url\{([^}]+)\}/g, '<a href="$1">$1</a>')
     .replace(/\\today/g, "[Date: Today]");
 
   const paragraphs = processed
@@ -801,26 +751,34 @@ export const richTextToLatex = (richText) => {
       return `__EQ${equations.length - 1}__`;
     });
 
-  // ====== FIXED TABLE CONVERSION ======
+  // ====== EXTRACT LATEX BLOCK BLOTS (tables, figures) ======
+  const latexBlocks = [];
+
+  // Extract ql-latex-block blots (from Quill BlockEmbed)
   latex = latex.replace(
-    /<table[^>]*class="latex-table"contenteditable="false"[^>]*data-latex="([^"]+)"[^>]*>[\s\S]*?<\/table>/gi,
+    /<div[^>]*class="ql-latex-block"[^>]*data-latex="([^"]*)"[^>]*>[\s\S]*?<\/div>(?:\s*<\/div>)*/gi,
     (_, encoded) => {
       try {
-        return decodeURIComponent(escape(atob(encoded)));
+        latexBlocks.push(decodeURIComponent(escape(atob(encoded))));
       } catch {
-        return "";
+        latexBlocks.push("");
       }
+      return `__LATEXBLOCK${latexBlocks.length - 1}__`;
     },
   );
 
-  // Fallback for tables without data-latex-caption attribute
-  // latex = latex.replace(
-  //   /<table[^>]*>([\s\S]*?)<\/table>/gi,
-  //   (match, innerContent) => {
-  //     // Just return empty table to avoid broken LaTeX
-  //     return `\n\\begin{table}[htbp]\n\\centering\n\\begin{tabular}{|c|}\n\\hline\n \\\\ \\hline\n\\end{tabular}\n\\end{table}\n`;
-  //   },
-  // );
+  // Backward compat: also catch old-style <table data-latex="..."> format
+  latex = latex.replace(
+    /<table[^>]*data-latex="([^"]+)"[^>]*>[\s\S]*?<\/table>/gi,
+    (_, encoded) => {
+      try {
+        latexBlocks.push(decodeURIComponent(escape(atob(encoded))));
+      } catch {
+        latexBlocks.push("");
+      }
+      return `__LATEXBLOCK${latexBlocks.length - 1}__`;
+    },
+  );
 
   // Basic HTML to LaTeX conversions
   latex = latex
@@ -891,13 +849,33 @@ export const richTextToLatex = (richText) => {
     .replace(/<em[^>]*>([^<]+)<\/em>/gi, "\\textit{$1}")
     .replace(/<i[^>]*>([^<]+)<\/i>/gi, "\\textit{$1}")
     .replace(/<code[^>]*>([^<]+)<\/code>/gi, "\\texttt{$1}")
-    .replace(/<u[^>]*>([^<]+)<\/u>/gi, "\\underline{$1}");
+    .replace(/<u[^>]*>([^<]+)<\/u>/gi, "\\underline{$1}")
+    .replace(/<s[^>]*>([^<]+)<\/s>/gi, "\\sout{$1}")
+    .replace(/<del[^>]*>([^<]+)<\/del>/gi, "\\sout{$1}")
+    .replace(/<strike[^>]*>([^<]+)<\/strike>/gi, "\\sout{$1}")
+    .replace(/<sup[^>]*>([^<]+)<\/sup>/gi, "\\textsuperscript{$1}")
+    .replace(/<sub[^>]*>([^<]+)<\/sub>/gi, "\\textsubscript{$1}")
+    .replace(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/gi, "\\href{$1}{$2}");
+
+  // Strip any remaining HTML tags that slipped through converters
+  latex = latex
+    .replace(/<blockquote[^>]*>/gi, "")
+    .replace(/<\/blockquote>/gi, "\n")
+    .replace(/<pre[^>]*>([^<]*)<\/pre>/gi, "$1")
+    .replace(/<span[^>]*>([^<]*)<\/span>/gi, "$1")
+    .replace(/<div[^>]*>([^<]*)<\/div>/gi, "$1\n")
+    .replace(/<[^>]+>/g, "");
 
   latex = latex.replace(/\n{3,}/g, "\n\n").trim();
 
   // RESTORE EQUATIONS AT THE END
   equations.forEach((eq, i) => {
     latex = latex.replace(new RegExp(`__EQ${i}__`, "g"), eq);
+  });
+
+  // RESTORE LATEX BLOCKS (tables, figures) AT THE END
+  latexBlocks.forEach((block, i) => {
+    latex = latex.replace(new RegExp(`__LATEXBLOCK${i}__`, "g"), block);
   });
 
   // Combine
