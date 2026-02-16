@@ -77,7 +77,7 @@ function TemplateSelect() {
           </div>
           <div className="flex flex-row flex-wrap mt-10 gap-20">
             {Object.entries(templates).map(([title, value]) => (
-              <Link key={value} to={`/detailPage/${value}`}>
+              <Link key={value} id={value === "blank" ? "tour-blank-template" : undefined} to={`/detailPage/${value}`}>
                 <TemplateCards title={title} />
               </Link>
             ))}

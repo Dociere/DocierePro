@@ -15,7 +15,7 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000";
 
-const NavBar = () => {
+const NavBar = ({ onStartTour }) => {
   const navigate = useNavigate();
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -287,11 +287,11 @@ const NavBar = () => {
   const handleAbout = () => {
     alert(
       "Docière Pro v1.0\nLaTeX Editor Redefined\n\n" +
-        "A modern LaTeX editor with intuitive interfaces:\n" +
-        "• Full Code View with Monaco Editor\n" +
-        "• Rich Text Editor for WYSIWYG editing\n" +
-        "• Section-based editing for structured documents\n\n" +
-        "Created with ❤️ for seamless document creation",
+      "A modern LaTeX editor with intuitive interfaces:\n" +
+      "• Full Code View with Monaco Editor\n" +
+      "• Rich Text Editor for WYSIWYG editing\n" +
+      "• Section-based editing for structured documents\n\n" +
+      "Created with ❤️ for seamless document creation",
     );
   };
 
@@ -598,6 +598,10 @@ const NavBar = () => {
       label: "Documentation",
       action: () => window.open("https://www.dociere.com/learn", "_blank"),
     },
+    {
+      label: "Interactive Tour",
+      action: onStartTour,
+    },
     { divider: true },
     {
       label: "LaTeX Tutorials",
@@ -708,36 +712,32 @@ const NavBar = () => {
             <button
               ref={(el) => (menuRefs.current.file = el)}
               onClick={(e) => handleMenuClick("file", e)}
-              className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "file" ? "font-medium" : ""
-              }`}
+              className={`hover:text-[#000] cursor-pointer transition-colors ${activeMenu === "file" ? "font-medium" : ""
+                }`}
             >
               File
             </button>
             <button
               ref={(el) => (menuRefs.current.edit = el)}
               onClick={(e) => handleMenuClick("edit", e)}
-              className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "edit" ? "font-medium" : ""
-              }`}
+              className={`hover:text-[#000] cursor-pointer transition-colors ${activeMenu === "edit" ? "font-medium" : ""
+                }`}
             >
               Edit
             </button>
             <button
               ref={(el) => (menuRefs.current.view = el)}
               onClick={(e) => handleMenuClick("view", e)}
-              className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "view" ? "font-medium" : ""
-              }`}
+              className={`hover:text-[#000] cursor-pointer transition-colors ${activeMenu === "view" ? "font-medium" : ""
+                }`}
             >
               View
             </button>
             <button
               ref={(el) => (menuRefs.current.help = el)}
               onClick={(e) => handleMenuClick("help", e)}
-              className={`hover:text-[#000] cursor-pointer transition-colors ${
-                activeMenu === "help" ? "font-medium" : ""
-              }`}
+              className={`hover:text-[#000] cursor-pointer transition-colors ${activeMenu === "help" ? "font-medium" : ""
+                }`}
             >
               Help
             </button>

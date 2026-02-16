@@ -36,7 +36,7 @@ const StartingPage = () => {
           </div>
 
           <div className="mt-5 gap-5 flex flex-col w-fit">
-            <Link to="/template">
+            <Link id="tour-create-project" to="/template">
               <div className="relative text-[#AB2D2D] text-base font-inter font-normal text-nowrap border-[#AB2D2D] pl-14 pt-[1vh] pb-[0.7vh] pr-10 border-[1px]">
                 <span className="absolute left-5 font-playfair top-0 text-2xl">
                   +
@@ -63,7 +63,7 @@ const StartingPage = () => {
         <div className="text-[#555555] text-xl font-inter font-medium leading-[20px]">
           Recent Projects
         </div>
-        <SearchBar data={projectData}/>
+        <SearchBar data={projectData} />
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
           {(projectData || []).slice(0, 5).map((project) => (
             <Link to={`/canvas?project=${project.id}`}>

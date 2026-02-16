@@ -103,6 +103,7 @@ const PdfViewer = ({
         {/* Compile button - always visible */}
         <div className="flex items-center">
           <button
+            id="tour-compile"
             onClick={onCompile}
             className="flex border-2 border-gray-300 px-2 rounded-sm py-[2px] cursor-pointer hover:bg-gray-50"
           >
