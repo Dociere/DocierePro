@@ -81,6 +81,10 @@ const EditorPage = () => {
   const [editingImageData, setEditingImageData] = useState(null);
   const [editingRange, setEditingRange] = useState(null);
 
+  // View Notice State
+  const [showTextViewNotice, setShowTextViewNotice] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
   const {
     currentProject,
     activeFile,
@@ -774,10 +778,20 @@ const EditorPage = () => {
             {projectDetails.activeFile}
           </div>
           <select
+            id="tour-view-switcher"
             className="rounded-sm ml-5 px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
          focus:ring-2 focus:ring-gray-100 outline-none focus:border-transparent font-medium hover:bg-gray-100"
             value={activeView}
-            onChange={(e) => setActiveView(e.target.value)}
+            onChange={(e) => {
+              const newView = e.target.value;
+              if (
+                newView === "text" &&
+                !localStorage.getItem("hideTextViewNotice")
+              ) {
+                setShowTextViewNotice(true);
+              }
+              setActiveView(newView);
+            }}
             style={{
               background:
                 settings.appearance.customThemes[settings.appearance.theme]
@@ -976,6 +990,55 @@ const EditorPage = () => {
           }
         }}
       />
+      {/* Text View Usage Notice Modal */}
+      {showTextViewNotice && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[10000] backdrop-blur-sm">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full border border-gray-100 transform transition-all animate-in fade-in zoom-in duration-200">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileIcon style={{ fill: "#0a0a0a" }} className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2 text-gray-900 font-inter">
+                Editor Note
+              </h3>
+              <p className="text-gray-500 mb-8 text-sm leading-relaxed px-2 font-inter">
+                Text editor will only and only be used to text content related
+                work, any other customizations needs to be done via{" "}
+                <span className="font-semibold text-gray-800 underline underline-offset-4">
+                  code editor
+                </span>
+                .
+              </p>
+            </div>
+
+            <div className="flex flex-col space-y-4">
+              <button
+                onClick={() => {
+                  if (dontShowAgain) {
+                    localStorage.setItem("hideTextViewNotice", "true");
+                  }
+                  setShowTextViewNotice(false);
+                }}
+                className="w-full bg-[#0a0a0a] text-white py-3 rounded-xl hover:bg-gray-800 transition-all font-medium text-sm shadow-lg shadow-black/10 active:scale-[0.98]"
+              >
+                Got it
+              </button>
+
+              <label className="flex items-center justify-center space-x-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(e) => setDontShowAgain(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black transition-all"
+                />
+                <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors font-inter">
+                  Don't show this message again
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -94,7 +94,10 @@ const DynamicSideBar = ({
         <div className="flex flex-col justify-between h-full">
           <div className="flex flex-col items-center pt-4 space-y-1">
             {/* Current Project file */}
-            <Link to={`/canvas?project=${projectDetails?.currentProject?.id}`}>
+            <Link
+              id="tour-project-file"
+              to={`/canvas?project=${projectDetails?.currentProject?.id}`}
+            >
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Current Project file"
@@ -114,7 +117,7 @@ const DynamicSideBar = ({
               </span>
             </Link>
             {/* Section Space */}
-            <div onClick={toggleSectionSpace}>
+            <div id="tour-section-space" onClick={toggleSectionSpace}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                 title="Section Space"
@@ -137,7 +140,7 @@ const DynamicSideBar = ({
             </div>
 
             {/* Citation Manager */}
-            <div className="relative group">
+            <div id="tour-citation-manager" className="relative group">
               <Link onClick={handleCitationIconClick}>
                 <div
                   className="flex items-center justify-center text-[#585858] cursor-pointer p-2"
@@ -164,7 +167,7 @@ const DynamicSideBar = ({
             </div>
 
             {/* Share / Collaborate */}
-            <div onClick={handleShareIconClick}>
+            <div id="tour-share" onClick={handleShareIconClick}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Share"
@@ -185,7 +188,7 @@ const DynamicSideBar = ({
             </div>
 
             {/* Easy Math Input */}
-            <Link onClick={handleMathIconClick}>
+            <Link id="tour-math-input" onClick={handleMathIconClick}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Easy Math Input"
@@ -206,7 +209,7 @@ const DynamicSideBar = ({
             </Link>
 
             {/* Extensions */}
-            <Link to="/canvas">
+            <Link id="tour-extensions" to="/canvas">
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Extensions"
@@ -227,7 +230,10 @@ const DynamicSideBar = ({
             </Link>
 
             {/* Draft Versioning */}
-            <div onClick={() => setIsVersionModalOpen(true)}>
+            <div
+              id="tour-versioning"
+              onClick={() => setIsVersionModalOpen(true)}
+            >
               <span
                 className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group`}
                 title="Draft Versioning"
@@ -244,7 +250,7 @@ const DynamicSideBar = ({
             </div>
 
             {/* AI Chat */}
-            <div onClick={onOpenAIChat}>
+            <div id="tour-ai-chat" onClick={onOpenAIChat}>
               <span
                 className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group font-poppins text-sm`}
                 title="AI Chat"
@@ -260,7 +266,7 @@ const DynamicSideBar = ({
           </div>
           <div className="flex flex-col mb-2">
             {/* Settings */}
-            <Link to="/settings">
+            <Link id="tour-settings" to="/settings">
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Settings"
@@ -276,7 +282,7 @@ const DynamicSideBar = ({
               </span>
             </Link>
             {/* User Profile */}
-            <Link onClick={handleProfileIconClick}>
+            <Link id="tour-account" onClick={handleProfileIconClick}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Account"
