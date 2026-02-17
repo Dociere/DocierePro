@@ -1324,6 +1324,167 @@ app.delete("/api/equations/:filename", async (req, res) => {
 
 // ==================== CITATION ROUTES ====================
 
+app.get("/api/citation/doi-lookup", async (req, res) => {
+  const { doi } = req.query;
+  if (!doi) {
+    return res.status(400).json({ success: false, error: "DOI is required" });
+  }
+
+  try {
+    // Clean the DOI (handle full URLs or plain DOIs)
+    const cleanDoi = doi.replace(/^https?:\/\/doi\.org\//, "").trim();
+    console.log(`🔍 Looking up DOI: ${cleanDoi}`);
+
+    const response = await axios.get(
+      `https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`,
+      {
+        headers: {
+          "User-Agent": "DocierePro/1.0 (mailto:support@dociere.com)",
+        },
+        timeout: 10000,
+      },
+    );
+
+    const item = response.data.message;
+
+    // Extract author names
+    const authors = (item.author || [])
+      .map((a) => {
+        if (a.given && a.family) return `${a.given[0]}. ${a.family}`;
+        if (a.family) return a.family;
+        if (a.name) return a.name;
+        return "";
+      })
+      .filter(Boolean)
+      .join(", ");
+
+    // Extract year
+    const dateParts =
+      item.published?.["date-parts"]?.[0] ||
+      item["published-print"]?.["date-parts"]?.[0] ||
+      item["published-online"]?.["date-parts"]?.[0] ||
+      [];
+    const year = dateParts[0] ? String(dateParts[0]) : "";
+
+    // Extract pages
+    const pages = item.page || "";
+
+    // Extract volume and issue
+    const volume = item.volume || "";
+    const issue = item.issue || "";
+
+    // Extract journal
+    const journal =
+      (item["container-title"] && item["container-title"][0]) ||
+      (item["short-container-title"] && item["short-container-title"][0]) ||
+      "";
+
+    // Extract title
+    const title = (item.title && item.title[0]) || "";
+
+    console.log(`✅ DOI resolved: "${title}" by ${authors}`);
+
+    res.json({
+      success: true,
+      data: {
+        authors,
+        title,
+        journal,
+        volume,
+        issue,
+        pages,
+        year,
+        doi: cleanDoi,
+      },
+    });
+  } catch (error) {
+    console.error(`❌ DOI lookup failed:`, error.message);
+    const status = error.response?.status;
+    if (status === 404) {
+      return res.status(404).json({
+        success: false,
+        error: "DOI not found. Please check the DOI and try again.",
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch DOI metadata. Please try again.",
+    });
+  }
+});
+
+// API: Academic Search (Unified query for Title/Author/Journal)
+app.get("/api/citation/search", async (req, res) => {
+  const { q } = req.query;
+  if (!q) {
+    return res.status(400).json({ success: false, error: "Query is required" });
+  }
+
+  try {
+    console.log(`🔎 Searching academics for: "${q}"`);
+    const response = await axios.get(`https://api.crossref.org/works`, {
+      params: {
+        query: q,
+        rows: 10,
+      },
+      headers: {
+        "User-Agent": "DocierePro/1.0 (mailto:support@dociere.com)",
+      },
+      timeout: 10000,
+    });
+
+    const items = response.data.message.items || [];
+
+    // Normalize items
+    const results = items.map((item) => {
+      // Extract author names
+      const authors = (item.author || [])
+        .map((a) => {
+          if (a.given && a.family) return `${a.given[0]}. ${a.family}`;
+          if (a.family) return a.family;
+          if (a.name) return a.name;
+          return "";
+        })
+        .filter(Boolean)
+        .join(", ");
+
+      // Extract year
+      const dateParts =
+        item.published?.["date-parts"]?.[0] ||
+        item["published-print"]?.["date-parts"]?.[0] ||
+        item["published-online"]?.["date-parts"]?.[0] ||
+        [];
+      const year = dateParts[0] ? String(dateParts[0]) : "";
+
+      // Extract journal
+      const journal =
+        (item["container-title"] && item["container-title"][0]) ||
+        (item["short-container-title"] && item["short-container-title"][0]) ||
+        "";
+
+      return {
+        authors,
+        title: (item.title && item.title[0]) || "Untitled",
+        journal,
+        year,
+        doi: item.DOI || "",
+        volume: item.volume || "",
+        issue: item.issue || "",
+        pages: item.page || "",
+        publisher: item.publisher || "",
+      };
+    });
+
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error(`❌ Search failed:`, error.message);
+    res.status(500).json({
+      success: false,
+      error: "Academic search failed. Please try again.",
+    });
+  }
+});
+
 // API: Compile citation
 app.post("/api/citation/compile", async (req, res) => {
   console.log("\n" + "=".repeat(60));
@@ -1533,21 +1694,31 @@ app.post("/api/citation/save", async (req, res) => {
   try {
     const { fileName, citationData, latexCode } = req.body;
 
-    if (!fileName || !citationData || !latexCode) {
+    if (!citationData || !latexCode) {
       return res
         .status(400)
-        .json({ error: "fileName, citationData, and latexCode are required" });
+        .json({ error: "citationData and latexCode are required" });
     }
 
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const fullFileName = `${sanitizedFileName}.json`;
+    const rawName = fileName || citationData.title || `citation_${Date.now()}`;
+    const sanitizedFileName = rawName
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .substring(0, 60);
+    // Ensure unique filename by appending timestamp
+    const uniqueFileName = `${sanitizedFileName}_${Date.now()}`;
+    const fullFileName = `${uniqueFileName}.json`;
     const filePath = path.join(CITATIONS_DIR, fullFileName);
+
+    const existingFiles = await fs.readdir(CITATIONS_DIR);
+    const jsonFiles = existingFiles.filter((f) => f.endsWith(".json"));
+    const citationNumber = jsonFiles.length + 1;
 
     const citationRecord = {
       ...citationData,
       latexCode,
+      citationNumber,
       createdAt: new Date().toISOString(),
-      fileName: sanitizedFileName,
+      fileName: uniqueFileName,
     };
 
     await fs.writeFile(
@@ -1558,7 +1729,8 @@ app.post("/api/citation/save", async (req, res) => {
 
     res.json({
       success: true,
-      fileName: sanitizedFileName,
+      fileName: uniqueFileName,
+      citationNumber,
       message: "Citation saved successfully",
     });
   } catch (error) {
@@ -1583,7 +1755,7 @@ app.get("/api/citation/list", async (req, res) => {
       }),
     );
 
-    citations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    citations.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     res.json(citations);
   } catch (error) {
     console.error("❌ List citations error:", error);
