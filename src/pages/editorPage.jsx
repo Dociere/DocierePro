@@ -38,6 +38,7 @@ import { projectContext } from "../context/useProject.jsx";
 import PdfViewer from "../components/pdfViewer.jsx";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth.jsx";
+import { useSettings } from "../context/useSettings";
 import axios from "axios";
 
 const EditorPage = () => {
@@ -49,6 +50,7 @@ const EditorPage = () => {
   const effectiveProjectDetails = remoteProject || projectDetails;
   const [collaborationToken, setCollaborationToken] = useState(null);
   const { user, isServerConnected, isAuthenticated } = useAuth();
+  const { settings } = useSettings();
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -759,20 +761,59 @@ const EditorPage = () => {
       className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-7 ${
         isSectionSpaceOpen ? "ml-64" : "ml-0"
       }`}
+      style={{
+        background:
+          settings.appearance.customThemes[settings.appearance.theme].primary,
+      }}
     >
       <LeaveSession projectId={projectDetails.currentProject?.id} />
       {/* Left side of the screen */}
-      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden ml-10 pb-[3.2vh]">
-        <div className="flex justify-between border-b border-[#CFCFCF] bg-white flex-shrink-0 sticky top-0 z-10 items-center h-8">
-          <div className="ml-2 text-[12px] font-inter text-gray-700 font-light border-2 border-gray-300 px-2 py-[1px] rounded-lg flex">
-            <FileIcon style={{ fill: "#4F4F4F" }} className="w-4 h-4 mr-2" />
+      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r overflow-hidden ml-10 pb-[3.2vh]">
+        <div
+          className="flex justify-between border-b border-[#CFCFCF] flex-shrink-0 sticky top-0 z-10 items-center h-8"
+          style={{
+            background:
+              settings.appearance.customThemes[settings.appearance.theme]
+                .primary,
+            borderColor:
+              settings.appearance.customThemes[settings.appearance.theme]
+                .border,
+          }}
+        >
+          <div
+            className="ml-2 text-[12px] font-inter text-gray-700 font-light border-2 px-2 py-[1px] rounded-lg flex"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text1,
+              borderColor:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .border,
+            }}
+          >
+            <FileIcon
+              style={{
+                fill: settings.appearance.customThemes[
+                  settings.appearance.theme
+                ].icon1,
+              }}
+              className="w-4 h-4 mr-2"
+            />
             {projectDetails.activeFile}
           </div>
           <select
-            className="rounded-sm ml-5 bg-white px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
+            className="rounded-sm ml-5 px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
          focus:ring-2 focus:ring-gray-100 outline-none focus:border-transparent font-medium hover:bg-gray-100"
             value={activeView}
             onChange={(e) => setActiveView(e.target.value)}
+            style={{
+              background:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .primary,
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text2,
+            }}
           >
             <option value="code">Code Editor</option>
             <option value="section">Section View</option>
@@ -854,26 +895,31 @@ const EditorPage = () => {
               />
             </div>
           )}
-            {/* AI Chat Panel - Persistent & Overlay */}
-            <div 
-              className={`absolute top-0 right-0 h-full w-full z-20 shadow-xl transition-transform duration-300 ease-in-out transform bg-white border-l border-gray-200 ${
-                showAIChat ? "translate-x-0" : "translate-x-full hidden"
-              }`}
-            >
-              <AIChatPanel
-                projectDetails={projectDetails}
-                onApplyChanges={(newContent) =>
-                  updateAllEditors("monaco", newContent)
-                }
-                onClose={() => setShowAIChat(false)}
-              />
-            </div>
+          {/* AI Chat Panel - Persistent & Overlay */}
+          <div
+            className={`absolute top-0 right-0 h-full w-full z-20 shadow-xl transition-transform duration-300 ease-in-out transform bg-white border-l border-gray-200 ${
+              showAIChat ? "translate-x-0" : "translate-x-full hidden"
+            }`}
+          >
+            <AIChatPanel
+              projectDetails={projectDetails}
+              onApplyChanges={(newContent) =>
+                updateAllEditors("monaco", newContent)
+              }
+              onClose={() => setShowAIChat(false)}
+            />
           </div>
         </div>
-
+      </div>
 
       {/* Right side of the screen */}
-      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r border-[#CFCFCF] overflow-hidden">
+      <div
+        className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r overflow-hidden"
+        style={{
+          borderColor:
+            settings.appearance.customThemes[settings.appearance.theme].border,
+        }}
+      >
         {activeRightView === "preview" && (
           <div className="flex-1 overflow-hidden relative">
             <PdfViewer
@@ -910,7 +956,6 @@ const EditorPage = () => {
             </div>
           </div>
         )}
-
       </div>
 
       {/* Table Designer Modal for main Monaco editor */}

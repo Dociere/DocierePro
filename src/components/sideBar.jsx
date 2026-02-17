@@ -82,11 +82,13 @@ const DynamicSideBar = ({
   return (
     <>
       <div
-        className="h-[calc(100vh-3rem)] w-10 fixed top-7 left-0 z-40 border-[#CFCFCF] border-r-[1px] select-none"
+        className="h-[calc(100vh-3rem)] w-10 fixed top-7 left-0 z-40 border-r-[1px] select-none"
         style={{
           background:
             settings.appearance.customThemes[settings.appearance.theme]
               .background,
+          borderColor:
+            settings.appearance.customThemes[settings.appearance.theme].border,
         }}
       >
         <div className="flex flex-col justify-between h-full">
@@ -97,7 +99,14 @@ const DynamicSideBar = ({
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Current Project file"
               >
-                <DraftIcon style={{ fill: "#585858" }} className="w-4 h-4" />
+                <DraftIcon
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].icon1,
+                  }}
+                  className="w-4 h-4"
+                />
 
                 {/* <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Current Project file
@@ -112,7 +121,11 @@ const DynamicSideBar = ({
               >
                 <div className="p-3 hover:bg-gray-200 rounded-md">
                   <SectionIcon
-                    style={{ fill: "#585858" }}
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
                     className="w-4 h-4"
                   />
                 </div>
@@ -131,7 +144,11 @@ const DynamicSideBar = ({
                   title="Citation Manager"
                 >
                   <CitationIcon
-                    style={{ fill: "#585858" }}
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
                     className="w-4 h-4"
                   />
                 </div>
@@ -152,7 +169,14 @@ const DynamicSideBar = ({
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Share"
               >
-                <ShareIcon style={{ fill: "#585858" }} className="w-4 h-4" />
+                <ShareIcon
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].icon1,
+                  }}
+                  className="w-4 h-4"
+                />
 
                 {/* <span className="absolute left-full top-1 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Share
@@ -166,7 +190,14 @@ const DynamicSideBar = ({
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Easy Math Input"
               >
-                <MathIcon style={{ fill: "#585858" }} className="w-4 h-4" />
+                <MathIcon
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].icon1,
+                  }}
+                  className="w-4 h-4"
+                />
 
                 {/* <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                 Easy Math Input
@@ -181,7 +212,11 @@ const DynamicSideBar = ({
                 title="Extensions"
               >
                 <ExtensionIcon
-                  style={{ fill: "#585858" }}
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].icon1,
+                  }}
                   className="w-4 h-4"
                 />
 
@@ -198,7 +233,11 @@ const DynamicSideBar = ({
                 title="Draft Versioning"
               >
                 <DraftVersionIcon
-                  style={{ fill: "#585858" }}
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].icon1,
+                  }}
                   className="w-4 h-4"
                 />
               </span>
@@ -209,6 +248,11 @@ const DynamicSideBar = ({
               <span
                 className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group font-poppins text-sm`}
                 title="AI Chat"
+                style={{
+                  color:
+                    settings.appearance.customThemes[settings.appearance.theme]
+                      .icon1,
+                }}
               >
                 AI
               </span>
@@ -221,7 +265,14 @@ const DynamicSideBar = ({
                 className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
                 title="Settings"
               >
-                <SettingsIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+                <SettingsIcon
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].icon1,
+                  }}
+                  className="w-5 h-5"
+                />
               </span>
             </Link>
             {/* User Profile */}
@@ -238,7 +289,14 @@ const DynamicSideBar = ({
                       .join("")}
                   </span>
                 ) : (
-                  <UserIcon style={{ fill: "#585858" }} className="w-5 h-5" />
+                  <UserIcon
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
+                    className="w-5 h-5"
+                  />
                 )}
               </span>
               {isProfileActive &&

@@ -42,7 +42,7 @@ const SettingsPage = () => {
 
   return (
     <div
-      className={`h-screen overflow-y-auto scrollbar-hide flex flex-col ml-12 pb-10 mt-11 ${isDark ? "bg-[#131313]" : "bg-[#eaeaea]"} ${
+      className={`h-screen overflow-y-auto scrollbar-hide flex flex-col ml-12 pb-10 mt-11 ${
         isSectionSpaceOpen ? "ml-96" : "ml-0"
       }`}
     >
@@ -50,19 +50,32 @@ const SettingsPage = () => {
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className={`flex gap-2 pl-4 mt-1 pt-2 py-2 w-32 h-9 rounded-xl font-inter text-sm transition-colors ${
-            isDark
-              ? "text-[#e5e5e5] hover:bg-[#2d2d2d]"
-              : "text-black hover:bg-gray-50 hover:text-[#212121]"
-          }`}
+          className={`flex gap-2 pl-4 mt-1 pt-2 py-2 w-32 h-9 rounded-xl font-inter text-sm transition-colors`}
+          style={{
+            color:
+              settings.appearance.customThemes[settings.appearance.theme].text1,
+          }}
         >
-          <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5" />
+          <GoBack
+            style={{
+              fill: settings.appearance.customThemes[settings.appearance.theme]
+                .text1,
+            }}
+            className="w-5 h-5"
+          />
           <p className="ml-1">Go Back</p>
         </button>
         <div className="flex flex-1 flex-col ml-10 mr-10">
           {/* Header */}
           <div className="mb-5">
-            <h1 className={`text-5xl font-playfair font-bold mb-2`}>
+            <h1
+              className={`text-5xl font-playfair font-bold mb-2`}
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text1,
+              }}
+            >
               Settings
             </h1>
             <p

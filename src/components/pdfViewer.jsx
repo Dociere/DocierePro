@@ -8,6 +8,7 @@ import axios from "axios";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "../assets/styles/pdfViewer.css";
+import { useSettings } from "../context/useSettings";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
@@ -24,6 +25,7 @@ const PdfViewer = ({
   const [scale, setScale] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
   const pageRefs = useRef([]);
+  const { settings } = useSettings();
   console.log("From PDFViewer", projectDetails);
 
   const getPdfFileName = () => {
@@ -99,18 +101,44 @@ const PdfViewer = ({
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar - Compile button always visible, rest only when PDF exists */}
-      <div className="flex items-center justify-between px-4 py-1 bg-gray-50 border-b border-gray-300 font-poppins h-8">
+      <div
+        className="flex items-center justify-between px-4 py-1 border-b font-poppins h-8"
+        style={{
+          background:
+            settings.appearance.customThemes[settings.appearance.theme].primary,
+          borderColor:
+            settings.appearance.customThemes[settings.appearance.theme].border,
+        }}
+      >
         {/* Compile button - always visible */}
         <div className="flex items-center">
           <button
             onClick={onCompile}
-            className="flex border-2 border-gray-300 px-2 rounded-sm py-[2px] cursor-pointer hover:bg-gray-50"
+            className="flex border-2 px-2 rounded-sm py-[2px] cursor-pointer hover:bg-gray-50"
+            style={{
+              borderColor:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .border,
+            }}
           >
             <SyncIcon
-              style={{ fill: "#4F4F4F" }}
+              style={{
+                fill: settings.appearance.customThemes[
+                  settings.appearance.theme
+                ].icon1,
+              }}
               className="mt-[1px] w-4 h-4"
             />
-            <p className="px-2 font-poppins text-sm font-light">Compile</p>
+            <p
+              className="px-2 font-poppins text-sm font-light"
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text1,
+              }}
+            >
+              Compile
+            </p>
           </button>
           {projectDetails.compilationStatus === "error" ? (
             <p
@@ -123,6 +151,11 @@ const PdfViewer = ({
             <p
               onClick={onShowLogs}
               className="font-poppins font-light text-sm ml-3 cursor-pointer"
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text1,
+              }}
             >
               Logs
             </p>
@@ -131,7 +164,14 @@ const PdfViewer = ({
 
         {/* Page navigation - only visible when PDF exists */}
         {pdfUrl && (
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text1,
+            }}
+          >
             <button
               onClick={prevPage}
               disabled={pageNumber <= 1}
@@ -155,10 +195,21 @@ const PdfViewer = ({
 
         {/* Zoom and download controls - only visible when PDF exists */}
         {pdfUrl && (
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text1,
+            }}
+          >
             <button onClick={zoomOut} className="rounded hover:bg-gray-50">
               <DecIcon
-                style={{ fill: "#4F4F4F" }}
+                style={{
+                  fill: settings.appearance.customThemes[
+                    settings.appearance.theme
+                  ].text1,
+                }}
                 className="mt-[1px] w-4 h-4"
               />
             </button>
@@ -167,24 +218,37 @@ const PdfViewer = ({
             </span>
             <button onClick={zoomIn} className="rounded hover:bg-gray-50">
               <IncIcon
-                style={{ fill: "#4F4F4F" }}
+                style={{
+                  fill: settings.appearance.customThemes[
+                    settings.appearance.theme
+                  ].text1,
+                }}
                 className="mt-[1px] w-4 h-4"
               />
             </button>
             <button onClick={handleExportPDF}>
               <DownloadIcon
-                style={{ fill: "#4F4F4F" }}
+                style={{
+                  fill: settings.appearance.customThemes[
+                    settings.appearance.theme
+                  ].text1,
+                }}
                 className="mt-[1px] w-5 h-5 ml-5"
               />
             </button>
           </div>
         )}
       </div>
-
       {/* PDF Viewer */}
       <div
-        className="flex-1 overflow-auto bg-white pb-4"
-        style={{ overflowX: "auto", overflowY: "auto" }}
+        className="flex-1 overflow-auto pb-4"
+        style={{
+          overflowX: "auto",
+          overflowY: "auto",
+          background:
+            settings.appearance.customThemes[settings.appearance.theme]
+              .background,
+        }}
       >
         {pdfUrl ? (
           <div className="flex flex-col items-center gap-4 min-w-min">

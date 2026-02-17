@@ -203,7 +203,10 @@ const MonacoEditorPanel = ({
     // Register LaTeX language with Monarch tokenizer
     registerLatexLanguage(monaco);
     defineLatexTheme(monaco);
-    monaco.editor.setTheme("latex-light");
+    // monaco.editor.setTheme("latex-light");
+    monaco.editor.setTheme(
+      settings.appearance.customThemes[settings.appearance.theme].monacoEditor,
+    );
 
     // Add context menu actions
     if (onOpenTableModal) {

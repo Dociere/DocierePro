@@ -13,15 +13,24 @@ const StatusBar = () => {
   return (
     <>
       <div
-        className="w-screen z-30 h-5 fixed bottom-0 border-[#CFCFCF] border-[1.5px]"
+        className="w-screen z-30 h-5 fixed bottom-0 border-[1.5px]"
         style={{
           background:
             settings.appearance.customThemes[settings.appearance.theme]
               .background,
+          borderColor:
+            settings.appearance.customThemes[settings.appearance.theme].border,
         }}
       >
         <div className="flex flex-row justify-between text-gray-500 mx-5 text-[13px]">
-          <div className="flex flex-row gap-5">
+          <div
+            className="flex flex-row gap-5"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text3,
+            }}
+          >
             {isServerConnected ? (
               <div className="flex flex-row gap-5">
                 <CloudOnIcon style={{ fill: "#296623" }} className="w-4 h-4" />
@@ -38,8 +47,22 @@ const StatusBar = () => {
             <p>Sync</p> */}
           </div>
           <div className="flex flex-row gap-5">
-            <LayoutIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
-            <HelpIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
+            <LayoutIcon
+              style={{
+                fill: settings.appearance.customThemes[
+                  settings.appearance.theme
+                ].text3,
+              }}
+              className="w-4 h-4"
+            />
+            <HelpIcon
+              style={{
+                fill: settings.appearance.customThemes[
+                  settings.appearance.theme
+                ].text3,
+              }}
+              className="w-4 h-4"
+            />
           </div>
         </div>
       </div>

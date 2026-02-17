@@ -702,17 +702,25 @@ const NavBar = () => {
         }}
       >
         <div
-          className="h-7 w-full top-[3px] bottom-0 border-b-[0.5px] border-[#CFCFCF] flex"
+          className="h-7 w-full top-[3px] bottom-0 border-b-[0.5px] flex"
           style={{
             background:
               settings.appearance.customThemes[settings.appearance.theme]
                 .background,
+            borderColor:
+              settings.appearance.customThemes[settings.appearance.theme]
+                .border,
           }}
         >
           {/* Left Part - Title bar Menus */}
           <div
-            className="flex flex-1 gap-7 text-[13px] pl-5 text-[#212121] mt-1"
-            style={{ WebkitAppRegion: "no-drag" }}
+            className="flex flex-1 gap-7 text-[13px] pl-5 mt-1"
+            style={{
+              WebkitAppRegion: "no-drag",
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text2,
+            }}
           >
             <button
               ref={(el) => (menuRefs.current.file = el)}
@@ -756,7 +764,12 @@ const NavBar = () => {
           {projectDetails?.currentProject?.title ? (
             <div
               className="flex flex-1 py-0 text-sm font-inter font-medium justify-center"
-              style={{ WebkitAppRegion: "no-drag" }}
+              style={{
+                WebkitAppRegion: "no-drag",
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text1,
+              }}
             >
               <div
                 className="flex flex-row items-center cursor-pointer select-none"
@@ -764,7 +777,12 @@ const NavBar = () => {
               >
                 {projectDetails?.currentProject?.title}
                 <EditIcon
-                  style={{ fill: "#585858", WebkitAppRegion: "no-drag" }}
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].icon1,
+                    WebkitAppRegion: "no-drag",
+                  }}
                   className="ml-2 w-3 h-3 relative select-none"
                 />
               </div>
@@ -787,7 +805,13 @@ const NavBar = () => {
               )}
             </div>
           ) : (
-            <div>
+            <div
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text1,
+              }}
+            >
               <p className="font-playfair text-sm font-medium mt-1">
                 Docière Pro
               </p>
@@ -797,7 +821,12 @@ const NavBar = () => {
           {/* Title Bar Control Options */}
           <div
             className="flex flex-1 justify-end"
-            style={{ WebkitAppRegion: "no-drag" }}
+            style={{
+              WebkitAppRegion: "no-drag",
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text1,
+            }}
           >
             <button
               className="hover:bg-gray-200 -mt-2 rounded-full px-2"
@@ -812,18 +841,31 @@ const NavBar = () => {
             >
               {isMaximized ? (
                 <ToMaxIcon
-                  style={{ fill: "#000000" }}
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].text1,
+                  }}
                   className="w-4 h-4 rotate-180"
                 />
               ) : (
                 <ToMinIcon
-                  style={{ fill: "#000000" }}
+                  style={{
+                    fill: settings.appearance.customThemes[
+                      settings.appearance.theme
+                    ].text1,
+                  }}
                   className="w-4 h-4 rotate-180"
                 />
               )}
             </button>
             <button
               className="hover:bg-gray-200 rounded-full px-2 text-[#0a0a0a]"
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text2,
+              }}
               onClick={() => window.electronAPI.close()}
             >
               ✕
