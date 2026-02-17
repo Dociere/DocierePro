@@ -13,11 +13,13 @@ const StatusBar = () => {
   return (
     <>
       <div
-        className="w-screen z-30 h-5 fixed bottom-0 border-[#CFCFCF] border-[1.5px]"
+        className="w-screen z-30 h-5 fixed bottom-0 border-[1.5px]"
         style={{
           background:
             settings.appearance.customThemes[settings.appearance.theme]
               .background,
+          borderColor:
+            settings.appearance.customThemes[settings.appearance.theme].border,
         }}
       >
         <div className="flex flex-row justify-between text-gray-500 mx-5 text-[13px]">

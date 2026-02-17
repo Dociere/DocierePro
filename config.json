@@ -1,26 +1,34 @@
 {
   "appearance": {
-    "theme": "light",
+    "theme": "dark",
     "customThemes": {
       "dark": {
-        "background": "#131313",
+        "background": "#232323",
         "surface": "#1a1a1a",
-        "primary": "#1E90FF",
+        "primary": "#161616",
         "secondary": "#FF69B4",
-        "text": "#FFFFFF",
-        "accent": "#FFD700",
+        "border": "#4F4F4F",
+        "text1": "#ffffff",
+        "text2": "#ffffff",
+        "text3": "#6b7280",
+        "icon1": "#ffffff",
         "custom1": "#FFD700",
-        "custom2": "#FFD700"
+        "custom2": "#FFD700",
+        "monacoEditor": "vs-dark"
       },
       "light": {
         "background": "#F9F9F9",
         "surface": "#eaeaea",
-        "primary": "#1E90FF",
-        "secondary": "#FF69B4",
-        "text": "#000000",
-        "accent": "#FFD700",
+        "primary": "#ffffff",
+        "secondary": "#f9fafb",
+        "border": "#CFCFCF",
+        "text1": "#000000",
+        "text2": "#212121",
+        "text3": "#6b7280",
+        "icon1": "#585858",
         "custom1": "#FFD700",
-        "custom2": "#FFD700"
+        "custom2": "#FFD700",
+        "monacoEditor": "latex-light"
       }
     }
   },
