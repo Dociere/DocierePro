@@ -110,9 +110,9 @@ const PdfViewer = ({
             settings.appearance.customThemes[settings.appearance.theme].border,
         }}
       >
-        {/* Compile button - always visible */}
         <div className="flex items-center">
           <button
+            id="tour-compile"
             onClick={onCompile}
             className="flex border-2 px-2 rounded-sm py-[2px] cursor-pointer hover:bg-gray-50"
             style={{

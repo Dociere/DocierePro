@@ -16,7 +16,7 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000";
 
-const NavBar = () => {
+const NavBar = ({ onStartTour }) => {
   const navigate = useNavigate();
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -599,6 +599,10 @@ const NavBar = () => {
     {
       label: "Documentation",
       action: () => window.open("https://www.dociere.com/learn", "_blank"),
+    },
+    {
+      label: "Interactive Tour",
+      action: onStartTour,
     },
     { divider: true },
     {

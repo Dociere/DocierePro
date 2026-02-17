@@ -247,7 +247,7 @@ const DetailsPage = () => {
 
           {isFormValid ? (
             <>
-              <Link to="#" onClick={handleNextClick}>
+              <Link id="tour-details-next" to="#" onClick={handleNextClick}>
                 <div className="w-32 h-8 border-2 flex items-center justify-center border-[#5F5F5F]">
                   <span className="text-base font-semibold font-inter text-[#5F5F5F]">
                     Next
