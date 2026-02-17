@@ -4,10 +4,12 @@ import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SearchBar from "../components/searchBar";
 import TemplateCards from "../components/templateCards";
 import { loadProjects } from "../api/projectHandling.jsx";
+import { useSettings } from "../context/useSettings";
 
 const StartingPage = () => {
   const [projectData, setProjectData] = useState([]);
   const fileRef = useRef(null);
+  const { settings } = useSettings();
 
   useEffect(() => {
     fetchData();
@@ -23,15 +25,36 @@ const StartingPage = () => {
     <div className="h-screen overflow-y-auto scrollbar-hide flex flex-col ml-36 mr-20 pb-10 mt-10">
       <div className="flex flex-row mt-20">
         <div>
-          <div className="text-black text-5xl font-playfair font-bold leading-[32px]">
+          <div
+            className="text-5xl font-playfair font-bold leading-[32px]"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text1,
+            }}
+          >
             Docière Pro
           </div>
-          <div className="mt-4 text-[#7D7D7D] text-3xl font-inter font-extralight tracking-wide">
+          <div
+            className="mt-4 text-[#7D7D7D] text-3xl font-inter font-extralight tracking-wide"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text3,
+            }}
+          >
             LaTeX Redefined
           </div>
         </div>
         <div className="ml-72">
-          <div className="text-[#3B3B3B] text-base font-inter font-medium leading-[20px]">
+          <div
+            className="text-base font-inter font-medium leading-[20px]"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text2,
+            }}
+          >
             Get started
           </div>
 
@@ -60,10 +83,16 @@ const StartingPage = () => {
       </div>
 
       <div className="mt-20">
-        <div className="text-[#555555] text-xl font-inter font-medium leading-[20px]">
+        <div
+          className="text-xl mb-3 font-inter font-medium leading-[20px]"
+          style={{
+            color:
+              settings.appearance.customThemes[settings.appearance.theme].text2,
+          }}
+        >
           Recent Projects
         </div>
-        <SearchBar data={projectData}/>
+        <SearchBar data={projectData} />
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
           {(projectData || []).slice(0, 5).map((project) => (
             <Link to={`/canvas?project=${project.id}`}>

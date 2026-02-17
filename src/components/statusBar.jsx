@@ -23,7 +23,14 @@ const StatusBar = () => {
         }}
       >
         <div className="flex flex-row justify-between text-gray-500 mx-5 text-[13px]">
-          <div className="flex flex-row gap-5">
+          <div
+            className="flex flex-row gap-5"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text3,
+            }}
+          >
             {isServerConnected ? (
               <div className="flex flex-row gap-5">
                 <CloudOnIcon style={{ fill: "#296623" }} className="w-4 h-4" />
@@ -40,8 +47,22 @@ const StatusBar = () => {
             <p>Sync</p> */}
           </div>
           <div className="flex flex-row gap-5">
-            <LayoutIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
-            <HelpIcon style={{ fill: "#6B6B6B" }} className="w-4 h-4" />
+            <LayoutIcon
+              style={{
+                fill: settings.appearance.customThemes[
+                  settings.appearance.theme
+                ].text3,
+              }}
+              className="w-4 h-4"
+            />
+            <HelpIcon
+              style={{
+                fill: settings.appearance.customThemes[
+                  settings.appearance.theme
+                ].text3,
+              }}
+              className="w-4 h-4"
+            />
           </div>
         </div>
       </div>
