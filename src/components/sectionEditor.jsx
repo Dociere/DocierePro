@@ -990,6 +990,15 @@ const RecursiveSection = ({
                 {section.subtype === "starred" && (
                   <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-500">unnumbered</span>
                 )}
+                {(section.source === "file" && section.fileName || section.contentFileName) && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded text-blue-600 flex items-center gap-1" title={`Sourced from ${section.fileName || section.contentFileName}`}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    {section.fileName || section.contentFileName}
+                  </span>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
