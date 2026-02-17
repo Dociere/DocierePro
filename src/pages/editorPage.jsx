@@ -326,7 +326,7 @@ const EditorPage = () => {
         lastSyncedLatex.current = latexDoc;
 
         const bodyContent = extractLatexBody(latexDoc);
-        const extractedSections = latexToSections(latexDoc);
+        const extractedSections = latexToSections(latexDoc, projectDetails.currentProject.files);
 
         // Only set sections if they're actually different
         setSections((prevSections) => {
@@ -522,10 +522,33 @@ const EditorPage = () => {
 
             case "sections":
               addDebugLog("🔄 Converting Sections → LaTeX");
-              newLatexContent = sectionsToLatex(
+              const result = sectionsToLatex(
                 content,
-                projectDetails.latexContent || lastSyncedLatex.current,
               );
+              newLatexContent = result.latex;
+
+              // Write file updates back to the project
+              if (Object.keys(result.fileUpdates).length > 0) {
+                addDebugLog(`📁 File updates: ${Object.keys(result.fileUpdates).join(", ")}`);
+              }
+
+              // Build updated files object with file updates applied
+              const updatedFiles = { ...projectDetails.currentProject.files };
+              for (const [fileName, fileContent] of Object.entries(result.fileUpdates)) {
+                if (updatedFiles[fileName]) {
+                  updatedFiles[fileName] = {
+                    ...updatedFiles[fileName],
+                    content: fileContent,
+                  };
+                } else {
+                  updatedFiles[fileName] = { content: fileContent };
+                }
+              }
+
+              // Store fileUpdates so we can apply them to the project below
+              // We attach this to be used when building updatedProject
+              content._fileUpdates = updatedFiles;
+
               addDebugLog("✅ Sections conversion complete");
               break;
 
@@ -541,10 +564,15 @@ const EditorPage = () => {
 
           lastSyncedLatex.current = newLatexContent;
 
+          // If sections source provided file updates, merge them into files
+          const baseFiles = (source === "sections" && content._fileUpdates)
+            ? content._fileUpdates
+            : projectDetails.currentProject.files;
+
           const updatedProject = {
             ...projectDetails.currentProject,
             files: {
-              ...projectDetails.currentProject.files,
+              ...baseFiles,
               [projectDetails.activeFile]: {
                 ...projectDetails.currentProject.files[
                   projectDetails.activeFile
@@ -580,7 +608,7 @@ const EditorPage = () => {
 
           if (source !== "sections") {
             addDebugLog("🔄 Updating sections from LaTeX");
-            setSections(latexToSections(newLatexContent));
+            setSections(latexToSections(newLatexContent, updatedProject.files));
           }
 
           if (saveTimeout.current) {
