@@ -511,25 +511,56 @@ async function getTemplateFiles(templatePath) {
     const entries = await fs.readdir(currentPath, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name);
-      const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name;
+      const relPath = relativePath
+        ? path.join(relativePath, entry.name)
+        : entry.name;
 
       if (entry.isDirectory()) {
         // Create a .gitkeep so the folder is tracked
-        files[`${relPath}/.gitkeep`] = { name: ".gitkeep", content: "", type: "gitkeep" };
+        files[`${relPath}/.gitkeep`] = {
+          name: ".gitkeep",
+          content: "",
+          type: "gitkeep",
+        };
         await scanDir(fullPath, relPath);
       } else {
         if (entry.name === "preview.png") continue; // skip preview images
 
         const ext = path.extname(entry.name).toLowerCase();
-        const textExts = [".tex", ".bib", ".bst", ".sty", ".cls", ".txt", ".md", ".json"];
+        const textExts = [
+          ".tex",
+          ".bib",
+          ".bst",
+          ".sty",
+          ".cls",
+          ".txt",
+          ".md",
+          ".json",
+        ];
         if (textExts.includes(ext)) {
           const content = await fs.readFile(fullPath, "utf-8");
-          files[relPath] = { name: entry.name, content: content.replace(/\r\n/g, "\n"), type: ext.slice(1) };
+          files[relPath] = {
+            name: entry.name,
+            content: content.replace(/\r\n/g, "\n"),
+            type: ext.slice(1),
+          };
         } else {
           // Binary — store as base64
           const buffer = await fs.readFile(fullPath);
-          const mime = ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : ext === ".pdf" ? "application/pdf" : "application/octet-stream";
-          files[relPath] = { name: entry.name, content: `data:${mime};base64,${buffer.toString("base64")}`, type: ext.slice(1), isImage: true };
+          const mime =
+            ext === ".png"
+              ? "image/png"
+              : ext === ".jpg" || ext === ".jpeg"
+                ? "image/jpeg"
+                : ext === ".pdf"
+                  ? "application/pdf"
+                  : "application/octet-stream";
+          files[relPath] = {
+            name: entry.name,
+            content: `data:${mime};base64,${buffer.toString("base64")}`,
+            type: ext.slice(1),
+            isImage: true,
+          };
         }
       }
     }
@@ -544,8 +575,7 @@ async function getTemplateFiles(templatePath) {
 // API: Create new project
 app.post("/api/projects/create", async (req, res) => {
   try {
-    const { title, generateBoilerplate, userIdea, Owner } =
-      req.body;
+    const { title, generateBoilerplate, userIdea, Owner } = req.body;
     const projectId = uuidv4();
     const projectDir = path.join(PROJECTS_DIR, projectId);
     await fs.ensureDir(projectDir);
@@ -556,6 +586,7 @@ app.post("/api/projects/create", async (req, res) => {
     const templateSource = req.body.templateSource || "local";
     const projectPath = path.join(PROJECTS_DIR, projectId);
 
+    console.log("🆕 Project details:", templateType, templateSource);
     // Initialize files object
     let files = {};
     let mainContent = "";
@@ -594,7 +625,7 @@ app.post("/api/projects/create", async (req, res) => {
           // Fallback to default content
         }
       }
-      
+
       files["main.tex"] = {
         name: "main.tex",
         content: mainContent,
@@ -604,20 +635,22 @@ app.post("/api/projects/create", async (req, res) => {
     // 2. Handle Local Templates (Multifile)
     else if (templateSource === "local") {
       const keyToFolder = {
-        "ieee_conference": "IEEE Conference",
-        "ieee_journal": "IEEE Journal",
-        "acm_manuscript": "ACM Manuscript",
-        "elsarticle": "Elsevier Article",
-        "resume": "Resume",
-        "blank": "Blank Document"
+        ieee_conference: "IEEE Conference",
+        ieee_journal: "IEEE Journal",
+        acm_manuscript: "ACM Manuscript",
+        mla_format: "MLA Format",
+        resume: "Resume",
+        blank: "Blank Document",
       };
-      
+
+      console.log(keyToFolder);
+
       const folderName = keyToFolder[templateType] || templateType;
       const templatePath = path.join(__dirname, "templates", folderName);
-      
+
       console.log(`📂 Reading template from: ${templatePath}`);
       files = await getTemplateFiles(templatePath);
-      
+
       if (Object.keys(files).length === 0) {
         throw new Error(`Template not found or empty: ${folderName}`);
       }
@@ -631,14 +664,15 @@ app.post("/api/projects/create", async (req, res) => {
       if (generateBoilerplate && userIdea) {
         try {
           console.log("🤖 Generating boilerplate for multifile template...");
-          
+
           // Build templateFiles map (just the file keys the AI should generate for)
-          const templateFileKeys = Object.keys(files).filter(k => {
+          const templateFileKeys = Object.keys(files).filter((k) => {
             // Skip non-content files
-            if (k.endsWith('.gitkeep')) return false;
-            if (k === 'main.tex') return false;
-            if (k === 'title.tex') return false; // Already set from user input
-            if (/\.(cls|sty|pdf|png|jpg|jpeg|gif|svg|eps)$/i.test(k)) return false;
+            if (k.endsWith(".gitkeep")) return false;
+            if (k === "main.tex") return false;
+            if (k === "title.tex") return false; // Already set from user input
+            if (/\.(cls|sty|pdf|png|jpg|jpeg|gif|svg|eps)$/i.test(k))
+              return false;
             return true;
           });
 
@@ -656,14 +690,18 @@ app.post("/api/projects/create", async (req, res) => {
               const generatedContent = aiResponse.data.fileContents;
               let populated = 0;
 
-              for (const [fileKey, content] of Object.entries(generatedContent)) {
-                if (files[fileKey] && typeof content === 'string') {
+              for (const [fileKey, content] of Object.entries(
+                generatedContent,
+              )) {
+                if (files[fileKey] && typeof content === "string") {
                   files[fileKey].content = content;
                   populated++;
                 }
               }
 
-              console.log(`✅ AI populated ${populated}/${templateFileKeys.length} template files`);
+              console.log(
+                `✅ AI populated ${populated}/${templateFileKeys.length} template files`,
+              );
             } else {
               console.error("⚠️ AI boilerplate generation returned no content");
             }
@@ -673,32 +711,37 @@ app.post("/api/projects/create", async (req, res) => {
           // Fallback: template files stay with their default content
         }
       }
-    } 
+    }
     // 3. Handle Server Templates (Placeholder)
     else {
-        // Fallback or implementation for server templates
-        // For now treat as blank logic or error
-         console.warn(`Server templates not yet implemented locally: ${templateType}`);
-         files["main.tex"] = { name: "main.tex", content: "% Server template placeholder", type: "tex" };
+      // Fallback or implementation for server templates
+      // For now treat as blank logic or error
+      console.warn(
+        `Server templates not yet implemented locally: ${templateType}`,
+      );
+      files["main.tex"] = {
+        name: "main.tex",
+        content: "% Server template placeholder",
+        type: "tex",
+      };
     }
-
 
     // Create project directory
     await fs.ensureDir(projectPath);
 
     // Save all files
     for (const [relPath, fileData] of Object.entries(files)) {
-       const filePath = path.join(projectPath, relPath);
-       await fs.ensureDir(path.dirname(filePath));
-       
-       if (fileData.isImage) {
-           // write fileData.content (base64) back to file? 
-           // content is "data:image/png;base64,..."
-           const base64Data = fileData.content.split(';base64,').pop();
-           await fs.writeFile(filePath, base64Data, { encoding: 'base64' });
-       } else {
-           await fs.writeFile(filePath, fileData.content);
-       }
+      const filePath = path.join(projectPath, relPath);
+      await fs.ensureDir(path.dirname(filePath));
+
+      if (fileData.isImage) {
+        // write fileData.content (base64) back to file?
+        // content is "data:image/png;base64,..."
+        const base64Data = fileData.content.split(";base64,").pop();
+        await fs.writeFile(filePath, base64Data, { encoding: "base64" });
+      } else {
+        await fs.writeFile(filePath, fileData.content);
+      }
     }
 
     // Create project.json
@@ -777,10 +820,18 @@ app.get("/api/projects/:id", async (req, res) => {
         // Binary files (images, PDFs) — read as base64 data URI
         if (fileInfo.isImage) {
           const ext = path.extname(fileName).toLowerCase();
-          const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.pdf': 'application/pdf', '.eps': 'application/postscript' };
-          const mime = mimeMap[ext] || 'application/octet-stream';
+          const mimeMap = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".svg": "image/svg+xml",
+            ".pdf": "application/pdf",
+            ".eps": "application/postscript",
+          };
+          const mime = mimeMap[ext] || "application/octet-stream";
           const buffer = await fs.readFile(filePath);
-          fileInfo.content = `data:${mime};base64,${buffer.toString('base64')}`;
+          fileInfo.content = `data:${mime};base64,${buffer.toString("base64")}`;
         } else {
           fileInfo.content = await fs.readFile(filePath, "utf8");
         }
@@ -828,7 +879,7 @@ app.put("/api/projects/:id", async (req, res) => {
     // ⭐ IMPORTANT: Write each file to disk
     for (const [fileName, fileInfo] of Object.entries(files)) {
       // Skip .gitkeep placeholder files
-      if (fileName.endsWith('/.gitkeep') || fileInfo.name === '.gitkeep') {
+      if (fileName.endsWith("/.gitkeep") || fileInfo.name === ".gitkeep") {
         // Just ensure the directory exists
         const dirPath = path.dirname(path.join(projectDir, fileName));
         await fs.ensureDir(dirPath);
@@ -839,15 +890,19 @@ app.put("/api/projects/:id", async (req, res) => {
       await fs.ensureDir(path.dirname(filePath));
 
       // Binary files (images, PDFs) with data: URI — write as binary
-      if (fileInfo.isImage && fileInfo.content && fileInfo.content.startsWith('data:')) {
+      if (
+        fileInfo.isImage &&
+        fileInfo.content &&
+        fileInfo.content.startsWith("data:")
+      ) {
         const base64Match = fileInfo.content.match(/^data:[^;]+;base64,(.+)$/);
         if (base64Match) {
-          await fs.writeFile(filePath, Buffer.from(base64Match[1], 'base64'));
+          await fs.writeFile(filePath, Buffer.from(base64Match[1], "base64"));
         } else {
           await fs.writeFile(filePath, fileInfo.content, "utf8");
         }
       } else {
-        await fs.writeFile(filePath, fileInfo.content || '', "utf8");
+        await fs.writeFile(filePath, fileInfo.content || "", "utf8");
       }
       console.log(`✅ Saved ${fileName} to disk`);
     }
@@ -904,10 +959,18 @@ app.delete("/api/projects/:id/files/:filename", async (req, res) => {
       if (await fs.pathExists(p)) {
         if (fInfo.isImage) {
           const ext = path.extname(fName).toLowerCase();
-          const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.pdf': 'application/pdf', '.eps': 'application/postscript' };
-          const mime = mimeMap[ext] || 'application/octet-stream';
+          const mimeMap = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".svg": "image/svg+xml",
+            ".pdf": "application/pdf",
+            ".eps": "application/postscript",
+          };
+          const mime = mimeMap[ext] || "application/octet-stream";
           const buffer = await fs.readFile(p);
-          fInfo.content = `data:${mime};base64,${buffer.toString('base64')}`;
+          fInfo.content = `data:${mime};base64,${buffer.toString("base64")}`;
         } else {
           fInfo.content = await fs.readFile(p, "utf8");
         }
@@ -1064,15 +1127,17 @@ app.post("/api/compile", async (req, res) => {
       }
     }
 
-
     // Copy Definitions/ folder contents to TEMP_DIR root so pdflatex can find .cls/.sty files
     // (e.g. IEEEtran.cls lives in Definitions/ but \documentclass{IEEEtran} looks in the working dir)
-    const defFiles = Object.entries(files).filter(([k]) => k.startsWith("Definitions/") && !k.endsWith("/.gitkeep"));
+    const defFiles = Object.entries(files).filter(
+      ([k]) => k.startsWith("Definitions/") && !k.endsWith("/.gitkeep"),
+    );
     for (const [relPath, file] of defFiles) {
       const destPath = path.join(TEMP_DIR, file.name); // copy flat to root
       if (file.isImage && file.content && file.content.startsWith("data:")) {
         const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
-        if (base64Match) await fs.writeFile(destPath, Buffer.from(base64Match[1], "base64"));
+        if (base64Match)
+          await fs.writeFile(destPath, Buffer.from(base64Match[1], "base64"));
       } else if (file.content) {
         await fs.writeFile(destPath, file.content, "utf8");
       }
@@ -1087,7 +1152,6 @@ app.post("/api/compile", async (req, res) => {
       await fs.remove(pdfPath);
       await fs.remove(path.join(OUTPUT_DIR, `${filename}.synctex.gz`));
     } catch (e) {}
-
 
     console.log("🔄 Running PDFLaTeX...");
     const result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
@@ -1104,34 +1168,42 @@ app.post("/api/compile", async (req, res) => {
     let pdfExists = await fs.pathExists(generatedPdfPath);
 
     // Run BibTeX if any .bib files exist (needed for \bibliography{})
-    const hasBibFiles = Object.keys(files).some(k => k.endsWith('.bib'));
+    const hasBibFiles = Object.keys(files).some((k) => k.endsWith(".bib"));
     if (pdfExists && hasBibFiles) {
       try {
         // Copy .bib and .bst files to OUTPUT_DIR so bibtex can find them alongside .aux
         for (const [relPath, file] of Object.entries(files)) {
-          if (relPath.endsWith('.bib') || relPath.endsWith('.bst')) {
+          if (relPath.endsWith(".bib") || relPath.endsWith(".bst")) {
             const destPath = path.join(OUTPUT_DIR, path.basename(relPath));
-            await fs.writeFile(destPath, file.content || '', 'utf8');
+            await fs.writeFile(destPath, file.content || "", "utf8");
           }
         }
         // Also copy .bst files from Definitions/ that were flattened to TEMP_DIR root
         for (const [relPath, file] of defFiles) {
-          if (file.name.endsWith('.bst') && file.content) {
-            await fs.writeFile(path.join(OUTPUT_DIR, file.name), file.content, 'utf8');
+          if (file.name.endsWith(".bst") && file.content) {
+            await fs.writeFile(
+              path.join(OUTPUT_DIR, file.name),
+              file.content,
+              "utf8",
+            );
           }
         }
 
         console.log("📚 Running BibTeX...");
         await new Promise((resolve) => {
-          require('child_process').execFile(
-            'bibtex', [mainTexBaseName],
+          require("child_process").execFile(
+            "bibtex",
+            [mainTexBaseName],
             { cwd: OUTPUT_DIR, timeout: 30000 },
             (error, stdout, stderr) => {
               if (error) {
-                console.warn("⚠️ BibTeX warning/error:", stderr || error.message);
+                console.warn(
+                  "⚠️ BibTeX warning/error:",
+                  stderr || error.message,
+                );
               }
               resolve(); // Don't reject — bibtex warnings are common
-            }
+            },
           );
         });
       } catch (bibErr) {

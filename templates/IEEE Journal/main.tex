@@ -1,0 +1,53 @@
+\documentclass[journal]{IEEEtran}
+
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\begin{document}
+
+\title{\input{title}}
+
+\author{\input{authors}}
+
+\markboth{Journal of \LaTeX\ Class Files,~Vol.~14, No.~8, August~2015}%
+{Shell \MakeLowercase{\textit{et al.}}: Bare Demo of IEEEtran.cls for IEEE Journals}
+
+\maketitle
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+\begin{IEEEkeywords}
+\input{keywords}
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\section{Introduction}
+\input{sections/introduction}
+
+\section{Conclusion}
+\input{sections/conclusion}
+
+\appendices
+\section{Proof of the First Zonklar Equation}
+\input{sections/appendix1}
+
+\section{Second Appendix}
+\input{sections/appendix2}
+
+\section*{Acknowledgment}
+\input{acknowledgment}
+
+\ifCLASSOPTIONcaptionsoff
+  \newpage
+\fi
+
+\begin{thebibliography}{1}
+\input{references}
+\end{thebibliography}
+
+\input{biographies}
+
+\end{document}
+
