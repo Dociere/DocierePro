@@ -50,35 +50,93 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
     navigator.clipboard.writeText(text);
   };
 
+  // Track which files were resolved so we can reconstruct even if AI strips markers
+  const resolvedFilesRef = useRef([]);
+
   // ---- Resolve \input{} directives: inline file contents with markers ----
   const resolveInputs = (latexContent) => {
     const files = projectDetails.currentProject?.files || {};
-    // Match \input{fileName} (with or without .tex extension)
-    return latexContent.replace(/\\input\{([^}]+)\}/g, (match, inputName) => {
+    const resolved = [];
+
+    const result = latexContent.replace(/\\input\{([^}]+)\}/g, (match, inputName) => {
       const fileName = inputName.endsWith(".tex") ? inputName : inputName + ".tex";
       const fileEntry = files[fileName];
-      if (fileEntry && fileEntry.content) {
-        return `%% BEGIN_INPUT{${fileName}} %%\n${fileEntry.content.trim()}\n%% END_INPUT{${fileName}} %%`;
+      if (fileEntry && fileEntry.content !== undefined) {
+        resolved.push({ fileName, inputName, originalContent: (fileEntry.content || "").trim() });
+        return `%% BEGIN_INPUT{${fileName}} %%\n${(fileEntry.content || "").trim()}\n%% END_INPUT{${fileName}} %%`;
       }
       return match; // Leave as-is if file not found
     });
+
+    resolvedFilesRef.current = resolved;
+    return result;
   };
 
-  // ---- Reconstruct \input{} from AI response with markers ----
+  // ---- Reconstruct \input{} from AI response ----
+  // Strategy: try markers first, then fallback to content-matching for stripped markers
   const reconstructInputs = (aiLatex) => {
     const fileUpdates = {};
     const MARKER_REGEX = /%% BEGIN_INPUT\{([^}]+)\} %%\n([\s\S]*?)\n%% END_INPUT\{\1\} %%/g;
 
-    const reconstructed = aiLatex.replace(MARKER_REGEX, (match, fileName, content) => {
-      // Save the (potentially edited) content for this file
-      fileUpdates[fileName] = content.trim();
-      // Reconstruct the \input{} directive (without .tex extension)
-      const inputName = fileName.replace(/\.tex$/, "");
-      return `\\input{${inputName}}`;
-    });
+    // 1. Check if any markers survive
+    let hasMarkers = MARKER_REGEX.test(aiLatex);
+    MARKER_REGEX.lastIndex = 0; // reset regex state
 
-    return { latex: reconstructed, fileUpdates };
+    if (hasMarkers) {
+      // Markers preserved — extract as before
+      const reconstructed = aiLatex.replace(MARKER_REGEX, (match, fileName, content) => {
+        fileUpdates[fileName] = content.trim();
+        const inputName = fileName.replace(/\.tex$/, "");
+        return `\\input{${inputName}}`;
+      });
+      return { latex: reconstructed, fileUpdates };
+    }
+
+    // 2. Fallback: AI stripped the markers. Check if \input{} directives still exist.
+    //    If they do, the AI didn't change those sections — no fileUpdates needed.
+    const inputDirRegex = /\\input\{([^}]+)\}/g;
+    let inputMatch;
+    const remainingInputs = new Set();
+    while ((inputMatch = inputDirRegex.exec(aiLatex)) !== null) {
+      const fn = inputMatch[1].endsWith(".tex") ? inputMatch[1] : inputMatch[1] + ".tex";
+      remainingInputs.add(fn);
+    }
+
+    // For each resolved file, check if its \input{} is still in the AI output
+    let latex = aiLatex;
+    for (const { fileName, inputName, originalContent } of resolvedFilesRef.current) {
+      if (remainingInputs.has(fileName)) {
+        // \input{} still present — AI left it alone, no update needed
+        continue;
+      }
+
+      // The \input{} was removed and content was inlined by the AI.
+      // Try to find the inlined content and extract it back.
+      // Use the original content as an anchor — look for a region that
+      // either matches or is near the original content's location.
+      
+      // Strategy: search for the original content (or a prefix of it) in the AI output.
+      // If found, replace it with \input{} and save the new content.
+      // If the content was modified by the AI, we try to find any content between
+      // the surrounding \input{} or structural markers.
+      
+      // Simple approach: if the original content appears verbatim, restore \input
+      if (originalContent && latex.includes(originalContent)) {
+        fileUpdates[fileName] = originalContent;
+        latex = latex.replace(originalContent, `\\input{${inputName}}`);
+      } else {
+        // Content was modified by AI. We need to find it.
+        // Look for the AI's version of this section by searching for content
+        // that appeared where the original was (using surrounding context).
+        // For now, don't try to extract — just let the inline change go through
+        // but warn. The user can reject the change.
+        console.warn(`AI inlined and modified content from ${fileName}. Content will be applied to main document.`);
+      }
+    }
+
+    return { latex, fileUpdates };
   };
+
 
   // ---- Build context from sections ----
   const buildContext = () => {

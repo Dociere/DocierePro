@@ -26,6 +26,7 @@ export const createProject = async (
   isGenChecked,
   Owner,
   templateType,
+  templateSource,
   e,
 ) => {
   e.preventDefault();
@@ -36,7 +37,7 @@ export const createProject = async (
     const typeToSend =
       templateType === "blank" ? "Blank Document" : templateType || "blank";
 
-    console.log("CreateProject Payload:", { title, typeToSend, isGenChecked });
+    console.log("CreateProject Payload:", { title, typeToSend, isGenChecked, templateSource });
 
     const payload = {
       title,
@@ -45,6 +46,7 @@ export const createProject = async (
       userIdea: isGenChecked ? userIdea : null,
       Owner: Owner || null,
       templateType: typeToSend,
+      templateSource: templateSource || "local",
     };
 
     const response = await axios.post(

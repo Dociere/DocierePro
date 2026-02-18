@@ -1,54 +1,27 @@
-import React, { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
-
+import { useSettings } from "../context/useSettings";
 import { createProject } from "../api/projectHandling";
 
 const DetailsPage = () => {
   const navigate = useNavigate();
-  const [title, setTitle] = useState("");
-  const [authorName, setAuthorName] = useState("");
-  const [authorEmail, setAuthorEmail] = useState("");
-  const [authorInstitute, setAuthorInstitute] = useState("");
-  const [authorDegree, setAuthorDegree] = useState("");
-  const [isFormValid, setIsFormValid] = useState(false);
-  const [isGenChecked, setIsGenChecked] = useState(false);
-  const [userIdea, setUserIdea] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-
+  const { templateTitle } = useParams(); // templateTitle is actually the templateKey (e.g. "ieee_conference")
   const { user } = useAuth();
+  const { settings } = useSettings();
+  const isDark = settings.appearance.mode === "dark";
 
-  console.log(user);
+  // Determine template source
+  const localTemplates = ["blank", "ieee_conference", "ieee_journal", "acm_manuscript", "elsarticle", "resume"];
+  const templateSource = localTemplates.includes(templateTitle) ? "local" : "server";
 
-  const { templateTitle } = useParams(); // Get the template title from the URL
+  const [title, setTitle] = useState("");
+  const [userIdea, setUserIdea] = useState("");
+  const [isGenChecked, setIsGenChecked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Effect to check if all required fields are filled
-  useEffect(() => {
-    let isValid = false;
-
-    if (templateTitle === "blank") {
-      // Only title is required for Blank Document
-      isValid = title.trim() !== "";
-    } else {
-      // All fields are required for other templates
-      isValid =
-        title.trim() !== "" &&
-        authorName.trim() !== "" &&
-        authorEmail.trim() !== "" &&
-        authorInstitute.trim() !== "" &&
-        authorDegree.trim() !== "";
-    }
-
-    setIsFormValid(isValid);
-  }, [
-    title,
-    authorName,
-    authorEmail,
-    authorInstitute,
-    authorDegree,
-    templateTitle,
-  ]);
+  // Derived — no useEffect needed
+  const isFormValid = title.trim() !== "";
 
   const handleGenCheck = () => {
     setIsGenChecked(!isGenChecked);
@@ -56,32 +29,43 @@ const DetailsPage = () => {
 
   const handleNextClick = async (e) => {
     e.preventDefault();
-    setIsGenerating(true);
+    if (!title.trim()) {
+      alert("Please enter a project title.");
+      return;
+    }
+
+    // Author validation commented out
+    /*
+    for (const author of authorDetails) {
+      if (!author.name.trim()) {
+        alert("Please enter author name.");
+        return;
+      }
+    }
+    */
+    
+    setIsLoading(true);
 
     try {
-      const authorDetails = {
-        name: authorName,
-        email: authorEmail,
-        institute: authorInstitute,
-        degree: authorDegree,
-      };
-
       const projectId = await createProject(
         title,
-        authorDetails,
+        [], // Empty authors array
         userIdea,
         isGenChecked,
-        user?.emailId ?? null,
+        user?.name,
         templateTitle,
+        templateSource, // Pass source
         e,
       );
 
-      navigate("/canvas");
+      if (projectId) {
+        navigate("/canvas");
+      }
     } catch (error) {
       console.error("Project creation failed:", error);
       // Show error to user
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
@@ -113,76 +97,50 @@ const DetailsPage = () => {
           className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
         />
 
-        {/* Author Details */}
+        {/* Author Details Section - Commented Out */}
+        {/*
         {templateTitle !== "blank" && (
-          <div className="my-6">
-            <h2 className="text-[#343434] text-lg font-semibold font-inter mb-3">
+          <div className="mt-8">
+            <p className={`font-inter font-medium mb-3 ${isDark ? "text-gray-300" : "text-[#525252]"}`}>
               Author Details
-            </h2>
-
-            {/* Author Name */}
-            <label
-              htmlFor="authorName"
-              className="text-[#343434] text-sm font-medium font-inter block"
+            </p>
+            {authorDetails.map((author, index) => (
+              <div key={index} className="flex gap-4 mb-3">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={author.name}
+                  onChange={(e) => handleAuthorChange(index, "name", e.target.value)}
+                  className={`flex-1 p-3 rounded border outline-none ${
+                    isDark 
+                      ? "bg-[#252525] border-[#404040] text-white focus:border-[#666]" 
+                      : "bg-white border-[#E5E5E5] text-black focus:border-black"
+                  }`}
+                />
+                <input
+                  type="text"
+                  placeholder="Affiliation"
+                  value={author.affiliation}
+                  onChange={(e) => handleAuthorChange(index, "affiliation", e.target.value)}
+                  className={`flex-1 p-3 rounded border outline-none ${
+                    isDark 
+                      ? "bg-[#252525] border-[#404040] text-white focus:border-[#666]" 
+                      : "bg-white border-[#E5E5E5] text-black focus:border-black"
+                  }`}
+                />
+              </div>
+            ))}
+            
+             <button
+              type="button"
+              onClick={addAuthor}
+              className={`mt-2 text-sm font-medium ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-black"}`}
             >
-              <span className="text-red-400 text-xs mr-1">*</span>Name:
-            </label>
-            <input
-              id="authorName"
-              type="text"
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-            />
-
-            {/* Author Email */}
-            <label
-              htmlFor="authorEmail"
-              className="text-[#343434] text-sm font-medium font-inter block"
-            >
-              <span className="text-red-400 text-xs mr-1">*</span>Email:
-            </label>
-            <input
-              id="authorEmail"
-              type="email"
-              value={authorEmail}
-              onChange={(e) => setAuthorEmail(e.target.value)}
-              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-            />
-
-            {/* Author Institute/Organization */}
-            <label
-              htmlFor="authorInstitute"
-              className="text-[#343434] text-sm font-medium font-inter block"
-            >
-              <span className="text-red-400 text-xs mr-1">*</span>
-              Institute/Organization:
-            </label>
-            <input
-              id="authorInstitute"
-              type="text"
-              value={authorInstitute}
-              onChange={(e) => setAuthorInstitute(e.target.value)}
-              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-            />
-
-            {/* Author Designation/Degree */}
-            <label
-              htmlFor="authorDegree"
-              className="text-[#343434] text-sm font-medium font-inter block"
-            >
-              <span className="text-red-400 text-xs mr-1">*</span>
-              Designation/Degree:
-            </label>
-            <input
-              id="authorDegree"
-              type="text"
-              value={authorDegree}
-              onChange={(e) => setAuthorDegree(e.target.value)}
-              className="mt-2 mb-4 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-            />
+              + Add another author
+            </button> 
           </div>
         )}
+        */}
 
         <div className="flex items-center gap-3 mt-5">
           <p className="text-[#343434] text-base font-medium font-inter">

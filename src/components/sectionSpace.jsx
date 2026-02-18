@@ -99,6 +99,14 @@ const SectionSpace = () => {
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useReactRef(null);
 
+  // Folder state
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [expandedFolders, setExpandedFolders] = useState({});
+  const [renamingFolder, setRenamingFolder] = useState(null);
+  const [renameFolderValue, setRenameFolderValue] = useState("");
+  const renameFolderInputRef = useReactRef(null);
+
   const fileInputRef = React.useRef(null);
 
   const isDark = settings.appearance.mode === "dark";
@@ -205,7 +213,7 @@ const SectionSpace = () => {
         });
         try {
           const response = await axios.delete(
-            `http://localhost:5000/api/projects/${currentProject.id}/files/${fileName}`,
+            `http://localhost:5000/api/projects/${currentProject.id}/files/${encodeURIComponent(fileName)}`,
           );
 
           if (response.data.success) {
@@ -389,9 +397,263 @@ const SectionSpace = () => {
     }
   };
 
-  const sortedFiles = currentProject?.files
-    ? Object.keys(currentProject.files).sort()
-    : [];
+  // ============ FOLDER HANDLERS ============
+
+  const handleAddFolder = (e) => {
+    e.preventDefault();
+    setError("");
+    if (!currentProject) return;
+    const name = newFolderName.trim();
+    if (!name) { setError("Folder name cannot be empty"); return; }
+    if (name.includes("/") || name.includes("\\")) { setError("Folder name cannot contain slashes"); return; }
+
+    // Check if folder already exists by looking for any key with this prefix
+    const folderPrefix = name + "/";
+    const exists = Object.keys(currentProject.files).some((k) => k.startsWith(folderPrefix));
+    if (exists) { setError("Folder already exists"); return; }
+
+    // Create a placeholder .gitkeep so the folder persists
+    const placeholderKey = `${name}/.gitkeep`;
+    const updatedProject = {
+      ...currentProject,
+      files: {
+        ...currentProject.files,
+        [placeholderKey]: { name: ".gitkeep", content: "", type: "gitkeep" },
+      },
+    };
+
+    updateProjectDetails({ currentProject: updatedProject });
+    setExpandedFolders((prev) => ({ ...prev, [name]: true }));
+    saveProject(updatedProject, activeFile, compilationStatus, compilationMessage, isServerConnected, isAuthenticated);
+    setIsCreatingFolder(false);
+    setNewFolderName("");
+    showToast(`Created folder ${name}`);
+  };
+
+  const handleFolderToggle = (folderName) => {
+    setExpandedFolders((prev) => ({ ...prev, [folderName]: !prev[folderName] }));
+  };
+
+  const handleFolderRenameStart = (e, folderName) => {
+    e.stopPropagation();
+    setRenamingFolder(folderName);
+    setRenameFolderValue(folderName);
+    setTimeout(() => renameFolderInputRef.current?.select(), 50);
+  };
+
+  const handleFolderRenameSubmit = async (oldFolder) => {
+    const newFolder = renameFolderValue.trim();
+    setRenamingFolder(null);
+    if (!newFolder || newFolder === oldFolder) return;
+    if (newFolder.includes("/") || newFolder.includes("\\")) {
+      setAlertMessage("Folder name cannot contain slashes.");
+      return;
+    }
+
+    const newPrefix = newFolder + "/";
+    const oldPrefix = oldFolder + "/";
+    // Check if target already exists
+    if (Object.keys(currentProject.files).some((k) => k.startsWith(newPrefix))) {
+      setAlertMessage(`A folder named "${newFolder}" already exists.`);
+      return;
+    }
+
+    try {
+      const updatedFiles = {};
+      for (const [key, value] of Object.entries(currentProject.files)) {
+        if (key.startsWith(oldPrefix)) {
+          const newKey = newPrefix + key.slice(oldPrefix.length);
+          updatedFiles[newKey] = { ...value, name: newKey.split("/").pop() };
+        } else {
+          updatedFiles[key] = value;
+        }
+      }
+      const updatedProject = { ...currentProject, files: updatedFiles };
+      const nextActive = activeFile?.startsWith(oldPrefix)
+        ? newPrefix + activeFile.slice(oldPrefix.length)
+        : activeFile;
+
+      // Update expanded state
+      setExpandedFolders((prev) => {
+        const next = { ...prev };
+        delete next[oldFolder];
+        next[newFolder] = true;
+        return next;
+      });
+
+      updateProjectDetails({
+        currentProject: updatedProject,
+        activeFile: nextActive,
+        latexContent: updatedProject.files[nextActive]?.content || "",
+      });
+      await saveProject(updatedProject, nextActive, compilationStatus, compilationMessage, isServerConnected, isAuthenticated);
+      showToast(`Renamed to ${newFolder}`);
+    } catch (err) {
+      console.error("Folder rename failed:", err);
+      setAlertMessage("Failed to rename folder.");
+    }
+  };
+
+  const handleDeleteFolder = (e, folderName) => {
+    e.stopPropagation();
+    if (folderName === "Definitions") {
+      setAlertMessage("Cannot delete the Definitions folder.");
+      return;
+    }
+    const prefix = folderName + "/";
+    const filesInFolder = Object.keys(currentProject.files).filter((k) => k.startsWith(prefix));
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Folder",
+      message: `Delete folder "${folderName}" and all ${filesInFolder.length} file(s) inside?`,
+      onConfirm: async () => {
+        setConfirmModal({ isOpen: false, title: "", message: "", onConfirm: null });
+        try {
+          const updatedFiles = { ...currentProject.files };
+          filesInFolder.forEach((f) => delete updatedFiles[f]);
+          const updatedProject = { ...currentProject, files: updatedFiles };
+
+          let nextActive = activeFile;
+          if (activeFile?.startsWith(prefix)) nextActive = "main.tex";
+
+          updateProjectDetails({
+            currentProject: updatedProject,
+            activeFile: nextActive,
+            latexContent: updatedProject.files[nextActive]?.content || "",
+          });
+          await saveProject(updatedProject, nextActive, compilationStatus, compilationMessage, isServerConnected, isAuthenticated);
+          showToast(`Deleted folder ${folderName}`);
+        } catch (err) {
+          console.error("Folder delete failed:", err);
+          setAlertMessage("Failed to delete folder.");
+        }
+      },
+    });
+  };
+
+  // ============ FILE TREE BUILDER ============
+
+  const buildFileTree = (files) => {
+    const folders = {}; // { folderName: [fileKey, ...] }
+    const rootFiles = [];
+
+    Object.keys(files).sort().forEach((key) => {
+      const slashIdx = key.indexOf("/");
+      if (slashIdx > 0) {
+        const folder = key.slice(0, slashIdx);
+        if (!folders[folder]) folders[folder] = [];
+        folders[folder].push(key);
+      } else {
+        rootFiles.push(key);
+      }
+    });
+
+    return { folders, rootFiles };
+  };
+
+  const fileTree = currentProject?.files ? buildFileTree(currentProject.files) : { folders: {}, rootFiles: [] };
+
+  const renderFileRow = (fileName, displayName, depth = 0) => {
+    const isImage = /\.(png|jpg|jpeg|gif|svg|pdf|eps)$/i.test(fileName);
+    const isTex = fileName.endsWith(".tex");
+    const indentClass = depth === 1 ? "ml-4" : "";
+
+    return (
+      <div
+        key={fileName}
+        onClick={() => handleFileClick(fileName)}
+        className={`${indentClass} px-3 py-1.5 text-[13px] cursor-pointer flex items-center gap-3 rounded-md border transition-all duration-200 group truncate mb-0.5 ${
+          activeFile === fileName
+            ? isDark
+              ? "bg-[#333] border-[#555] text-white shadow-sm"
+              : "bg-white border-[#CFCFCF] text-black shadow-sm ring-1 ring-gray-100"
+            : isDark
+              ? "bg-transparent border-transparent text-[#a0a0a0] hover:bg-[#2d2d2d] hover:border-[#404040]"
+              : "bg-transparent border-transparent text-[#585858] hover:bg-white hover:border-[#CFCFCF] hover:shadow-sm"
+        }`}
+      >
+        {/* File Icon */}
+        <div
+          className={`p-1 rounded transition-colors ${
+            activeFile === fileName
+              ? isDark
+                ? "bg-gray-400/20 text-gray-50"
+                : "bg-gray-50 text-black"
+              : isDark
+                ? "bg-[#333] text-[#777] group-hover:text-[#aaa]"
+                : "bg-gray-100 text-[#888] group-hover:bg-gray-200 group-hover:text-[#555]"
+          }`}
+        >
+          {isTex ? (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          ) : isImage ? (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          )}
+        </div>
+
+        {renamingFile === fileName ? (
+          <input
+            ref={renameInputRef}
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onBlur={() => handleRenameSubmit(fileName)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleRenameSubmit(fileName);
+              if (e.key === "Escape") setRenamingFile(null);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className={`flex-1 px-1 py-0 text-[13px] font-medium tracking-tight rounded border outline-none ${
+              isDark ? "bg-[#333] border-[#555] text-white focus:border-[#777]" : "bg-white border-[#CFCFCF] text-black focus:border-gray-500"
+            }`}
+             autoFocus
+          />
+        ) : (
+          <span className="truncate flex-1 font-medium tracking-tight">{displayName}</span>
+        )}
+
+        {/* Actions Area */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {fileName !== "main.tex" && (
+            <>
+              <button
+                onClick={(e) => handleRenameStart(e, fileName)}
+                className={`p-1 rounded hover:bg-blue-500/10 hover:text-blue-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
+                title="Rename File"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => handleDeleteFile(e, fileName)}
+                className={`p-1 rounded hover:bg-red-500/10 hover:text-red-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
+                title="Delete File"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Active Indicator Dot */}
+        {activeFile === fileName && (
+          <div className={`w-2 h-2 rounded-full ${isDark ? "bg-white" : "bg-gray-700"} shadow-[0_0_8px_rgba(59,130,246,0.5)]`}></div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -420,7 +682,11 @@ const SectionSpace = () => {
                 className="w-[14px] h-[14px]"
               />
             </button>
-            <button>
+            <button
+              onClick={() => setIsCreatingFolder(true)}
+              className={`p-1 rounded hover:bg-opacity-20 ${isDark ? "hover:bg-white" : "hover:bg-black"}`}
+              title="New Folder"
+            >
               <AddFolderIcon
                 style={{ fill: "#9BC59D" }}
                 className="w-[14px] h-[14px]"
@@ -507,159 +773,129 @@ const SectionSpace = () => {
           </div>
         )}
 
-        {/* File List */}
-        <div className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
-          {sortedFiles.map((fileName) => (
-            <div
-              key={fileName}
-              onClick={() => handleFileClick(fileName)}
-              className={`px-3 py-2 text-[13px] cursor-pointer flex items-center gap-3 rounded-md border transition-all duration-200 group truncate ${
-                activeFile === fileName
-                  ? isDark
-                    ? "bg-[#333] border-[#555] text-white shadow-sm"
-                    : "bg-white border-[#CFCFCF] text-black shadow-sm ring-1 ring-gray-100"
-                  : isDark
-                    ? "bg-transparent border-transparent text-[#a0a0a0] hover:bg-[#2d2d2d] hover:border-[#404040]"
-                    : "bg-transparent border-transparent text-[#585858] hover:bg-white hover:border-[#CFCFCF] hover:shadow-sm"
-              }`}
-            >
-              {/* File Icon */}
-              <div
-                className={`p-1.5 rounded transition-colors ${
-                  activeFile === fileName
-                    ? isDark
-                      ? "bg-gray-400/20 text-gray-50"
-                      : "bg-gray-50 text-black"
-                    : isDark
-                      ? "bg-[#333] text-[#777] group-hover:text-[#aaa]"
-                      : "bg-gray-100 text-[#888] group-hover:bg-gray-200 group-hover:text-[#555]"
+        {/* New Folder Input */}
+        {isCreatingFolder && (
+          <div className="p-3">
+            <form onSubmit={handleAddFolder} className="flex flex-col gap-2">
+              <input
+                autoFocus
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Folder name"
+                className={`w-full px-2 py-1 text-sm rounded border focus:outline-none ${
+                  isDark
+                    ? "bg-[#333] border-[#555] text-white focus:border-[#777]"
+                    : "bg-white border-gray-300 text-black focus:border-gray-500"
                 }`}
+              />
+              {error && <span className="text-xs text-red-500">{error}</span>}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingFolder(false)}
+                  className="text-xs px-2 py-1 opacity-70 hover:opacity-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`text-xs px-2 py-1 rounded ${isDark ? "bg-[#404040] hover:bg-[#505050]" : "bg-gray-200 hover:bg-gray-300"}`}
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* File Tree */}
+        <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
+          {/* Folders */}
+          {Object.keys(fileTree.folders).sort().map((folderName) => (
+            <div key={folderName} className="mb-1">
+              <div
+                className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer group hover:bg-opacity-50 ${
+                  isDark ? "hover:bg-[#333] text-gray-300" : "hover:bg-gray-100 text-gray-700"
+                }`}
+                onClick={() => handleFolderToggle(folderName)}
               >
-                {fileName.endsWith(".tex") ? (
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                ) : fileName.endsWith(".png") || fileName.endsWith(".jpg") ? (
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    />
-                  </svg>
-                )}
-              </div>
-              {renamingFile === fileName ? (
-                <input
-                  ref={renameInputRef}
-                  type="text"
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onBlur={() => handleRenameSubmit(fileName)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleRenameSubmit(fileName);
-                    if (e.key === "Escape") setRenamingFile(null);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className={`flex-1 px-1 py-0 text-[13px] font-medium tracking-tight rounded border outline-none ${
-                    isDark
-                      ? "bg-[#333] border-[#555] text-white focus:border-[#777]"
-                      : "bg-white border-[#CFCFCF] text-black focus:border-gray-500"
-                  }`}
-                  autoFocus
-                />
-              ) : (
-                <span className="truncate flex-1 font-medium tracking-tight">
-                  {fileName}
-                </span>
-              )}
-
-              {/* Actions Area */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {fileName !== "main.tex" && (
-                  <>
-                    <button
-                      onClick={(e) => handleRenameStart(e, fileName)}
-                      className={`p-1 rounded hover:bg-blue-500/10 hover:text-blue-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
-                      title="Rename File"
-                    >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteFile(e, fileName)}
-                      className={`p-1 rounded hover:bg-red-500/10 hover:text-red-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
-                      title="Delete File"
-                    >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Active Indicator Dot */}
-              {activeFile === fileName && (
                 <div
-                  className={`w-2 h-2 rounded-full ${isDark ? "bg-white" : "bg-gray-700"} shadow-[0_0_8px_rgba(59,130,246,0.5)]`}
-                ></div>
+                  className={`transition-transform duration-200 ${expandedFolders[folderName] ? "rotate-90" : ""}`}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+
+                <svg className="w-4 h-4 text-[#9BC59D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+
+                {renamingFolder === folderName ? (
+                  <input
+                    ref={renameFolderInputRef}
+                    type="text"
+                    value={renameFolderValue}
+                    onChange={(e) => setRenameFolderValue(e.target.value)}
+                    onBlur={() => handleFolderRenameSubmit(folderName)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleFolderRenameSubmit(folderName);
+                      if (e.key === "Escape") setRenamingFolder(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`flex-1 px-1 py-0 text-[13px] font-medium tracking-tight rounded border outline-none ${
+                       isDark ? "bg-[#333] border-[#555] text-white focus:border-[#777]" : "bg-white border-[#CFCFCF] text-black focus:border-gray-500"
+                    }`}
+                    autoFocus
+                  />
+                ) : (
+                  <span className="text-[13px] font-medium truncate flex-1 select-none">{folderName}</span>
+                )}
+
+                {/* Folder Actions */}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {folderName !== "Definitions" && (
+                    <>
+                      <button
+                        onClick={(e) => handleFolderRenameStart(e, folderName)}
+                        className={`p-1 rounded hover:bg-blue-500/10 hover:text-blue-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
+                        title="Rename Folder"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteFolder(e, folderName)}
+                        className={`p-1 rounded hover:bg-red-500/10 hover:text-red-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
+                        title="Delete Folder"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Folder Content */}
+              {expandedFolders[folderName] && (
+                <div className="ml-4 pl-2 border-l border-gray-200/20 space-y-0.5 mt-0.5">
+                  {fileTree.folders[folderName].sort().map((fileName) => {
+                    if (fileName.endsWith("/.gitkeep")) return null; // Skip gitkeep
+                    return renderFileRow(fileName, fileName.split("/").pop(), 1);
+                  })}
+                </div>
               )}
             </div>
           ))}
 
-          {sortedFiles.length === 0 && (
+          {/* Root Files */}
+          {fileTree.rootFiles.sort().map((fileName) => renderFileRow(fileName, fileName))}
+
+          {Object.keys(fileTree.folders).length === 0 && fileTree.rootFiles.length === 0 && (
             <div className="p-4 text-xs opacity-50 text-center">
               No files in project
             </div>

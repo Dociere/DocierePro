@@ -7,6 +7,8 @@ import CanvasPage from "./pages/canvasPage";
 import Signup from "./pages/User_Account/signup";
 import Login from "./pages/User_Account/login";
 import SettingsPage from "./pages/settingsPage";
+import TemplatePreview from "./pages/templatePreview";
+import TemplateBrowse from "./pages/templateBrowse";
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
       <Route path="/" element={<PageLayout />}>
         <Route path="/" element={<StartingPage />} />
         <Route path="/template" element={<TemplateSelect />} />
+        <Route path="/template/preview/:templateKey" element={<TemplatePreview />} />
+        <Route path="/template/browse" element={<TemplateBrowse />} />
         <Route path="/detailPage/:templateTitle" element={<DetailsPage />} />
         <Route path="/canvas" element={<CanvasPage />} />
         <Route path="/settings" element={<SettingsPage />} />
