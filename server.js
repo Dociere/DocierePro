@@ -503,130 +503,215 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Helper: recursively read all files from a template directory
+async function getTemplateFiles(templatePath) {
+  const files = {};
+
+  async function scanDir(currentPath, relativePath = "") {
+    const entries = await fs.readdir(currentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentPath, entry.name);
+      const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name;
+
+      if (entry.isDirectory()) {
+        // Create a .gitkeep so the folder is tracked
+        files[`${relPath}/.gitkeep`] = { name: ".gitkeep", content: "", type: "gitkeep" };
+        await scanDir(fullPath, relPath);
+      } else {
+        if (entry.name === "preview.png") continue; // skip preview images
+
+        const ext = path.extname(entry.name).toLowerCase();
+        const textExts = [".tex", ".bib", ".bst", ".sty", ".cls", ".txt", ".md", ".json"];
+        if (textExts.includes(ext)) {
+          const content = await fs.readFile(fullPath, "utf-8");
+          files[relPath] = { name: entry.name, content: content.replace(/\r\n/g, "\n"), type: ext.slice(1) };
+        } else {
+          // Binary — store as base64
+          const buffer = await fs.readFile(fullPath);
+          const mime = ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : ext === ".pdf" ? "application/pdf" : "application/octet-stream";
+          files[relPath] = { name: entry.name, content: `data:${mime};base64,${buffer.toString("base64")}`, type: ext.slice(1), isImage: true };
+        }
+      }
+    }
+  }
+
+  if (await fs.pathExists(templatePath)) {
+    await scanDir(templatePath);
+  }
+  return files;
+}
+
 // API: Create new project
 app.post("/api/projects/create", async (req, res) => {
   try {
-    const { title, authorDetails, generateBoilerplate, userIdea, Owner } =
+    const { title, generateBoilerplate, userIdea, Owner } =
       req.body;
     const projectId = uuidv4();
     const projectDir = path.join(PROJECTS_DIR, projectId);
     await fs.ensureDir(projectDir);
 
-    let defaultContent;
-    let aiJsonContent = null;
     console.log("🆕 Creating new project:", title);
 
-    const useAI = generateBoilerplate && userIdea;
-    const templateKey = req.body.templateType || "article";
+    const templateType = req.body.templateType || "article";
+    const templateSource = req.body.templateSource || "local";
+    const projectPath = path.join(PROJECTS_DIR, projectId);
 
-    if (useAI) {
-      try {
-        console.log("🤖 Requesting AI content from Python Service...");
-        const aiResponse = await axios.post(
-          `${AI_SERVICE_URL}/api/generate-latex`,
-          {
-            userIdea,
-            title,
-            templateType: templateKey,
-            authorDetails,
-          },
-        );
+    // Initialize files object
+    let files = {};
+    let mainContent = "";
 
-        if (aiResponse.data.success) {
-          defaultContent = aiResponse.data.latexContent;
-          aiJsonContent = aiResponse.data.projectJson;
-          console.log("✅ AI-generated LaTeX content received");
-        } else {
-          throw new Error("AI generation failed");
+    // 1. Handle "Blank Document" logic
+    if (templateType === "Blank Document" || templateType === "blank") {
+      mainContent = `\\documentclass{article}
+\\usepackage{graphicx} % Required for inserting images
+\\title{${title}}
+\\author{Author Name}
+\\date{\\today}
+\\begin{document}
+\\maketitle
+\\section{Introduction}
+
+\\end{document}`;
+
+      if (generateBoilerplate && userIdea) {
+        try {
+          console.log("🤖 Generating boilerplate for blank document...");
+          const aiResponse = await axios.post(
+            `${AI_SERVICE_URL}/api/generate-latex`,
+            {
+              userIdea,
+              title,
+              templateType: "Blank Document",
+            },
+          );
+
+          if (aiResponse.data.success && aiResponse.data.latexContent) {
+            mainContent = aiResponse.data.latexContent;
+            console.log("✅ AI-generated blank document content received");
+          }
+        } catch (error) {
+          console.error("AI Generation failed for blank doc:", error.message);
+          // Fallback to default content
         }
-      } catch (aiError) {
-        console.error("AI Error:", aiError.message);
-        // Fallback to Skeleton if AI fails
-        console.log("⚠️ Falling back to Skeleton Template");
-        const skeleton = TemplateEngine.getSkeletonContent(templateKey);
-        aiJsonContent = skeleton;
-
-        // Prepare authors list for renderer
-        const authorsList = [
-          {
-            name: authorDetails.name || "Author",
-            email: authorDetails.email || "",
-            organization: authorDetails.affiliation || "",
-            is_corresponding: true,
-          },
-        ];
-
-        const renderer =
-          TemplateEngine.RENDERERS[templateKey] ||
-          TemplateEngine.RENDERERS["article"];
-        defaultContent = renderer(
-          title,
-          authorsList,
-          skeleton.abstract,
-          skeleton.keywords,
-          skeleton.sections,
-        );
       }
-    } else {
-      // --- B. SKELETON MODE (Local Node.js Generation) ---
-      console.log(
-        `🏗️ Generating Skeleton Template locally (${templateKey})...`,
-      );
+      
+      files["main.tex"] = {
+        name: "main.tex",
+        content: mainContent,
+        type: "tex",
+      };
+    }
+    // 2. Handle Local Templates (Multifile)
+    else if (templateSource === "local") {
+      const keyToFolder = {
+        "ieee_conference": "IEEE Conference",
+        "ieee_journal": "IEEE Journal",
+        "acm_manuscript": "ACM Manuscript",
+        "elsarticle": "Elsevier Article",
+        "resume": "Resume",
+        "blank": "Blank Document"
+      };
+      
+      const folderName = keyToFolder[templateType] || templateType;
+      const templatePath = path.join(__dirname, "templates", folderName);
+      
+      console.log(`📂 Reading template from: ${templatePath}`);
+      files = await getTemplateFiles(templatePath);
+      
+      if (Object.keys(files).length === 0) {
+        throw new Error(`Template not found or empty: ${folderName}`);
+      }
 
-      const skeleton = TemplateEngine.getSkeletonContent(templateKey);
-      aiJsonContent = skeleton;
+      // Set title from user input
+      if (files["title.tex"]) {
+        files["title.tex"].content = title;
+      }
 
-      const authorsList = [
-        {
-          name: authorDetails.name || "Author",
-          email: authorDetails.email || "",
-          organization: authorDetails.affiliation || "", // Note: frontend sends 'authorInstitute', you mapped it to 'affiliation'
-          is_corresponding: true,
-        },
-      ];
+      // Generate boilerplate content for all template files
+      if (generateBoilerplate && userIdea) {
+        try {
+          console.log("🤖 Generating boilerplate for multifile template...");
+          
+          // Build templateFiles map (just the file keys the AI should generate for)
+          const templateFileKeys = Object.keys(files).filter(k => {
+            // Skip non-content files
+            if (k.endsWith('.gitkeep')) return false;
+            if (k === 'main.tex') return false;
+            if (k === 'title.tex') return false; // Already set from user input
+            if (/\.(cls|sty|pdf|png|jpg|jpeg|gif|svg|eps)$/i.test(k)) return false;
+            return true;
+          });
 
-      // Pick Renderer (Default to article/blank if not found)
-      const renderer =
-        TemplateEngine.RENDERERS[templateKey] ||
-        TemplateEngine.RENDERERS["article"];
+          if (templateFileKeys.length > 0) {
+            const aiResponse = await axios.post(
+              `${AI_SERVICE_URL}/api/generate-boilerplate`,
+              {
+                title,
+                userIdea,
+                templateFiles: templateFileKeys,
+              },
+            );
 
-      // Generate LaTeX string
-      defaultContent = renderer(
-        title,
-        authorsList,
-        skeleton.abstract,
-        skeleton.keywords,
-        skeleton.sections,
-      );
+            if (aiResponse.data.success && aiResponse.data.fileContents) {
+              const generatedContent = aiResponse.data.fileContents;
+              let populated = 0;
+
+              for (const [fileKey, content] of Object.entries(generatedContent)) {
+                if (files[fileKey] && typeof content === 'string') {
+                  files[fileKey].content = content;
+                  populated++;
+                }
+              }
+
+              console.log(`✅ AI populated ${populated}/${templateFileKeys.length} template files`);
+            } else {
+              console.error("⚠️ AI boilerplate generation returned no content");
+            }
+          }
+        } catch (error) {
+          console.error("❌ AI Generation failed for template:", error.message);
+          // Fallback: template files stay with their default content
+        }
+      }
+    } 
+    // 3. Handle Server Templates (Placeholder)
+    else {
+        // Fallback or implementation for server templates
+        // For now treat as blank logic or error
+         console.warn(`Server templates not yet implemented locally: ${templateType}`);
+         files["main.tex"] = { name: "main.tex", content: "% Server template placeholder", type: "tex" };
     }
 
+
+    // Create project directory
+    await fs.ensureDir(projectPath);
+
+    // Save all files
+    for (const [relPath, fileData] of Object.entries(files)) {
+       const filePath = path.join(projectPath, relPath);
+       await fs.ensureDir(path.dirname(filePath));
+       
+       if (fileData.isImage) {
+           // write fileData.content (base64) back to file? 
+           // content is "data:image/png;base64,..."
+           const base64Data = fileData.content.split(';base64,').pop();
+           await fs.writeFile(filePath, base64Data, { encoding: 'base64' });
+       } else {
+           await fs.writeFile(filePath, fileData.content);
+       }
+    }
+
+    // Create project.json
     const projectData = {
       id: projectId,
-      title: title || "Untitled Project",
-      owner: Owner,
+      title,
       created: new Date().toISOString(),
       modified: new Date().toISOString(),
-      files: {
-        "main.tex": {
-          name: "main.tex",
-          content: defaultContent,
-          type: "tex",
-        },
-      },
-      activeFile: "main.tex",
+      owner: Owner || "Unknown",
+      files: files, // Save the full files object
     };
 
-    await fs.writeJSON(path.join(projectDir, "project.json"), projectData, {
-      spaces: 2,
-    });
-    await fs.writeFile(path.join(projectDir, "main.tex"), defaultContent);
-
-    if (aiJsonContent) {
-      await fs.writeJSON(path.join(projectDir, "main.json"), aiJsonContent, {
-        spaces: 2,
-      });
-      console.log("✅ Saved AI content structure to main.json");
-    }
+    await fs.writeJSON(path.join(projectPath, "project.json"), projectData);
 
     console.log(`✅ Created project: ${title} (${projectId})`);
     res.json({ success: true, project: projectData });
@@ -689,7 +774,16 @@ app.get("/api/projects/:id", async (req, res) => {
     for (const [fileName, fileInfo] of Object.entries(projectData.files)) {
       const filePath = path.join(projectDir, fileName);
       if (await fs.pathExists(filePath)) {
-        fileInfo.content = await fs.readFile(filePath, "utf8");
+        // Binary files (images, PDFs) — read as base64 data URI
+        if (fileInfo.isImage) {
+          const ext = path.extname(fileName).toLowerCase();
+          const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.pdf': 'application/pdf', '.eps': 'application/postscript' };
+          const mime = mimeMap[ext] || 'application/octet-stream';
+          const buffer = await fs.readFile(filePath);
+          fileInfo.content = `data:${mime};base64,${buffer.toString('base64')}`;
+        } else {
+          fileInfo.content = await fs.readFile(filePath, "utf8");
+        }
       }
     }
 
@@ -733,8 +827,28 @@ app.put("/api/projects/:id", async (req, res) => {
 
     // ⭐ IMPORTANT: Write each file to disk
     for (const [fileName, fileInfo] of Object.entries(files)) {
+      // Skip .gitkeep placeholder files
+      if (fileName.endsWith('/.gitkeep') || fileInfo.name === '.gitkeep') {
+        // Just ensure the directory exists
+        const dirPath = path.dirname(path.join(projectDir, fileName));
+        await fs.ensureDir(dirPath);
+        continue;
+      }
+
       const filePath = path.join(projectDir, fileName);
-      await fs.writeFile(filePath, fileInfo.content, "utf8");
+      await fs.ensureDir(path.dirname(filePath));
+
+      // Binary files (images, PDFs) with data: URI — write as binary
+      if (fileInfo.isImage && fileInfo.content && fileInfo.content.startsWith('data:')) {
+        const base64Match = fileInfo.content.match(/^data:[^;]+;base64,(.+)$/);
+        if (base64Match) {
+          await fs.writeFile(filePath, Buffer.from(base64Match[1], 'base64'));
+        } else {
+          await fs.writeFile(filePath, fileInfo.content, "utf8");
+        }
+      } else {
+        await fs.writeFile(filePath, fileInfo.content || '', "utf8");
+      }
       console.log(`✅ Saved ${fileName} to disk`);
     }
 
@@ -749,7 +863,8 @@ app.put("/api/projects/:id", async (req, res) => {
 // API: Delete specific file from project
 app.delete("/api/projects/:id/files/:filename", async (req, res) => {
   try {
-    const { id, filename } = req.params;
+    const { id } = req.params;
+    const filename = decodeURIComponent(req.params.filename);
     const projectDir = path.join(PROJECTS_DIR, id);
     const projectPath = path.join(projectDir, "project.json");
     const filePath = path.join(projectDir, filename);
@@ -787,7 +902,15 @@ app.delete("/api/projects/:id/files/:filename", async (req, res) => {
     for (const [fName, fInfo] of Object.entries(projectData.files)) {
       const p = path.join(projectDir, fName);
       if (await fs.pathExists(p)) {
-        fInfo.content = await fs.readFile(p, "utf8");
+        if (fInfo.isImage) {
+          const ext = path.extname(fName).toLowerCase();
+          const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.pdf': 'application/pdf', '.eps': 'application/postscript' };
+          const mime = mimeMap[ext] || 'application/octet-stream';
+          const buffer = await fs.readFile(p);
+          fInfo.content = `data:${mime};base64,${buffer.toString('base64')}`;
+        } else {
+          fInfo.content = await fs.readFile(p, "utf8");
+        }
       }
     }
 
@@ -907,32 +1030,51 @@ app.post("/api/compile", async (req, res) => {
     console.log(`Project ID: ${projectId}`);
     console.log(`Target Filename: ${filename}`);
 
-    // Write all project files to TEMP_DIR
+    // Write all project files to TEMP_DIR, preserving directory structure
     let mainTexFile = "main.tex"; // Default to main.tex
-    for (const fileName in files) {
-      const file = files[fileName];
-      console.log("Writing file:", file.name);
-      const filePath = path.join(TEMP_DIR, file.name);
+    for (const [relPath, file] of Object.entries(files)) {
+      // Skip .gitkeep files
+      if (file.name === ".gitkeep" || relPath.endsWith("/.gitkeep")) continue;
+
+      // Use the relative path key (e.g. "sections/introduction.tex") not just file.name
+      const filePath = path.join(TEMP_DIR, relPath);
+      // Ensure subdirectory exists
+      await fs.ensureDir(path.dirname(filePath));
+
+      console.log("Writing file:", relPath);
 
       // Check if file is a base64 image (data URL format)
       if (file.isImage && file.content && file.content.startsWith("data:")) {
-        // Extract base64 data from data URL
         const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
         if (base64Match) {
           const base64Data = base64Match[1];
           const buffer = Buffer.from(base64Data, "base64");
           await fs.writeFile(filePath, buffer);
-          console.log(`✅ Written image file as binary: ${file.name}`);
+          console.log(`✅ Written image file as binary: ${relPath}`);
         } else {
           await fs.writeFile(filePath, file.content, "utf8");
         }
       } else {
-        await fs.writeFile(filePath, file.content, "utf8");
+        await fs.writeFile(filePath, file.content || "", "utf8");
       }
 
-      // Track which file is the main tex file (first .tex file or main.tex) (FIXME: This code may change as i am planning to take input from user to decide which is going to be the root file)
-      if (file.name === "main.tex") {
-        mainTexFile = file.name;
+      // Track which file is the main tex file
+      if (relPath === "main.tex" || file.name === "main.tex") {
+        mainTexFile = relPath;
+      }
+    }
+
+
+    // Copy Definitions/ folder contents to TEMP_DIR root so pdflatex can find .cls/.sty files
+    // (e.g. IEEEtran.cls lives in Definitions/ but \documentclass{IEEEtran} looks in the working dir)
+    const defFiles = Object.entries(files).filter(([k]) => k.startsWith("Definitions/") && !k.endsWith("/.gitkeep"));
+    for (const [relPath, file] of defFiles) {
+      const destPath = path.join(TEMP_DIR, file.name); // copy flat to root
+      if (file.isImage && file.content && file.content.startsWith("data:")) {
+        const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
+        if (base64Match) await fs.writeFile(destPath, Buffer.from(base64Match[1], "base64"));
+      } else if (file.content) {
+        await fs.writeFile(destPath, file.content, "utf8");
       }
     }
 
@@ -945,6 +1087,7 @@ app.post("/api/compile", async (req, res) => {
       await fs.remove(pdfPath);
       await fs.remove(path.join(OUTPUT_DIR, `${filename}.synctex.gz`));
     } catch (e) {}
+
 
     console.log("🔄 Running PDFLaTeX...");
     const result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
@@ -960,9 +1103,49 @@ app.post("/api/compile", async (req, res) => {
     // Check if pdflatex generated the PDF (with main.tex's name)
     let pdfExists = await fs.pathExists(generatedPdfPath);
 
-    // (Optional Second Pass for References)
+    // Run BibTeX if any .bib files exist (needed for \bibliography{})
+    const hasBibFiles = Object.keys(files).some(k => k.endsWith('.bib'));
+    if (pdfExists && hasBibFiles) {
+      try {
+        // Copy .bib and .bst files to OUTPUT_DIR so bibtex can find them alongside .aux
+        for (const [relPath, file] of Object.entries(files)) {
+          if (relPath.endsWith('.bib') || relPath.endsWith('.bst')) {
+            const destPath = path.join(OUTPUT_DIR, path.basename(relPath));
+            await fs.writeFile(destPath, file.content || '', 'utf8');
+          }
+        }
+        // Also copy .bst files from Definitions/ that were flattened to TEMP_DIR root
+        for (const [relPath, file] of defFiles) {
+          if (file.name.endsWith('.bst') && file.content) {
+            await fs.writeFile(path.join(OUTPUT_DIR, file.name), file.content, 'utf8');
+          }
+        }
+
+        console.log("📚 Running BibTeX...");
+        await new Promise((resolve) => {
+          require('child_process').execFile(
+            'bibtex', [mainTexBaseName],
+            { cwd: OUTPUT_DIR, timeout: 30000 },
+            (error, stdout, stderr) => {
+              if (error) {
+                console.warn("⚠️ BibTeX warning/error:", stderr || error.message);
+              }
+              resolve(); // Don't reject — bibtex warnings are common
+            }
+          );
+        });
+      } catch (bibErr) {
+        console.warn("⚠️ BibTeX skipped:", bibErr.message);
+      }
+    }
+
+    // Second pass (resolves references, citations)
     if (pdfExists) {
       await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+      // Third pass for cross-references if bibtex was run
+      if (hasBibFiles) {
+        await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+      }
     }
 
     pdfExists = await fs.pathExists(generatedPdfPath);

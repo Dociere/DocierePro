@@ -1,0 +1,52 @@
+\documentclass[sigconf]{acmart}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{Bib\TeX}}}
+
+\setcopyright{none}
+
+\begin{document}
+
+\title{\input{title}}
+
+\input{authors}
+
+\renewcommand{\shortauthors}{Trovato et al.}
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+\input{ccs}
+
+\keywords{\input{keywords}}
+
+\maketitle
+
+\section{Introduction}
+\input{sections/introduction}
+
+\section{Related Work}
+\input{sections/related_work}
+
+\section{Methodology}
+\input{sections/methodology}
+
+\section{Experimental Setup}
+\input{sections/experimental_setup}
+
+\section{Results and Discussion}
+\input{sections/results}
+
+\section{Conclusion and Future Work}
+\input{sections/conclusion}
+
+\begin{acks}
+\input{acknowledgment}
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}
+

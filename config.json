@@ -1,6 +1,6 @@
 {
   "appearance": {
-    "theme": "dark",
+    "theme": "light",
     "customThemes": {
       "dark": {
         "background": "#232323",
