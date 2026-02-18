@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useRef as useReactRef } from "react";
 import { projectContext } from "../context/useProject";
 import { useSettings } from "../context/useSettings";
 import { saveProject } from "../api/projectHandling";
@@ -95,6 +95,9 @@ const SectionSpace = () => {
   });
   const [uploadPendingFiles, setUploadPendingFiles] = useState([]);
   const [uploadOverwriteFile, setUploadOverwriteFile] = useState(null);
+  const [renamingFile, setRenamingFile] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useReactRef(null);
 
   const fileInputRef = React.useRef(null);
 
@@ -328,6 +331,64 @@ const SectionSpace = () => {
     }
   };
 
+  // Handle file rename
+  const handleRenameStart = (e, fileName) => {
+    e.stopPropagation();
+    setRenamingFile(fileName);
+    setRenameValue(fileName);
+    setTimeout(() => renameInputRef.current?.select(), 50);
+  };
+
+  const handleRenameSubmit = async (oldName) => {
+    const newName = renameValue.trim();
+    setRenamingFile(null);
+
+    if (!newName || newName === oldName) return;
+
+    // Validate
+    if (currentProject.files[newName]) {
+      setAlertMessage(`A file named "${newName}" already exists.`);
+      return;
+    }
+
+    try {
+      // Build updated files: copy data under new key, remove old key
+      const updatedFiles = {};
+      for (const [key, value] of Object.entries(currentProject.files)) {
+        if (key === oldName) {
+          updatedFiles[newName] = { ...value, name: newName, type: newName.split(".").pop() };
+        } else {
+          updatedFiles[key] = value;
+        }
+      }
+
+      const updatedProject = { ...currentProject, files: updatedFiles };
+
+      // If the renamed file was active, switch active to new name
+      const nextActive = activeFile === oldName ? newName : activeFile;
+
+      updateProjectDetails({
+        currentProject: updatedProject,
+        activeFile: nextActive,
+        latexContent: updatedProject.files[nextActive]?.content || "",
+      });
+
+      await saveProject(
+        updatedProject,
+        nextActive,
+        compilationStatus,
+        compilationMessage,
+        isServerConnected,
+        isAuthenticated,
+      );
+
+      showToast(`Renamed to ${newName}`);
+    } catch (err) {
+      console.error("Rename failed:", err);
+      setAlertMessage("Failed to rename file.");
+    }
+  };
+
   const sortedFiles = currentProject?.files
     ? Object.keys(currentProject.files).sort()
     : [];
@@ -518,32 +579,74 @@ const SectionSpace = () => {
                   </svg>
                 )}
               </div>
-              <span className="truncate flex-1 font-medium tracking-tight">
-                {fileName}
-              </span>
+              {renamingFile === fileName ? (
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={() => handleRenameSubmit(fileName)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRenameSubmit(fileName);
+                    if (e.key === "Escape") setRenamingFile(null);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`flex-1 px-1 py-0 text-[13px] font-medium tracking-tight rounded border outline-none ${
+                    isDark
+                      ? "bg-[#333] border-[#555] text-white focus:border-[#777]"
+                      : "bg-white border-[#CFCFCF] text-black focus:border-gray-500"
+                  }`}
+                  autoFocus
+                />
+              ) : (
+                <span className="truncate flex-1 font-medium tracking-tight">
+                  {fileName}
+                </span>
+              )}
 
               {/* Actions Area */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {fileName !== "main.tex" && (
-                  <button
-                    onClick={(e) => handleDeleteFile(e, fileName)}
-                    className={`p-1 rounded hover:bg-red-500/10 hover:text-red-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
-                    title="Delete File"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  <>
+                    <button
+                      onClick={(e) => handleRenameStart(e, fileName)}
+                      className={`p-1 rounded hover:bg-blue-500/10 hover:text-blue-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
+                      title="Rename File"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteFile(e, fileName)}
+                      className={`p-1 rounded hover:bg-red-500/10 hover:text-red-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
+                      title="Delete File"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </div>
 
