@@ -63,6 +63,7 @@ export const editDocumentWithAI = async (
   prompt,
   currentLatex,
   signal = null,
+  context = null,
 ) => {
   try {
     const response = await axios.post(
@@ -70,6 +71,7 @@ export const editDocumentWithAI = async (
       {
         prompt,
         latexContent: currentLatex,
+        context,
       },
       { signal }, // Pass abort signal to axios
     );

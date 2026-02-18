@@ -407,7 +407,7 @@ app.post("/api/synctex", async (req, res) => {
 // API: AI Edit LaTeX
 app.post("/api/edit", async (req, res) => {
   try {
-    const { prompt, latexContent } = req.body;
+    const { prompt, latexContent, context } = req.body;
 
     if (!prompt || !latexContent) {
       return res
@@ -422,6 +422,7 @@ app.post("/api/edit", async (req, res) => {
     const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/edit-latex`, {
       prompt,
       latexContent,
+      context,
     });
 
     if (aiResponse.data.success) {
