@@ -4,6 +4,7 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import MonacoEditorPanel from "../components/monacoEditor";
 import RichTextEditorPanel from "../components/textEditor";
@@ -382,6 +383,35 @@ const EditorPage = () => {
     }
   }, [projectDetails.compilationStatus, projectDetails.compilationMessage]);
 
+  // ============ ACTIVE FILE FILTERING ============
+  // Filter sections for the currently active file
+  const activeSections = useMemo(() => {
+    if (!sections || sections.length === 0) return [];
+    const af = projectDetails.activeFile || "main.tex";
+
+    // main.tex → show everything
+    if (af === "main.tex") return sections;
+
+    // Sub-file → find sections that belong to this file
+    return sections.filter(
+      (s) => s.contentFileName === af || (s.source === "file" && s.fileName === af)
+    );
+  }, [sections, projectDetails.activeFile]);
+
+  // Derive rich text from the active sections
+  const activeRichText = useMemo(() => {
+    if (!activeSections || activeSections.length === 0) return "";
+    const af = projectDetails.activeFile || "main.tex";
+
+    // main.tex → use the standard richTextContent
+    if (af === "main.tex") return projectDetails.richTextContent || "";
+
+    // Sub-file → build rich text from active sections
+    return activeSections
+      .map((s) => sectionToRichText(s))
+      .join("\n");
+  }, [activeSections, projectDetails.activeFile, projectDetails.richTextContent]);
+
   // ============ UNIFIED UPDATE HANDLER ============
 
   // const updateAllEditors = useCallback(
@@ -648,19 +678,52 @@ const EditorPage = () => {
   const handleRichTextChange = useCallback(
     (value) => {
       setActiveEditor("richText");
-      updateProjectDetails({ richTextContent: value });
-      updateAllEditors("richText", value);
+      const af = projectDetails.activeFile || "main.tex";
+
+      if (af === "main.tex") {
+        // Main file: standard flow
+        updateProjectDetails({ richTextContent: value });
+        updateAllEditors("richText", value);
+      } else {
+        // Sub-file: convert rich text back to section content and merge
+        // Use richTextToSection on each active section
+        const updatedActiveSections = activeSections.map((s) => ({
+          ...s,
+          content: richTextToSection(value, s),
+        }));
+
+        // Merge back into master sections
+        const updatedMap = new Map(updatedActiveSections.map((s) => [s.id, s]));
+        const mergedSections = sections.map((s) =>
+          updatedMap.has(s.id) ? updatedMap.get(s.id) : s
+        );
+        setSections(mergedSections);
+        updateAllEditors("sections", mergedSections);
+      }
     },
-    [updateAllEditors],
+    [updateAllEditors, projectDetails.activeFile, activeSections, sections],
   );
 
   const handleSectionsChange = useCallback(
     (updatedSections) => {
       setActiveEditor("sections");
-      setSections([...updatedSections]);
-      updateAllEditors("sections", updatedSections);
+      const af = projectDetails.activeFile || "main.tex";
+
+      if (af === "main.tex") {
+        // Main file: direct update (all sections)
+        setSections([...updatedSections]);
+        updateAllEditors("sections", updatedSections);
+      } else {
+        // Sub-file: merge filtered edits back into master sections
+        const updatedMap = new Map(updatedSections.map((s) => [s.id, s]));
+        const mergedSections = sections.map((s) =>
+          updatedMap.has(s.id) ? updatedMap.get(s.id) : s
+        );
+        setSections(mergedSections);
+        updateAllEditors("sections", mergedSections);
+      }
     },
-    [updateAllEditors],
+    [updateAllEditors, sections, projectDetails.activeFile],
   );
 
   const handlePdfLineJump = (lineNumber) => {
@@ -882,7 +945,7 @@ const EditorPage = () => {
           {activeView === "text" && (
             <div className="h-full w-full overflow-y-auto">
               <RichTextEditorPanel
-                value={projectDetails.richTextContent || ""}
+                value={activeRichText}
                 onChange={handleRichTextChange}
                 quillModules={quillModules}
                 highlightLine={syncTexLine}
@@ -894,7 +957,7 @@ const EditorPage = () => {
           {activeView === "section" && (
             <div className="h-full w-full overflow-y-auto">
               <SectionEditor
-                sections={sections}
+                sections={activeSections}
                 onSectionsChange={handleSectionsChange}
                 preamble={docPreamble}
                 sectionToRichText={sectionToRichText}
@@ -917,9 +980,27 @@ const EditorPage = () => {
           >
             <AIChatPanel
               projectDetails={projectDetails}
-              onApplyChanges={(newContent) =>
-                updateAllEditors("monaco", newContent)
-              }
+              sections={sections}
+              onApplyChanges={(newContent, fileUpdates) => {
+                // If AI edited content from \input{} files, apply file updates first
+                if (fileUpdates && Object.keys(fileUpdates).length > 0) {
+                  const updatedFiles = { ...projectDetails.currentProject.files };
+                  for (const [fileName, content] of Object.entries(fileUpdates)) {
+                    if (updatedFiles[fileName]) {
+                      updatedFiles[fileName] = { ...updatedFiles[fileName], content };
+                    } else {
+                      updatedFiles[fileName] = { name: fileName, content, type: "tex" };
+                    }
+                  }
+                  updateProjectDetails({
+                    currentProject: {
+                      ...projectDetails.currentProject,
+                      files: updatedFiles,
+                    },
+                  });
+                }
+                updateAllEditors("monaco", newContent);
+              }}
               onClose={() => setShowAIChat(false)}
             />
           </div>
