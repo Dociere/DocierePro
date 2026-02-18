@@ -85,6 +85,7 @@ const MonacoEditorPanel = ({
   onEditTable = null,
   onEditImage = null,
   projectFiles = [],
+  readOnly = false,
 }) => {
   const editorInstanceRef = useRef(null);
   const monacoRef = useRef(null);
@@ -429,6 +430,7 @@ const MonacoEditorPanel = ({
             folding: true,
             brackets: "always",
             glyphMargin: true,
+            readOnly: readOnly,
           }}
         />
       </div>

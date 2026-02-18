@@ -412,6 +412,16 @@ const EditorPage = () => {
       .join("\n");
   }, [activeSections, projectDetails.activeFile, projectDetails.richTextContent]);
 
+  // Determine file type for preview rendering
+  const activeFileType = useMemo(() => {
+    const af = projectDetails.activeFile || "main.tex";
+    const ext = af.split(".").pop().toLowerCase();
+    if (["tex", "bib"].includes(ext)) return "tex";
+    if (["png", "jpg", "jpeg", "gif", "svg"].includes(ext)) return "image";
+    if (ext === "pdf") return "pdf";
+    return "readonly"; // cls, sty, txt, etc.
+  }, [projectDetails.activeFile]);
+
   // ============ UNIFIED UPDATE HANDLER ============
 
   // const updateAllEditors = useCallback(
@@ -868,38 +878,90 @@ const EditorPage = () => {
             />
             {projectDetails.activeFile}
           </div>
-          <select
-            id="tour-view-switcher"
-            className="rounded-sm ml-5 px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
-         focus:ring-2 focus:ring-gray-100 outline-none focus:border-transparent font-medium hover:bg-gray-100"
-            value={activeView}
-            onChange={(e) => {
-              const newView = e.target.value;
-              if (
-                newView === "text" &&
-                !localStorage.getItem("hideTextViewNotice")
-              ) {
-                setShowTextViewNotice(true);
-              }
-              setActiveView(newView);
-            }}
-            style={{
-              background:
-                settings.appearance.customThemes[settings.appearance.theme]
-                  .primary,
-              color:
-                settings.appearance.customThemes[settings.appearance.theme]
-                  .text2,
-            }}
-          >
-            <option value="code">Code Editor</option>
-            <option value="section">Section View</option>
-            <option value="text">Text View</option>
-          </select>
+          {activeFileType === "tex" && (
+            <select
+              id="tour-view-switcher"
+              className="rounded-sm ml-5 px-3 py-1 mr-2 text-[13px] text-gray-600 font-inter select-none
+           focus:ring-2 focus:ring-gray-100 outline-none focus:border-transparent font-medium hover:bg-gray-100"
+              value={activeView}
+              onChange={(e) => {
+                const newView = e.target.value;
+                if (
+                  newView === "text" &&
+                  !localStorage.getItem("hideTextViewNotice")
+                ) {
+                  setShowTextViewNotice(true);
+                }
+                setActiveView(newView);
+              }}
+              style={{
+                background:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .primary,
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text2,
+              }}
+            >
+              <option value="code">Code Editor</option>
+              <option value="section">Section View</option>
+              <option value="text">Text View</option>
+            </select>
+          )}
+          {activeFileType !== "tex" && (
+            <span className="ml-auto mr-3 text-[11px] font-inter font-medium text-gray-400 uppercase tracking-wider">
+              {activeFileType === "image" ? "Image Preview" : activeFileType === "pdf" ? "PDF Preview" : "Read Only"}
+            </span>
+          )}
         </div>
 
         <div className="flex-1 overflow-hidden relative">
-          {activeView === "code" && (
+          {/* ---- Image Preview ---- */}
+          {activeFileType === "image" && (
+            <div className="h-full w-full flex flex-col items-center justify-center bg-[#FAFAFA]">
+              <div className="max-w-[90%] max-h-[80%] rounded-lg border border-[#CFCFCF] shadow-sm overflow-hidden bg-white">
+                <img
+                  src={projectDetails.currentProject?.files[projectDetails.activeFile]?.content || ""}
+                  alt={projectDetails.activeFile}
+                  className="max-w-full max-h-[70vh] object-contain"
+                />
+              </div>
+              <p className="mt-3 text-[13px] text-gray-500 font-inter font-medium">
+                {projectDetails.activeFile}
+              </p>
+            </div>
+          )}
+
+          {/* ---- PDF Preview ---- */}
+          {activeFileType === "pdf" && (
+            <div className="h-full w-full flex flex-col items-center justify-center bg-[#FAFAFA]">
+              <embed
+                src={projectDetails.currentProject?.files[projectDetails.activeFile]?.content || ""}
+                type="application/pdf"
+                className="w-full h-full rounded border border-[#CFCFCF]"
+              />
+            </div>
+          )}
+
+          {/* ---- Read-Only Viewer (cls, sty, txt, etc.) ---- */}
+          {activeFileType === "readonly" && (
+            <div className="h-full w-full relative">
+              <div className="absolute top-2 right-4 z-10 px-2.5 py-1 rounded bg-gray-100 border border-[#CFCFCF] text-[11px] font-inter font-medium text-gray-500 uppercase tracking-wider select-none">
+                Read Only
+              </div>
+              <MonacoEditorPanel
+                key={`readonly-${projectDetails.activeFile}`}
+                value={effectiveProjectDetails.latexContent || ""}
+                handleLatexChange={() => {}}
+                monacoEditorRef={{ current: null }}
+                readOnly={true}
+                projectFiles={[]}
+              />
+            </div>
+          )}
+
+          {/* ---- Normal Editors (tex/bib) ---- */}
+          {activeFileType === "tex" && activeView === "code" && (
             <div className="h-full w-full">
               <MonacoEditorPanel
                 key={projectDetails.currentProject?.id}
@@ -942,7 +1004,7 @@ const EditorPage = () => {
             </div>
           )}
 
-          {activeView === "text" && (
+          {activeFileType === "tex" && activeView === "text" && (
             <div className="h-full w-full overflow-y-auto">
               <RichTextEditorPanel
                 value={activeRichText}
@@ -954,7 +1016,7 @@ const EditorPage = () => {
             </div>
           )}
 
-          {activeView === "section" && (
+          {activeFileType === "tex" && activeView === "section" && (
             <div className="h-full w-full overflow-y-auto">
               <SectionEditor
                 sections={activeSections}
