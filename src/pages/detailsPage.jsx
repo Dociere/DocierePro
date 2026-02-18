@@ -12,8 +12,17 @@ const DetailsPage = () => {
   const isDark = settings.appearance.mode === "dark";
 
   // Determine template source
-  const localTemplates = ["blank", "ieee_conference", "ieee_journal", "acm_manuscript", "elsarticle", "resume"];
-  const templateSource = localTemplates.includes(templateTitle) ? "local" : "server";
+  const localTemplates = [
+    "blank",
+    "ieee_conference",
+    "ieee_journal",
+    "acm_manuscript",
+    "mla_format",
+    "resume",
+  ];
+  const templateSource = localTemplates.includes(templateTitle)
+    ? "local"
+    : "server";
 
   const [title, setTitle] = useState("");
   const [userIdea, setUserIdea] = useState("");
@@ -43,7 +52,7 @@ const DetailsPage = () => {
       }
     }
     */
-    
+
     setIsLoading(true);
 
     try {

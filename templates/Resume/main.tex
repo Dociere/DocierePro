@@ -1,0 +1,156 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{multicol}
+\usepackage{graphicx}
+\input{glyphtounicode}
+
+\pdfgentounicode=1
+
+\addtolength{\oddsidemargin}{-0.6in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.19in}
+\addtolength{\topmargin}{-.7in}
+\addtolength{\textheight}{1.4in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large\bfseries
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\definecolor{accent}{HTML}{0E5484}
+
+\newcommand{\resumeItem}[1]{
+  \vspace{-5pt}
+  \item \small{#1}
+  \vspace{-10pt}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+  \begin{tabular*}{\textwidth}[t]{l@{\extracolsep{\fill}}r}
+    \textbf{#1} & {#2} \\
+    {#3} & \textit{#4} \\
+  \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+  \item
+  \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+    \small #1 & { #2} \\
+  \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+\newcommand{\resumeSkill}[2]{%
+  \item
+  \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.25\textwidth} >{\raggedright\arraybackslash}X@{}}
+    \textbf{#1} & #2 \\
+  \end{tabularx}\vspace{-3pt}
+}
+\begin{document}
+
+\begin{center}
+{\Huge \textbf{\scshape Your Name}} \\[4pt]
+
+City, State \textbar\
+Phone: +xx 9999999999 \textbar\
+Email: yourname@gmail.com \textbar\
+\href{https://linkedin.com/in/yourid}{\textcolor{blue}{\underline{LinkedIn}}} \textbar\ 
+\href{https://github.com/yourid}{\textcolor{blue}{\underline{GitHub}}}
+\end{center}
+
+
+\section{Education}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{College Name}{MM YYYY -- MM YYYY}
+{Degree Name -- CGPA: xx}{City, Country}
+
+\resumeSubheading
+{College Name}{MM YYYY -- MM YYYY}
+{Exam Name -- Percentage: xx\%}{City, Country}
+
+\resumeSubHeadingListEnd
+
+\section{Work Experience}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Company Name}{MM YYYY -- MM YYYY}
+{Role Name}{City, Country}
+
+\resumeItemListStart
+\resumeItem{Describe responsibilities and achievements.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+\section{Projects}
+\resumeSubHeadingListStart
+
+\resumeProjectHeading
+{\href{https://github.com/project}{{\underline{Project 1}}}}{MM YYYY}
+
+\resumeItemListStart
+\resumeItem{Brief description highlighting achievements.}
+\resumeItemListEnd
+
+\resumeProjectHeading
+{\href{https://github.com/project}{{\underline{Project 1}}}}{MM YYYY}
+
+\resumeItemListStart
+\resumeItem{Brief description highlighting achievements.}
+\resumeItemListEnd
+
+
+\resumeSubHeadingListEnd
+
+% \section{Coursework / Skills}
+
+% \vspace{-10pt}
+% \begin{multicols}{4}
+% \begin{itemize}[itemsep=-10pt]
+% \item Data Structures
+% \item Operating Systems
+% \item DBMS
+% \item Artificial Intelligence
+% \item OOPS
+% \item Web Development
+% \item Android Development
+% \end{itemize}
+% \end{multicols}
+% \vspace{-15pt}
+
+\section{Technical Skills}
+
+\begin{itemize}[leftmargin=0in, label={}]
+  \resumeSkill{Technical Skills:}{Software Development}
+  \resumeSkill{Programming Languages:}{JavaScript, C/C++, Qt QML, Flutter (Dart), GTK, PHP, Java, Python, Go}
+  \resumeSkill{Databases:}{MySQL, PostgreSQL, Firebase (Firestore), CouchDB}
+  \resumeSkill{Scripting/Tools:}{Bash, Git, Docker}
+  \resumeSkill{Platforms:}{AWS, Linux}
+  \resumeSkill{Certifications \& Training:}{Udemy, Coursera)}
+  \resumeSkill{Awards:}{1st - Hackathon}
+\end{itemize}
+
+
+\end{document}
+

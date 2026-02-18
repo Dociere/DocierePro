@@ -45,7 +45,7 @@ function TemplateSelect() {
     "IEEE Conference": "ieee_conference",
     "IEEE Journal": "ieee_journal",
     "ACM Manuscript": "acm_manuscript",
-    "Elsevier Article": "elsarticle",
+    "MLA Format": "mla_format",
     "Resume / CV": "resume",
   };
 
@@ -63,27 +63,39 @@ function TemplateSelect() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-row mt-20 ${isDark ? "text-white" : "text-black"}`}>
-      <Link to="/" className="font-inter ml-24 mt-3 text-sm flex hover:opacity-70 transition-opacity">
-        <GoBack style={{ fill: isDark ? "#fff" : "#0a0a0a" }} className="w-5 h-5" />
+    <div
+      className={`min-h-screen flex flex-row mt-20 ${isDark ? "text-white" : "text-black"}`}
+    >
+      <Link
+        to="/"
+        className="font-inter ml-24 mt-3 text-sm flex hover:opacity-70 transition-opacity"
+      >
+        <GoBack
+          style={{ fill: isDark ? "#fff" : "#0a0a0a" }}
+          className="w-5 h-5"
+        />
         <p className="ml-2">Go Back</p>
       </Link>
-      
+
       <div className="flex flex-1 flex-col justify-center">
         <div className="mt-0 ml-20 w-[72vw] mb-10">
           <div className="flex justify-between items-end mb-8">
             <div>
-              <p className="font-playfair text-5xl font-bold">Standard Templates</p>
-              <p className={`mt-2 font-inter font-medium ${isDark ? "text-gray-400" : "text-[#7D7D7D]"}`}>
+              <p className="font-playfair text-5xl font-bold">
+                Standard Templates
+              </p>
+              <p
+                className={`mt-2 font-inter font-medium ${isDark ? "text-gray-400" : "text-[#7D7D7D]"}`}
+              >
                 Select a template to start your project
               </p>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleBrowseClick}
               className={`px-6 py-2 rounded font-medium border transition-colors ${
-                isDark 
-                  ? "border-gray-600 hover:bg-gray-800" 
+                isDark
+                  ? "border-gray-600 hover:bg-gray-800"
                   : "border-gray-300 hover:bg-gray-50"
               }`}
             >
@@ -95,7 +107,11 @@ function TemplateSelect() {
             {Object.entries(bundledTemplates).map(([title, value]) => (
               <Link
                 key={value}
-                to={value === "blank" ? `/detailPage/${value}` : `/template/preview/${value}`}
+                to={
+                  value === "blank"
+                    ? `/detailPage/${value}`
+                    : `/template/preview/${value}`
+                }
                 className="transform hover:scale-105 transition-transform duration-200"
               >
                 <TemplateCards title={title} />
@@ -105,10 +121,10 @@ function TemplateSelect() {
         </div>
       </div>
 
-      <SignInModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSignIn={handleSignIn} 
+      <SignInModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSignIn={handleSignIn}
       />
     </div>
   );
