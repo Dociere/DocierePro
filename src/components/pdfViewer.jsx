@@ -231,7 +231,7 @@ const PdfViewer = ({
                 style={{
                   fill: settings.appearance.customThemes[
                     settings.appearance.theme
-                  ].text1,
+                  ].text2,
                 }}
                 className="mt-[1px] w-5 h-5 ml-5"
               />
