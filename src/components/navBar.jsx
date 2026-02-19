@@ -48,6 +48,18 @@ const NavBar = ({ onStartTour }) => {
     }
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const el = menuRefs.current.file;
+      if (el && !el.contains(e.target)) {
+        setRenameProject(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleSaveProject = async () => {
     if (!projectDetails.currentProject || !projectDetails.activeFile) {
       alert("No project to save");
@@ -673,6 +685,7 @@ const NavBar = ({ onStartTour }) => {
   ];
 
   const renameTitle = async () => {
+    if (!updatetitle.trim()) return;
     console.log("from renameTitle", isServerConnected);
     console.log("from renameTitle", isAuthenticated);
     const updatedProject = {
@@ -791,7 +804,10 @@ const NavBar = ({ onStartTour }) => {
                 />
               </div>
               {renameProject && (
-                <div className="absolute mt-10 bg-[#EAEAEA] px-2 py-2 border-2 border-[#CFCFCF] select-none rounded-md flex flex-row z-10">
+                <div
+                  ref={(el) => (menuRefs.current.file = el)}
+                  className="absolute mt-10 bg-[#EAEAEA] px-2 py-2 border-2 border-[#CFCFCF] select-none rounded-md flex flex-row z-10"
+                >
                   <input
                     className="pl-2 bg-white w-96"
                     type="text"

@@ -131,6 +131,7 @@ const EditorPage = () => {
     }
   }, [isAIChatOpen, setIsAIChatOpen]);
 
+  //Load Project
   useEffect(() => {
     console.log("🔍 EditorPage effect triggered");
     const projectIdFromUrl = searchParams.get("project");
@@ -373,6 +374,16 @@ const EditorPage = () => {
     sectionsInitialized.current = false;
     lastSyncedLatex.current = "";
   }, [projectDetails.currentProject?.id, projectDetails.activeFile]);
+
+  // Auto-compile when project finishes loading
+  useEffect(() => {
+    if (
+      projectDetails.currentProject?.id &&
+      !projectDetails.isLoading
+    ) {
+      handleCompile();
+    }
+  }, [projectDetails.currentProject?.id]);
 
   useEffect(() => {
     if (projectDetails.compilationMessage) {
