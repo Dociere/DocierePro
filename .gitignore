@@ -23,6 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# Project Specific files
+config.json
+
 # Latex related Output files
 output
 temp
