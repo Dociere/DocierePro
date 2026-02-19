@@ -9,6 +9,8 @@ import { useSettings } from "../context/useSettings";
 const StartingPage = () => {
   const [projectData, setProjectData] = useState([]);
   const fileRef = useRef(null);
+  const modalRefs = useRef({});
+  const [projectModal, setProjectModal] = useState(false);
   const { settings } = useSettings();
 
   useEffect(() => {
@@ -83,14 +85,25 @@ const StartingPage = () => {
       </div>
 
       <div className="mt-20">
-        <div
-          className="text-xl mb-3 font-inter font-medium leading-[20px]"
-          style={{
-            color:
-              settings.appearance.customThemes[settings.appearance.theme].text2,
-          }}
-        >
-          Recent Projects
+        <div className="flex flex-row">
+          <div
+            className="text-xl mb-3 font-inter font-medium leading-[20px]"
+            style={{
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text2,
+            }}
+          >
+            Recent Projects
+          </div>
+          <button
+            className="ml-[7rem] pb-1"
+            onClick={() => {
+              setProjectModal(true);
+            }}
+          >
+            <p className="text-sm hover:underline">View All</p>
+          </button>
         </div>
         <SearchBar data={projectData} />
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
@@ -101,6 +114,35 @@ const StartingPage = () => {
           ))}
         </div>
       </div>
+
+      {projectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg min-w-lg max-w-[79vw] w-full p-4 relative h-[85vh]">
+            {/* Close button */}
+            <button
+              onClick={() => setProjectModal(false)}
+              className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"
+            >
+              ✕
+            </button>
+
+            {/* Modal content with scroll */}
+            <div className="overflow-auto h-[80vh] mr-5">
+              <h2 className="text-2xl font-inter font-semibold mb-2">
+                Recent Projects
+              </h2>
+              <SearchBar data={projectData} />
+              <div className="flex flex-row mt-10 gap-8 flex-wrap">
+                {(projectData || []).map((project) => (
+                  <Link key={project.id} to={`/canvas?project=${project.id}`}>
+                    <TemplateCards title={project.title} />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

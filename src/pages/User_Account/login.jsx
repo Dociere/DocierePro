@@ -26,7 +26,7 @@ function Login() {
         userData,
         {
           withCredentials: true,
-        }
+        },
       );
       console.log("Login successful");
       navigate("/");
@@ -34,7 +34,7 @@ function Login() {
       console.error("Login failed:", err);
       setError(
         err.response?.data?.message ||
-          "Login failed. Please check your credentials and try again."
+          "Login failed. Please check your credentials and try again.",
       );
     } finally {
       setLoading(false);
@@ -42,33 +42,19 @@ function Login() {
   };
 
   return (
-    <div className="h-screen bg-[#f4f4f4] relative overflow-hidden">
-      {/* Background decoration */}
-      {/* <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-[#af0f0f] opacity-10 blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-64 h-64 rounded-full bg-[#af0f0f] opacity-5 blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/4 left-1/2 w-48 h-48 rounded-full bg-[#af0f0f] opacity-5 blur-3xl animate-pulse"></div>
-      </div> */}
-
-      {/* Institution branding - smaller */}
+    <div className="h-screen bg-[#eaeaea] relative overflow-hidden">
       <div className="absolute top-6 left-6 z-10">
         <div className="text-[#0C2340] font-playfair text-2xl">
-          <p>Coram</p>
+          <p>Docière Pro</p>
         </div>
       </div>
-
-      {/* Main content container with proper spacing */}
       <div className="flex flex-col h-full">
-        {/* Main content area */}
         <div className="flex-1 flex items-center justify-center p-3">
-          {/* Main login card - much more compact */}
           <div className="relative z-10 w-full max-w-sm">
             <div className="bg-white rounded-xl border-[1px] border-gray-500 overflow-hidden">
-              {/* Header - more compact */}
               <div className="bg-white px-6 py-6 text-center relative overflow-hidden">
                 <div className="absolute inset-0"></div>
                 <div className="relative">
-                  {/* Logo/Icon - smaller */}
                   <div className="w-14 h-14 border-[#0C2340] border-[1.5px] rounded-full mx-auto mb-3 flex items-center justify-center shadow-lg">
                     <svg
                       className="w-7 h-7 text-[#0C2340]"
@@ -126,7 +112,7 @@ function Login() {
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg
-                          className="w-4 h-4 text-[#af0f0f]"
+                          className="w-4 h-4 text-black"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -147,7 +133,7 @@ function Login() {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         disabled={loading}
-                        className="w-full pl-10 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:border-[#af0f0f] focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
+                        className="w-full pl-10 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
                         placeholder="Enter your email address"
                       />
                     </div>
@@ -164,7 +150,7 @@ function Login() {
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg
-                          className="w-4 h-4 text-[#af0f0f]"
+                          className="w-4 h-4 text-black"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -185,13 +171,13 @@ function Login() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         disabled={loading}
-                        className="w-full pl-10 pr-10 py-3 text-sm border-2 border-gray-200 rounded-lg focus:border-[#af0f0f] focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
+                        className="w-full pl-10 pr-10 py-3 text-sm border-2 border-gray-200 rounded-lg focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
                         placeholder="Enter your password"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#af0f0f] hover:text-[#0C2340] transition-colors"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-black hover:text-[#0C2340] transition-colors"
                       >
                         {showPassword ? (
                           <svg
@@ -237,7 +223,7 @@ function Login() {
                     <button
                       type="submit"
                       disabled={loading || !emailId || !password}
-                      className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-[#ae4242] to-[#c45252] hover:from-[#c45252] hover:to-[#ae4242] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ae4242] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg disabled:transform-none"
+                      className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ae4242] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg disabled:transform-none"
                     >
                       {loading ? (
                         <div className="flex items-center">
@@ -288,10 +274,10 @@ function Login() {
                 </form>
 
                 {/* Security notice - more compact */}
-                <div className="mt-4 p-3 bg-[#0C2340]/5 rounded-lg border border-[#0C2340]/10">
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-[#0C2340]/10">
                   <div className="flex items-start">
                     <svg
-                      className="w-4 h-4 text-[#af0f0f] mt-0.5 mr-2 flex-shrink-0"
+                      className="w-4 h-4 text-[#000000] mt-0.5 mr-2 flex-shrink-0"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -303,8 +289,10 @@ function Login() {
                     </svg>
                     <div>
                       <p className="text-xs text-[#0C2340]/70">
-                        <span className="font-medium">Secure Access:</span> Your
-                        login credentials are encrypted and protected.
+                        <span className="font-inter font-medium">
+                          Secure Access:
+                        </span>{" "}
+                        Your login credentials are encrypted and protected.
                       </p>
                     </div>
                   </div>

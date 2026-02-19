@@ -25,7 +25,7 @@ function DynamicSignup() {
         userData,
         {
           withCredentials: true,
-        }
+        },
       );
       console.log("Signup Response:", res);
 
@@ -49,11 +49,11 @@ function DynamicSignup() {
   };
 
   return (
-    <div className="h-screen bg-[#f4f4f4] relative overflow-hidden">
+    <div className="h-screen bg-[#eaeaea] relative overflow-hidden">
       {/* Branding - smaller */}
       <div className="absolute top-6 left-6 z-10">
-        <div className="text-[#0C2340] font-playfair text-2xl">
-          <p>Dociere</p>
+        <div className="text-[#0C2340] font-medium font-playfair text-2xl">
+          <p>Docière Pro</p>
         </div>
       </div>
 
@@ -89,7 +89,7 @@ function DynamicSignup() {
                       onChange={(e) => setName(e.target.value)}
                       required
                       disabled={loading}
-                      className="w-full pl-3 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:border-[#af0f0f] focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
+                      className="w-full pl-3 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
                       placeholder="Enter username"
                     />
                   </div>
@@ -110,7 +110,7 @@ function DynamicSignup() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       disabled={loading}
-                      className="w-full pl-3 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:border-[#af0f0f] focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
+                      className="w-full pl-3 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
                       placeholder="Enter password"
                     />
                   </div>
@@ -131,7 +131,7 @@ function DynamicSignup() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       disabled={loading}
-                      className="w-full pl-3 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:border-[#af0f0f] focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
+                      className="w-full pl-3 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:ring-0 transition-all duration-300 disabled:bg-gray-50 disabled:opacity-70 text-[#0C2340] placeholder-gray-400"
                       placeholder="Enter email address"
                     />
                   </div>
@@ -141,7 +141,7 @@ function DynamicSignup() {
                     <button
                       type="submit"
                       disabled={!validateForm() || loading}
-                      className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-[#ae4242] to-[#c45252] hover:from-[#c45252] hover:to-[#ae4242] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ae4242] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                      className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium font-inter rounded-lg text-white bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                     >
                       {loading ? (
                         <div className="flex items-center">
