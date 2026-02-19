@@ -713,7 +713,7 @@ const NavBar = ({ onStartTour }) => {
   return (
     <>
       <div
-        className="z-50 fixed w-full top-0 "
+        className="z-[9999] fixed w-full top-0 "
         style={{
           WebkitAppRegion: "drag",
         }}

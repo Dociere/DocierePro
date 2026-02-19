@@ -8,18 +8,6 @@ const SearchBar = ({ data }) => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  // List of searchData (routes) to search against
-  // const searchData = [
-  //   { name: "Dashboard", path: "/" },
-  //   { name: "Image Carousel", path: "home/carousel" },
-  //   { name: "Introduction Text", path: "/home/introtext" },
-  //   { name: "Announcements", path: "/home/whatsNew" },
-  //   { name: "Department Home", path: "/department/home" },
-  //   { name: "Training and Placement", path: "/training-placement" },
-  //   { name: "Research and Publication", path: "/research/home" },
-  //   { name: "Edit Profile", path: "/profile" },
-  // ];
-
   const searchData = data.map((item) => ({
     name: item.title,
     path: `/canvas?project=${item.id}`,
@@ -79,7 +67,7 @@ const SearchBar = ({ data }) => {
   useEffect(() => {
     if (query.trim()) {
       const results = searchData.filter((page) =>
-        page.name.toLowerCase().includes(query.toLowerCase().trim()),
+        page.name?.toLowerCase().includes(query?.toLowerCase().trim()),
       );
       setFilteredResults(results);
     } else {

@@ -13,12 +13,15 @@ import TemplateBrowse from "./pages/templateBrowse";
 function App() {
   return (
     <Routes>
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/login" element={<Login />} />
       <Route path="/" element={<PageLayout />}>
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/" element={<StartingPage />} />
         <Route path="/template" element={<TemplateSelect />} />
-        <Route path="/template/preview/:templateKey" element={<TemplatePreview />} />
+        <Route
+          path="/template/preview/:templateKey"
+          element={<TemplatePreview />}
+        />
         <Route path="/template/browse" element={<TemplateBrowse />} />
         <Route path="/detailPage/:templateTitle" element={<DetailsPage />} />
         <Route path="/canvas" element={<CanvasPage />} />
