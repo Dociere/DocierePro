@@ -11,13 +11,11 @@ import DraftIcon from "../assets/icons/draftIcon.svg?react";
 import MathIcon from "../assets/icons/mathIcon.svg?react";
 import DraftVersionIcon from "../assets/icons/draftVersion.svg?react";
 import ExtensionIcon from "../assets/icons/extensionIcon.svg?react";
-import CompileIcon from "../assets/icons/compileIcon.svg?react";
 import SettingsIcon from "../assets/icons/settings.svg?react";
 import UserIcon from "../assets/icons/user.svg?react";
 import LogoutIcon from "../assets/icons/logout.svg?react";
 import SectionSpace from "./sectionSpace";
 import { projectContext } from "../context/useProject";
-import { compileDocument } from "../api/projectHandling";
 import { useAuth } from "../context/useAuth";
 import axios from "axios";
 import { useSettings } from "../context/useSettings";
@@ -32,7 +30,6 @@ const DynamicSideBar = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
-  // const [isSectionSpaceOpen, setIsSectionSpaceOpen] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const { user, isServerConnected } = useAuth();
   const { settings } = useSettings();
@@ -99,21 +96,19 @@ const DynamicSideBar = ({
               to={`/canvas?project=${projectDetails?.currentProject?.id}`}
             >
               <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                 title="Current Project file"
               >
-                <DraftIcon
-                  style={{
-                    fill: settings.appearance.customThemes[
-                      settings.appearance.theme
-                    ].icon1,
-                  }}
-                  className="w-4 h-4"
-                />
-
-                {/* <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Current Project file
-              </span> */}
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                  <DraftIcon
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
+                    className="w-4 h-4"
+                  />
+                </div>
               </span>
             </Link>
             {/* Section Space */}
@@ -122,7 +117,7 @@ const DynamicSideBar = ({
                 className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                 title="Section Space"
               >
-                <div className="p-3 hover:bg-gray-200 rounded-md">
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
                   <SectionIcon
                     style={{
                       fill: settings.appearance.customThemes[
@@ -132,10 +127,6 @@ const DynamicSideBar = ({
                     className="w-4 h-4"
                   />
                 </div>
-
-                {/* <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Section Space
-              </span> */}
               </span>
             </div>
 
@@ -143,10 +134,31 @@ const DynamicSideBar = ({
             <div id="tour-citation-manager" className="relative group">
               <Link onClick={handleCitationIconClick}>
                 <div
-                  className="flex items-center justify-center text-[#585858] cursor-pointer p-2"
+                  className="flex items-center justify-center text-[#585858] cursor-pointer"
                   title="Citation Manager"
                 >
-                  <CitationIcon
+                  <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                    <CitationIcon
+                      style={{
+                        fill: settings.appearance.customThemes[
+                          settings.appearance.theme
+                        ].icon1,
+                      }}
+                      className="w-4 h-4 "
+                    />
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Share / Collaborate */}
+            <div id="tour-share" onClick={handleShareIconClick}>
+              <span
+                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                title="Share"
+              >
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                  <ShareIcon
                     style={{
                       fill: settings.appearance.customThemes[
                         settings.appearance.theme
@@ -155,77 +167,44 @@ const DynamicSideBar = ({
                     className="w-4 h-4"
                   />
                 </div>
-              </Link>
-
-              {/* <p
-              className="absolute left-full top-2 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded 
-                opacity-0 group-hover:opacity-100 transition-opacity duration-200 
-                whitespace-nowrap z-50"
-            >
-              Citation Manager
-            </p> */}
-            </div>
-
-            {/* Share / Collaborate */}
-            <div id="tour-share" onClick={handleShareIconClick}>
-              <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
-                title="Share"
-              >
-                <ShareIcon
-                  style={{
-                    fill: settings.appearance.customThemes[
-                      settings.appearance.theme
-                    ].icon1,
-                  }}
-                  className="w-4 h-4"
-                />
-
-                {/* <span className="absolute left-full top-1 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Share
-              </span> */}
               </span>
             </div>
 
-            {/* Easy Math Input */}
+            {/* Equation Generator */}
             <Link id="tour-math-input" onClick={handleMathIconClick}>
               <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
-                title="Easy Math Input"
+                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                title="Equation Generator"
               >
-                <MathIcon
-                  style={{
-                    fill: settings.appearance.customThemes[
-                      settings.appearance.theme
-                    ].icon1,
-                  }}
-                  className="w-4 h-4"
-                />
-
-                {/* <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Easy Math Input
-              </span> */}
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                  <MathIcon
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
+                    className="w-4 h-4"
+                  />
+                </div>
               </span>
             </Link>
 
             {/* Extensions */}
             <Link id="tour-extensions" to="/canvas">
               <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer p-2 relative group"
+                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                 title="Extensions"
               >
-                <ExtensionIcon
-                  style={{
-                    fill: settings.appearance.customThemes[
-                      settings.appearance.theme
-                    ].icon1,
-                  }}
-                  className="w-4 h-4"
-                />
-
-                {/* <span className="absolute left-full top-0 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                Extensions
-              </span> */}
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                  <ExtensionIcon
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
+                    className="w-4 h-4"
+                  />
+                </div>
               </span>
             </Link>
 
@@ -235,33 +214,38 @@ const DynamicSideBar = ({
               onClick={() => setIsVersionModalOpen(true)}
             >
               <span
-                className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group`}
+                className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group`}
                 title="Draft Versioning"
               >
-                <DraftVersionIcon
-                  style={{
-                    fill: settings.appearance.customThemes[
-                      settings.appearance.theme
-                    ].icon1,
-                  }}
-                  className="w-4 h-4"
-                />
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                  <DraftVersionIcon
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
+                    className="w-4 h-4"
+                  />
+                </div>
               </span>
             </div>
 
             {/* AI Chat */}
             <div id="tour-ai-chat" onClick={onOpenAIChat}>
-              <span
-                className={`flex items-center justify-center cursor-pointer p-2 transition-colors rounded-md relative group font-poppins text-sm`}
-                title="AI Chat"
-                style={{
-                  color:
-                    settings.appearance.customThemes[settings.appearance.theme]
-                      .icon1,
-                }}
-              >
-                AI
-              </span>
+              <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                <span
+                  className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group font-poppins text-sm p-0 m-0`}
+                  title="AI Chat"
+                  style={{
+                    color:
+                      settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                  }}
+                >
+                  AI
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex flex-col mb-2">
