@@ -25,7 +25,7 @@ const StartingPage = () => {
 
   return (
     <div className="h-screen overflow-y-auto scrollbar-hide flex flex-col ml-36 mr-20 pb-10 mt-10">
-      <div className="flex flex-row mt-20">
+      <div className="flex flex-row mt-14">
         <div>
           <div
             className="text-5xl font-playfair font-bold leading-[32px]"
@@ -69,7 +69,7 @@ const StartingPage = () => {
                 Create New Project
               </div>
             </Link>
-            <input type="file" accept=".tex" ref={fileRef} hidden />
+            <input type="file" accept="*.tex, *.zip" ref={fileRef} hidden />
 
             <div
               onClick={() => fileRef.current.click()}
@@ -80,6 +80,9 @@ const StartingPage = () => {
               </span>
               Open Existing Project
             </div>
+            <p className="-mt-4 text-center text-gray-500 text-[12px]">
+              files supported (*.zip, *.tex)
+            </p>
           </div>
         </div>
       </div>

@@ -334,7 +334,10 @@ const EditorPage = () => {
         lastSyncedLatex.current = latexDoc;
 
         const bodyContent = extractLatexBody(latexDoc);
-        const extractedSections = latexToSections(latexDoc, projectDetails.currentProject.files);
+        const extractedSections = latexToSections(
+          latexDoc,
+          projectDetails.currentProject.files,
+        );
 
         // Only set sections if they're actually different
         setSections((prevSections) => {
@@ -377,10 +380,7 @@ const EditorPage = () => {
 
   // Auto-compile when project finishes loading
   useEffect(() => {
-    if (
-      projectDetails.currentProject?.id &&
-      !projectDetails.isLoading
-    ) {
+    if (projectDetails.currentProject?.id && !projectDetails.isLoading) {
       handleCompile();
     }
   }, [projectDetails.currentProject?.id]);
@@ -405,7 +405,8 @@ const EditorPage = () => {
 
     // Sub-file → find sections that belong to this file
     return sections.filter(
-      (s) => s.contentFileName === af || (s.source === "file" && s.fileName === af)
+      (s) =>
+        s.contentFileName === af || (s.source === "file" && s.fileName === af),
     );
   }, [sections, projectDetails.activeFile]);
 
@@ -418,10 +419,12 @@ const EditorPage = () => {
     if (af === "main.tex") return projectDetails.richTextContent || "";
 
     // Sub-file → build rich text from active sections
-    return activeSections
-      .map((s) => sectionToRichText(s))
-      .join("\n");
-  }, [activeSections, projectDetails.activeFile, projectDetails.richTextContent]);
+    return activeSections.map((s) => sectionToRichText(s)).join("\n");
+  }, [
+    activeSections,
+    projectDetails.activeFile,
+    projectDetails.richTextContent,
+  ]);
 
   // Determine file type for preview rendering
   const activeFileType = useMemo(() => {
@@ -579,19 +582,21 @@ const EditorPage = () => {
 
             case "sections":
               addDebugLog("🔄 Converting Sections → LaTeX");
-              const result = sectionsToLatex(
-                content,
-              );
+              const result = sectionsToLatex(content);
               newLatexContent = result.latex;
 
               // Write file updates back to the project
               if (Object.keys(result.fileUpdates).length > 0) {
-                addDebugLog(`📁 File updates: ${Object.keys(result.fileUpdates).join(", ")}`);
+                addDebugLog(
+                  `📁 File updates: ${Object.keys(result.fileUpdates).join(", ")}`,
+                );
               }
 
               // Build updated files object with file updates applied
               const updatedFiles = { ...projectDetails.currentProject.files };
-              for (const [fileName, fileContent] of Object.entries(result.fileUpdates)) {
+              for (const [fileName, fileContent] of Object.entries(
+                result.fileUpdates,
+              )) {
                 if (updatedFiles[fileName]) {
                   updatedFiles[fileName] = {
                     ...updatedFiles[fileName],
@@ -622,9 +627,10 @@ const EditorPage = () => {
           lastSyncedLatex.current = newLatexContent;
 
           // If sections source provided file updates, merge them into files
-          const baseFiles = (source === "sections" && content._fileUpdates)
-            ? content._fileUpdates
-            : projectDetails.currentProject.files;
+          const baseFiles =
+            source === "sections" && content._fileUpdates
+              ? content._fileUpdates
+              : projectDetails.currentProject.files;
 
           const updatedProject = {
             ...projectDetails.currentProject,
@@ -716,7 +722,7 @@ const EditorPage = () => {
         // Merge back into master sections
         const updatedMap = new Map(updatedActiveSections.map((s) => [s.id, s]));
         const mergedSections = sections.map((s) =>
-          updatedMap.has(s.id) ? updatedMap.get(s.id) : s
+          updatedMap.has(s.id) ? updatedMap.get(s.id) : s,
         );
         setSections(mergedSections);
         updateAllEditors("sections", mergedSections);
@@ -738,7 +744,7 @@ const EditorPage = () => {
         // Sub-file: merge filtered edits back into master sections
         const updatedMap = new Map(updatedSections.map((s) => [s.id, s]));
         const mergedSections = sections.map((s) =>
-          updatedMap.has(s.id) ? updatedMap.get(s.id) : s
+          updatedMap.has(s.id) ? updatedMap.get(s.id) : s,
         );
         setSections(mergedSections);
         updateAllEditors("sections", mergedSections);
@@ -921,7 +927,11 @@ const EditorPage = () => {
           )}
           {activeFileType !== "tex" && (
             <span className="ml-auto mr-3 text-[11px] font-inter font-medium text-gray-400 uppercase tracking-wider">
-              {activeFileType === "image" ? "Image Preview" : activeFileType === "pdf" ? "PDF Preview" : "Read Only"}
+              {activeFileType === "image"
+                ? "Image Preview"
+                : activeFileType === "pdf"
+                  ? "PDF Preview"
+                  : "Read Only"}
             </span>
           )}
         </div>
@@ -932,7 +942,11 @@ const EditorPage = () => {
             <div className="h-full w-full flex flex-col items-center justify-center bg-[#FAFAFA]">
               <div className="max-w-[90%] max-h-[80%] rounded-lg border border-[#CFCFCF] shadow-sm overflow-hidden bg-white">
                 <img
-                  src={projectDetails.currentProject?.files[projectDetails.activeFile]?.content || ""}
+                  src={
+                    projectDetails.currentProject?.files[
+                      projectDetails.activeFile
+                    ]?.content || ""
+                  }
                   alt={projectDetails.activeFile}
                   className="max-w-full max-h-[70vh] object-contain"
                 />
@@ -947,7 +961,11 @@ const EditorPage = () => {
           {activeFileType === "pdf" && (
             <div className="h-full w-full flex flex-col items-center justify-center bg-[#FAFAFA]">
               <embed
-                src={projectDetails.currentProject?.files[projectDetails.activeFile]?.content || ""}
+                src={
+                  projectDetails.currentProject?.files[
+                    projectDetails.activeFile
+                  ]?.content || ""
+                }
                 type="application/pdf"
                 className="w-full h-full rounded border border-[#CFCFCF]"
               />
@@ -1057,12 +1075,23 @@ const EditorPage = () => {
               onApplyChanges={(newContent, fileUpdates) => {
                 // If AI edited content from \input{} files, apply file updates first
                 if (fileUpdates && Object.keys(fileUpdates).length > 0) {
-                  const updatedFiles = { ...projectDetails.currentProject.files };
-                  for (const [fileName, content] of Object.entries(fileUpdates)) {
+                  const updatedFiles = {
+                    ...projectDetails.currentProject.files,
+                  };
+                  for (const [fileName, content] of Object.entries(
+                    fileUpdates,
+                  )) {
                     if (updatedFiles[fileName]) {
-                      updatedFiles[fileName] = { ...updatedFiles[fileName], content };
+                      updatedFiles[fileName] = {
+                        ...updatedFiles[fileName],
+                        content,
+                      };
                     } else {
-                      updatedFiles[fileName] = { name: fileName, content, type: "tex" };
+                      updatedFiles[fileName] = {
+                        name: fileName,
+                        content,
+                        type: "tex",
+                      };
                     }
                   }
                   updateProjectDetails({
@@ -1103,22 +1132,43 @@ const EditorPage = () => {
         )}
 
         {activeRightView === "logs" && (
-          <div className="flex-1 overflow-y-auto bg-[#FAFAFA]">
+          <div className="flex-1 flex flex-col overflow-y-auto bg-[#FAFAFA]">
+            {/* Go Back Button */}
             <button
               onClick={() => setActiveRightView("preview")}
-              className="font-inter w-32 ml-4 pl-3 pb-1 mt-1 pt-1 mb-1 rounded-full text-sm hover:bg-gray-100 sticky text-gray-800 flex cursor-pointer font-medium h-6"
+              className="sticky top-2 ml-4 mb-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-100 transition-colors"
             >
-              <GoBack style={{ fill: "#0a0a0a" }} className="w-5 h-5 mr-4" />
+              <GoBack className="w-4 h-4" style={{ fill: "#0a0a0a" }} />
               Go Back
             </button>
-            <hr />
-            <div className="px-10 py-4 font-inter text-sm">
-              {logs.map((log, i) => (
-                <div key={i} className="mb-1 border-b border-gray-100 pb-1">
-                  {log}
-                </div>
-              ))}
-              {logs.length === 0 && (
+
+            <hr className="border-gray-200" />
+
+            {/* Logs Container */}
+            <div className="px-6 py-4 font-mono text-sm text-gray-900 space-y-2 overflow-y-auto">
+              {logs.length > 0 ? (
+                logs.map((log, i) => {
+                  const isError =
+                    log.toLowerCase().includes("error") ||
+                    log.toLowerCase().includes("fatal");
+                  const isWarning = log.toLowerCase().includes("warning");
+
+                  return (
+                    <div
+                      key={i}
+                      className={`p-2 rounded border-l-4 ${
+                        isError
+                          ? "border-red-500 bg-red-50 text-red-900"
+                          : isWarning
+                            ? "border-yellow-400 bg-yellow-50 text-yellow-800"
+                            : "border-green-400 bg-gray-50"
+                      }`}
+                    >
+                      {log}
+                    </div>
+                  );
+                })
+              ) : (
                 <div className="text-gray-400 italic">No logs available.</div>
               )}
             </div>
