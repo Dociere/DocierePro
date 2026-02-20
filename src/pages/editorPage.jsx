@@ -1111,7 +1111,7 @@ const EditorPage = () => {
 
       {/* Right side of the screen */}
       <div
-        className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r overflow-hidden"
+        className="flex-1 -ml-[1px] flex flex-shrink min-w-[40vw] flex-col border-r overflow-hidden"
         style={{
           borderColor:
             settings.appearance.customThemes[settings.appearance.theme].border,
