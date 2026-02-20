@@ -111,8 +111,8 @@ const DynamicSideBar = ({
                 <Link to="/template">
                   <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
                     <span
-                      className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group font-poppins text-lg p-0 m-0 -mb-1`}
-                      title="AI Chat"
+                      className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group font-poppins font-extralight text-xl p-0 m-0 -mb-1`}
+                      title="Create New Project"
                       style={{
                         color:
                           settings.appearance.customThemes[
@@ -131,7 +131,7 @@ const DynamicSideBar = ({
                 >
                   <span
                     className="flex items-center justify-center text-[#585858] cursor-pointer relative group mb-1"
-                    title="Section Space"
+                    title="Open Existing Project"
                   >
                     <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
                       <FileOpen
