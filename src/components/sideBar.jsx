@@ -4,11 +4,14 @@ import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
 import ShareProject from "./shareProject";
 import VersionManager from "./versionManager";
+import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SectionIcon from "../assets/icons/sectionIcon.svg?react";
 import CitationIcon from "../assets/icons/citation-manager.svg?react";
 import ShareIcon from "../assets/icons/shareIcon.svg?react";
 import DraftIcon from "../assets/icons/draftIcon.svg?react";
 import MathIcon from "../assets/icons/mathIcon.svg?react";
+import TableIcon from "../assets/icons/tableIcon.svg?react";
+import ImageIcon from "../assets/icons/imageIcon.svg?react";
 import DraftVersionIcon from "../assets/icons/draftVersion.svg?react";
 import ExtensionIcon from "../assets/icons/extensionIcon.svg?react";
 import SettingsIcon from "../assets/icons/settings.svg?react";
@@ -27,6 +30,8 @@ const DynamicSideBar = ({
 }) => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
@@ -56,6 +61,16 @@ const DynamicSideBar = ({
   const handleCitationIconClick = (e) => {
     e.preventDefault();
     setIsCitationModalOpen(true);
+  };
+
+  const handleTableIconClick = (e) => {
+    e.preventDefault();
+    setIsTableModalOpen(true);
+  };
+
+  const handleImageIconClick = (e) => {
+    e.preventDefault();
+    setIsImageModalOpen(true);
   };
 
   const handleLogout = async (e) => {
@@ -90,104 +105,131 @@ const DynamicSideBar = ({
       >
         <div className="flex flex-col justify-between h-full">
           <div className="flex flex-col items-center pt-4 space-y-1">
-            {/* Current Project file */}
-            <Link
-              id="tour-project-file"
-              to={`/canvas?project=${projectDetails?.currentProject?.id}`}
-            >
-              <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
-                title="Current Project file"
-              >
-                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                  <DraftIcon
-                    style={{
-                      fill: settings.appearance.customThemes[
-                        settings.appearance.theme
-                      ].icon1,
-                    }}
-                    className="w-4 h-4"
-                  />
-                </div>
-              </span>
-            </Link>
-            {/* Section Space */}
-            <div id="tour-section-space" onClick={toggleSectionSpace}>
-              <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
-                title="Section Space"
-              >
-                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                  <SectionIcon
-                    style={{
-                      fill: settings.appearance.customThemes[
-                        settings.appearance.theme
-                      ].icon1,
-                    }}
-                    className="w-4 h-4"
-                  />
-                </div>
-              </span>
-            </div>
-
-            {/* Citation Manager */}
-            <div id="tour-citation-manager" className="relative group">
-              <Link onClick={handleCitationIconClick}>
-                <div
-                  className="flex items-center justify-center text-[#585858] cursor-pointer"
-                  title="Citation Manager"
-                >
+            {!projectDetails?.currentProject?.id && (
+              <>
+                {/* Create New Project */}
+                <Link to="/template">
                   <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                    <CitationIcon
+                    <span
+                      className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group font-poppins text-lg p-0 m-0 -mb-1`}
+                      title="AI Chat"
                       style={{
-                        fill: settings.appearance.customThemes[
-                          settings.appearance.theme
-                        ].icon1,
+                        color:
+                          settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
                       }}
-                      className="w-4 h-4 "
-                    />
+                    >
+                      +
+                    </span>
                   </div>
+                </Link>
+                {/* Open Existing Project */}
+                <div
+                  id="tour-openExistingProject-space"
+                  onClick={toggleSectionSpace}
+                >
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group mb-1"
+                    title="Section Space"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <FileOpen
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
                 </div>
-              </Link>
-            </div>
+              </>
+            )}
+            {projectDetails?.currentProject?.id && (
+              <>
+                {/* Current Project file */}
+                <Link
+                  id="tour-project-file"
+                  to={`/canvas?project=${projectDetails?.currentProject?.id}`}
+                >
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Current Project file"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <DraftIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </Link>
+                {/* Section Space */}
+                <div id="tour-section-space" onClick={toggleSectionSpace}>
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Section Space"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <SectionIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </div>
 
-            {/* Share / Collaborate */}
-            <div id="tour-share" onClick={handleShareIconClick}>
-              <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
-                title="Share"
-              >
-                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                  <ShareIcon
-                    style={{
-                      fill: settings.appearance.customThemes[
-                        settings.appearance.theme
-                      ].icon1,
-                    }}
-                    className="w-4 h-4"
-                  />
+                {/* Citation Manager */}
+                <div id="tour-citation-manager" className="relative group">
+                  <Link onClick={handleCitationIconClick}>
+                    <div
+                      className="flex items-center justify-center text-[#585858] cursor-pointer"
+                      title="Citation Manager"
+                    >
+                      <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                        <CitationIcon
+                          style={{
+                            fill: settings.appearance.customThemes[
+                              settings.appearance.theme
+                            ].icon1,
+                          }}
+                          className="w-4 h-4 "
+                        />
+                      </div>
+                    </div>
+                  </Link>
                 </div>
-              </span>
-            </div>
 
-            {/* Equation Generator */}
-            <Link id="tour-math-input" onClick={handleMathIconClick}>
-              <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
-                title="Equation Generator"
-              >
-                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                  <MathIcon
-                    style={{
-                      fill: settings.appearance.customThemes[
-                        settings.appearance.theme
-                      ].icon1,
-                    }}
-                    className="w-4 h-4"
-                  />
-                </div>
-              </span>
-            </Link>
+                {/* Equation Generator */}
+                <Link id="tour-math-input" onClick={handleMathIconClick}>
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Equation Generator"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <MathIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </Link>
+              </>
+            )}
 
             {/* Extensions */}
             <Link id="tour-extensions" to="/canvas">
@@ -208,45 +250,106 @@ const DynamicSideBar = ({
               </span>
             </Link>
 
-            {/* Draft Versioning */}
-            <div
-              id="tour-versioning"
-              onClick={() => setIsVersionModalOpen(true)}
-            >
-              <span
-                className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group`}
-                title="Draft Versioning"
-              >
-                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                  <DraftVersionIcon
-                    style={{
-                      fill: settings.appearance.customThemes[
-                        settings.appearance.theme
-                      ].icon1,
-                    }}
-                    className="w-4 h-4"
-                  />
-                </div>
-              </span>
-            </div>
+            {projectDetails?.currentProject?.id && (
+              <>
+                {/* Insert Table */}
+                <Link onClick={handleTableIconClick}>
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Insert Table"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <TableIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </Link>
 
-            {/* AI Chat */}
-            <div id="tour-ai-chat" onClick={onOpenAIChat}>
-              <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                <span
-                  className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group font-poppins text-sm p-0 m-0`}
-                  title="AI Chat"
-                  style={{
-                    color:
-                      settings.appearance.customThemes[
-                        settings.appearance.theme
-                      ].icon1,
-                  }}
+                {/* Insert Image */}
+                <Link onClick={handleImageIconClick}>
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Insert Image"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <ImageIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </Link>
+
+                {/* Share / Collaborate */}
+                <div id="tour-share" onClick={handleShareIconClick}>
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Share"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <ShareIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </div>
+
+                {/* Draft Versioning */}
+                <div
+                  id="tour-versioning"
+                  onClick={() => setIsVersionModalOpen(true)}
                 >
-                  AI
-                </span>
-              </div>
-            </div>
+                  <span
+                    className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group`}
+                    title="Draft Versioning"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <DraftVersionIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </div>
+
+                {/* AI Chat */}
+                <div id="tour-ai-chat" onClick={onOpenAIChat}>
+                  <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                    <span
+                      className={`flex items-center justify-center cursor-pointer transition-colors rounded-md relative group font-poppins text-sm p-0 m-0`}
+                      title="AI Chat"
+                      style={{
+                        color:
+                          settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                      }}
+                    >
+                      AI
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <div className="flex flex-col mb-2">
             {/* Settings */}
@@ -338,6 +441,14 @@ const DynamicSideBar = ({
       {/* Citation Manager Modal */}
       {isCitationModalOpen && (
         <CitationManager onClose={() => setIsCitationModalOpen(false)} />
+      )}
+
+      {isImageModalOpen && (
+        <ImageInsertModal onClose={() => setIsImageModalOpen(false)} />
+      )}
+
+      {isTableModalOpen && (
+        <TableDesignerModal onClose={() => setIsTableModalOpen(false)} />
       )}
 
       {/* Share Project Modal */}
