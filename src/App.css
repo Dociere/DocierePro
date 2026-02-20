@@ -1,283 +1,4 @@
-/* * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-} */
-
-/* body {
-  /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    sans-serif;
-  background: #f5f5f5; */
-/* overflow: hidden; */
-/* }  */
-
-/* .App {
-  height: 100vh;
-  width: 100vw;
-} */
-
-/* Overleaf Editor Styles */
-/* .overleaf-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: white;
-} */
-
-/* Header */
-/* .overleaf-header {
-  background: #138a36;
-  color: white;
-  padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: between;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-} */
-
-/* .overleaf-logo {
-  font-size: 20px;
-  font-weight: bold;
-  margin-right: 30px;
-} */
-
-/* .overleaf-project-name {
-  flex: 1;
-  font-size: 16px;
-  font-weight: 500;
-} */
-
-/* .overleaf-actions {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-} */
-/* 
-.btn-header {
-  background: transparent;
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 6px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.btn-header:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.btn-header.primary {
-  background: #0f7b2c;
-  border-color: #0f7b2c;
-}
-
-.btn-header.primary:hover {
-  background: #0d6b26;
-} */
-
-/* Main Content */
-/* .overleaf-main {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-} */
-
-/* Sidebar */
-/* .overleaf-sidebar {
-  width: 260px;
-  background: #f8f9fa;
-  border-right: 1px solid #dee2e6;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-} */
-
-/* .sidebar-section {
-  padding: 16px 20px;
-}
-
-.sidebar-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #495057;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.file-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  margin-bottom: 2px;
-  transition: background 0.2s;
-  font-size: 14px;
-}
-
-.file-item:hover {
-  background: #e9ecef;
-}
-
-.file-item.active {
-  background: #138a36;
-  color: white;
-}
-
-.file-icon {
-  margin-right: 8px;
-  font-size: 14px;
-  opacity: 0.7;
-}
-
-.btn-new-file {
-  background: #138a36;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  width: 100%;
-  margin-top: 8px;
-  transition: background 0.2s;
-}
-
-.btn-new-file:hover {
-  background: #0f7b2c;
-} */
-
-/* Editor Area */
-/* .overleaf-editor-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-} */
-
-/* .editor-tabs {
-  background: white;
-  border-bottom: 1px solid #dee2e6;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  min-height: 48px;
-}
-
-.editor-tab {
-  background: none;
-  border: none;
-  padding: 12px 16px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #6c757d;
-  border-bottom: 3px solid transparent;
-  transition: all 0.2s;
-}
-
-.editor-tab.active {
-  color: #138a36;
-  border-bottom-color: #138a36;
-  font-weight: 500;
-}
-
-.editor-tab:hover:not(.active) {
-  color: #495057;
-  background: #f8f9fa;
-}
-
-.editor-content {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-} */
-
-/* Code Editor Panel */
-/* .code-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid #dee2e6;
-} */
-
-/* .code-panel-header {
-  background: #f8f9fa;
-  padding: 12px 20px;
-  border-bottom: 1px solid #dee2e6;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.panel-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #495057;
-} */
-
-/* .monaco-editor-container {
-  flex: 1;
-  min-height: 0;
-} */
-
-/* Preview Panel */
-/* .preview-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: white;
-} */
-/* 
-.preview-panel-header {
-  background: #f8f9fa;
-  padding: 12px 20px;
-  border-bottom: 1px solid #dee2e6;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.preview-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-} */
-
-/* .btn-compile {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-.btn-compile:hover:not(:disabled) {
-  background: #218838;
-  transform: translateY(-1px);
-}
-
-.btn-compile:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-compile.compiling {
-  background: #fd7e14;
-  animation: pulse 1.5s infinite;
-} */
-
-@keyframes pulse {
+/* @keyframes pulse {
   0% {
     opacity: 1;
   }
@@ -287,55 +8,9 @@
   100% {
     opacity: 1;
   }
-}
-/* 
-.preview-mode-toggle {
-  display: flex;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  overflow: hidden;
-}
+} */
 
-.toggle-btn {
-  background: white;
-  border: none;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 12px;
-  color: #6c757d;
-  transition: all 0.2s;
-}
-
-.toggle-btn.active {
-  background: #138a36;
-  color: white;
-}
-
-.toggle-btn:hover:not(.active) {
-  background: #f8f9fa;
-}
-
-.preview-content {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-/* Preview Modes */
-/* .preview-html-mode {
-  height: 100%;
-  overflow-y: auto;
-  padding: 40px;
-  background: white;
-}
-
-.preview-edit-mode {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}  */
-
-.preview-edit-mode .ql-container {
+/* .preview-edit-mode .ql-container {
   flex: 1;
   border: none;
 }
@@ -368,10 +43,10 @@
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   background: white;
-}
+} */
 
 /* Compilation Status */
-.compilation-status {
+/* .compilation-status {
   position: absolute;
   top: 0;
   left: 0;
@@ -399,9 +74,9 @@
   background: #fff3cd;
   color: #856404;
   border-bottom: 1px solid #ffeaa7;
-}
+} */
 
-@keyframes slideDown {
+/* @keyframes slideDown {
   from {
     opacity: 0;
     transform: translateY(-100%);
@@ -410,10 +85,10 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
+} */
 
 /* Loading States */
-.loading-spinner {
+/* .loading-spinner {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -430,46 +105,26 @@
   border-top: 3px solid #138a36;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-}
+} */
 
-@keyframes spin {
+/* @keyframes spin {
   0% {
     transform: rotate(0deg);
   }
   100% {
     transform: rotate(360deg);
   }
-}
+} */
 
 /* Error States */
-.error-message {
+/* .error-message {
   padding: 20px;
   background: #f8d7da;
   border: 1px solid #f5c6cb;
   border-radius: 4px;
   color: #721c24;
   margin: 20px;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-  .overleaf-sidebar {
-    width: 240px;
-  }
-
-  .overleaf-header {
-    padding: 8px 16px;
-  }
-
-  .overleaf-logo {
-    font-size: 18px;
-  }
-
-  .pdf-viewer iframe {
-    width: 100%;
-    max-width: 600px;
-  }
-}
+} */
 
 /* Scrollbar Styles */
 ::-webkit-scrollbar {
@@ -489,7 +144,7 @@
   background: #a8a8a8;
 }
 /* Additional styles for simplified view */
-.btn-view-pdf {
+/* .btn-view-pdf {
   background: #dc3545;
   color: white;
   border: none;
@@ -505,7 +160,7 @@
 }
 
 /* Rich text editor enhancements */
-.preview-edit-mode .ql-editor {
+/* .preview-edit-mode .ql-editor {
   font-family: "Times New Roman", serif;
   font-size: 14px;
   line-height: 1.6;
@@ -514,10 +169,10 @@
 
 .preview-edit-mode .ql-container {
   font-family: "Times New Roman", serif;
-}
+} */
 
 /* Math formula styling in rich text */
-.ql-editor span[style*="Courier New"] {
+/* .ql-editor span[style*="Courier New"] {
   background: #e3f2fd !important;
   border-radius: 3px !important;
   padding: 2px 6px !important;
@@ -534,9 +189,9 @@
   text-align: center !important;
   font-family: "Courier New", monospace !important;
   color: #495057 !important;
-}
+} */
 /* Enhanced list styling in rich text editor */
-.preview-edit-mode .ql-editor ul,
+/* .preview-edit-mode .ql-editor ul,
 .preview-edit-mode .ql-editor ol {
   padding-left: 30px;
   margin: 15px 0;
@@ -553,19 +208,19 @@
 
 .preview-edit-mode .ql-editor ol li {
   list-style-type: decimal;
-}
+} */
 
 /* Nested list support */
-.preview-edit-mode .ql-editor ul ul,
+/* .preview-edit-mode .ql-editor ul ul,
 .preview-edit-mode .ql-editor ol ol,
 .preview-edit-mode .ql-editor ul ol,
 .preview-edit-mode .ql-editor ol ul {
   margin: 5px 0;
   padding-left: 25px;
-}
+} */
 
 /* List toolbar buttons styling */
-.ql-toolbar .ql-formats {
+/* .ql-toolbar .ql-formats {
   margin-right: 15px;
 }
 
@@ -573,9 +228,9 @@
 .ql-toolbar button.ql-list[value="bullet"] {
   width: 28px;
   height: 28px;
-}
+} */
 /* Fix list rendering in Rich Text Editor */
-.preview-edit-mode .ql-editor ol,
+/* .preview-edit-mode .ql-editor ol,
 .preview-edit-mode .ql-editor ul {
   padding-left: 1.5em;
   margin: 1em 0;
@@ -600,10 +255,10 @@
 .preview-edit-mode .ql-editor ul li {
   display: list-item;
   list-style-type: disc;
-}
+} */
 
 /* Ensure proper list nesting */
-.ql-editor .ql-indent-1 {
+/* .ql-editor .ql-indent-1 {
   padding-left: 3em;
 }
 
@@ -613,18 +268,19 @@
 
 .ql-editor .ql-indent-3 {
   padding-left: 6em;
-}
+} */
 
 /* Remove any duplicate numbering */
-.ql-editor ol li::marker {
+/* .ql-editor ol li::marker {
   content: counter(list-item) ". ";
 }
 
 .ql-editor ul li::marker {
   content: "• ";
-}
+} */
+*/
 /* Custom list button styles */
-.ql-toolbar button.ql-custom-list-ordered:after {
+/* .ql-toolbar button.ql-custom-list-ordered:after {
   content: "1.";
   font-size: 14px;
   font-weight: bold;
@@ -644,6 +300,7 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+*/
 
 /* =========================================
    Yjs Collaboration Cursor Styles
@@ -715,3 +372,19 @@
   filter: brightness(0.97);
 }
 
+/* =========================================
+   Custom Loading Styling
+   ========================================= */
+
+@keyframes slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-slide {
+  animation: slide 1.2s infinite ease-in-out;
+}
