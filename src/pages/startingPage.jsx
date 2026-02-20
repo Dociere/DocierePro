@@ -48,7 +48,7 @@ const StartingPage = () => {
             LaTeX Redefined
           </div>
         </div>
-        <div className="ml-72">
+        <div className="ml-auto mr-44">
           <div
             className="text-base font-inter font-medium leading-[20px]"
             style={{
@@ -88,7 +88,7 @@ const StartingPage = () => {
       </div>
 
       <div className="mt-20">
-        <div className="flex flex-row">
+        <div className="flex flex-row w-[24vw]">
           <div
             className="text-xl mb-3 font-inter font-medium leading-[20px]"
             style={{
@@ -100,7 +100,7 @@ const StartingPage = () => {
             Recent Projects
           </div>
           <button
-            className="ml-[7rem] pb-1"
+            className="ml-auto mr-1 pb-1"
             onClick={() => {
               setProjectModal(true);
             }}
@@ -110,7 +110,7 @@ const StartingPage = () => {
         </div>
         <SearchBar data={projectData} />
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
-          {(projectData || []).slice(0, 5).map((project) => (
+          {(projectData || []).slice(0, 10).map((project) => (
             <Link to={`/canvas?project=${project.id}`}>
               <TemplateCards title={project.title} />
             </Link>
