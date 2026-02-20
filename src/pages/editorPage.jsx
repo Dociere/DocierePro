@@ -52,6 +52,7 @@ const EditorPage = () => {
   const [collaborationToken, setCollaborationToken] = useState(null);
   const { user, isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
+  const [isLoading, setIsLoading] = useState(false);
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -787,26 +788,33 @@ const EditorPage = () => {
   };
 
   const handleCompile = async () => {
-    const response = await compileDocument(
-      currentProject,
-      activeFile,
-      isCompiling,
-      compilationStatus,
-      compilationMessage,
-      pdfUrl,
-      latexContent,
-      isServerConnected,
-      isAuthenticated,
-    );
+    setIsLoading(true);
+    try {
+      const response = await compileDocument(
+        currentProject,
+        activeFile,
+        isCompiling,
+        compilationStatus,
+        compilationMessage,
+        pdfUrl,
+        latexContent,
+        isServerConnected,
+        isAuthenticated,
+      );
 
-    console.log("handleCompile response", response.pdfUrl);
+      console.log("handleCompile response", response.pdfUrl);
 
-    updateProjectDetails({
-      pdfUrl: response.pdfUrl,
-      compilationStatus: response.compilationStatus,
-      compilationMessage: response.compilationMessage,
-      pdfFileName: response.fileName,
-    });
+      updateProjectDetails({
+        pdfUrl: response.pdfUrl,
+        compilationStatus: response.compilationStatus,
+        compilationMessage: response.compilationMessage,
+        pdfFileName: response.fileName,
+      });
+    } catch (error) {
+      console.error("Compilation failed:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const quillModules = {
@@ -1127,6 +1135,7 @@ const EditorPage = () => {
               fileTitle={projectDetails.currentProject.title}
               onShowLogs={() => setActiveRightView("logs")}
               projectDetails={projectDetails}
+              loading={isLoading}
             />
           </div>
         )}

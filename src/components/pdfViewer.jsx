@@ -20,6 +20,7 @@ const PdfViewer = ({
   fileTitle,
   onShowLogs,
   projectDetails,
+  loading,
 }) => {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1);
@@ -121,14 +122,25 @@ const PdfViewer = ({
                   .border,
             }}
           >
-            <SyncIcon
-              style={{
-                fill: settings.appearance.customThemes[
-                  settings.appearance.theme
-                ].icon1,
-              }}
-              className="mt-[1px] w-4 h-4"
-            />
+            {loading ? (
+              <SyncIcon
+                style={{
+                  fill: settings.appearance.customThemes[
+                    settings.appearance.theme
+                  ].icon1,
+                }}
+                className="mt-[1px] w-4 h-4 animate-spin"
+              />
+            ) : (
+              <SyncIcon
+                style={{
+                  fill: settings.appearance.customThemes[
+                    settings.appearance.theme
+                  ].icon1,
+                }}
+                className="mt-[1px] w-4 h-4"
+              />
+            )}
             <p
               className="px-2 font-poppins text-sm font-light"
               style={{
