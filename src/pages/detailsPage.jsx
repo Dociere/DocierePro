@@ -12,18 +12,9 @@ const DetailsPage = () => {
   const { settings } = useSettings();
   const isDark = settings.appearance.mode === "dark";
 
-  // Determine template source
-  const localTemplates = [
-    "blank",
-    "ieee_conference",
-    "ieee_journal",
-    "acm_manuscript",
-    "mla_format",
-    "resume",
-  ];
-  const templateSource = localTemplates.includes(templateTitle)
-    ? "local"
-    : "server";
+  // All templates accessed from the local templates folder are "local".
+  // Server-sourced templates will use a different flow in the future.
+  const templateSource = "local";
 
   const [title, setTitle] = useState("");
   const [userIdea, setUserIdea] = useState("");

@@ -38,6 +38,7 @@ const TEMP_DIR = path.join(__dirname, "temp");
 const OUTPUT_DIR = path.join(__dirname, "output");
 const EQUATIONS_DIR = path.join(__dirname, "equations");
 const CITATIONS_DIR = path.join(__dirname, "citations");
+const TEMPLATES_DIR = path.join(__dirname, "templates");
 
 // STEP 1: Add this helper function at the top of your file (after imports)
 // This replaces the existing runPdfLatex if you have one
@@ -572,6 +573,84 @@ async function getTemplateFiles(templatePath) {
   return files;
 }
 
+// API: List all local template folder names
+app.get("/api/templates", async (req, res) => {
+  try {
+    const entries = await fs.readdir(TEMPLATES_DIR, { withFileTypes: true });
+    const templates = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+    res.json({ success: true, templates });
+  } catch (error) {
+    console.error("❌ Template list error:", error);
+    res.status(500).json({ success: false, error: "Failed to list templates" });
+  }
+});
+
+// API: Save current project files as a local template
+app.post("/api/templates/save", async (req, res) => {
+  try {
+    const { name, files } = req.body;
+
+    if (!name || !name.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Template name is required" });
+    }
+
+    if (!files || Object.keys(files).length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, error: "No files to save" });
+    }
+
+    const templateDir = path.join(TEMPLATES_DIR, name.trim());
+
+    if (await fs.pathExists(templateDir)) {
+      return res
+        .status(409)
+        .json({ success: false, error: "A template with this name already exists" });
+    }
+
+    await fs.ensureDir(templateDir);
+
+    for (const [relPath, fileData] of Object.entries(files)) {
+      // Skip .gitkeep placeholder files
+      if (relPath.endsWith("/.gitkeep") || fileData.name === ".gitkeep") {
+        const dirPath = path.dirname(path.join(templateDir, relPath));
+        await fs.ensureDir(dirPath);
+        continue;
+      }
+
+      const filePath = path.join(templateDir, relPath);
+      await fs.ensureDir(path.dirname(filePath));
+
+      if (
+        fileData.isImage &&
+        fileData.content &&
+        fileData.content.startsWith("data:")
+      ) {
+        const base64Match = fileData.content.match(/^data:[^;]+;base64,(.+)$/);
+        if (base64Match) {
+          await fs.writeFile(filePath, Buffer.from(base64Match[1], "base64"));
+        } else {
+          await fs.writeFile(filePath, fileData.content, "utf8");
+        }
+      } else {
+        await fs.writeFile(filePath, fileData.content || "", "utf8");
+      }
+    }
+
+    console.log(`✅ Saved template: ${name.trim()}`);
+    res.json({ success: true, message: "Template saved successfully" });
+  } catch (error) {
+    console.error("❌ Template save error:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to save template" });
+  }
+});
+
 // API: Create new project
 app.post("/api/projects/create", async (req, res) => {
   try {
@@ -646,7 +725,7 @@ app.post("/api/projects/create", async (req, res) => {
       console.log(keyToFolder);
 
       const folderName = keyToFolder[templateType] || templateType;
-      const templatePath = path.join(__dirname, "templates", folderName);
+      const templatePath = path.join(TEMPLATES_DIR, folderName);
 
       console.log(`📂 Reading template from: ${templatePath}`);
       files = await getTemplateFiles(templatePath);

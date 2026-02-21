@@ -1,9 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import GoBack from "../assets/icons/goBack.svg?react";
 import TemplateCards from "../components/templateCards";
 import { useAuth } from "../context/useAuth";
 import { useSettings } from "../context/useSettings";
+import axios from "axios";
+
+const API_URL = "http://localhost:5000";
+
+// Built-in templates that always appear (keyed by folder name)
+const BUILT_IN_FOLDERS = [
+  "IEEE Conference",
+  "IEEE Journal",
+  "ACM Manuscript",
+  "MLA Format",
+  "Resume",
+];
 
 const SignInModal = ({ isOpen, onClose, onSignIn }) => {
   if (!isOpen) return null;
@@ -39,15 +51,25 @@ function TemplateSelect() {
   const { settings } = useSettings();
   const isDark = settings.appearance.mode === "dark";
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userTemplates, setUserTemplates] = useState([]);
 
-  const bundledTemplates = {
-    "Blank Document": "blank",
-    "IEEE Conference": "ieee_conference",
-    "IEEE Journal": "ieee_journal",
-    "ACM Manuscript": "acm_manuscript",
-    "MLA Format": "mla_format",
-    "Resume / CV": "resume",
-  };
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/templates`);
+        if (res.data.success) {
+          // Filter out built-in folders to get user-saved templates
+          const custom = res.data.templates.filter(
+            (t) => !BUILT_IN_FOLDERS.includes(t),
+          );
+          setUserTemplates(custom);
+        }
+      } catch (err) {
+        console.error("Failed to fetch templates:", err);
+      }
+    };
+    fetchTemplates();
+  }, []);
 
   const handleBrowseClick = () => {
     if (isAuthenticated) {
@@ -59,7 +81,7 @@ function TemplateSelect() {
 
   const handleSignIn = () => {
     setIsModalOpen(false);
-    navigate("/login"); // Assuming login route exists
+    navigate("/login");
   };
 
   return (
@@ -101,22 +123,46 @@ function TemplateSelect() {
             </button>
           </div>
 
+          {/* Built-in templates + Blank */}
           <div className="flex flex-row flex-wrap mt-10 gap-x-20 gap-y-12">
-            {Object.entries(bundledTemplates).map(([title, value]) => (
+            <Link
+              to="/detailPage/blank"
+              className="transform hover:scale-105 transition-transform duration-200"
+            >
+              <TemplateCards title="Blank Document" />
+            </Link>
+            {BUILT_IN_FOLDERS.map((folder) => (
               <Link
-                key={value}
-                id={value === "blank" ? "tour-blank-template" : undefined}
-                to={
-                  value === "blank"
-                    ? `/detailPage/${value}`
-                    : `/template/preview/${value}`
-                }
+                key={folder}
+                to={`/template/preview/${folder}`}
                 className="transform hover:scale-105 transition-transform duration-200"
               >
-                <TemplateCards title={title} />
+                <TemplateCards title={folder} />
               </Link>
             ))}
           </div>
+
+          {/* User-saved templates */}
+          {userTemplates.length > 0 && (
+            <div className="mt-16">
+              <p
+                className={`text-xl font-inter font-medium mb-6 ${isDark ? "text-gray-300" : "text-[#333]"}`}
+              >
+                Your Templates
+              </p>
+              <div className="flex flex-row flex-wrap gap-x-20 gap-y-12">
+                {userTemplates.map((folder) => (
+                  <Link
+                    key={folder}
+                    to={`/template/preview/${folder}`}
+                    className="transform hover:scale-105 transition-transform duration-200"
+                  >
+                    <TemplateCards title={folder} />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

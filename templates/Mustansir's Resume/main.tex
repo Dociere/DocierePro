@@ -1,0 +1,158 @@
+\documentclass[10pt]{article} % Using 10pt for a compact look
+
+% CRITICAL: ONLY RAW LATEX. NO MARKDOWN.
+% CRITICAL: Escape characters & % $ # _ { } ~ ^ \
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[letterpaper, top=0.5in, bottom=0.5in, left=0.6in, right=0.6in]{geometry}
+\usepackage{enumitem} % For customizable lists
+\usepackage{titlesec} % For custom section titles
+\usepackage{hyperref} % For clickable links
+\usepackage{ragged2e} % For \RaggedRight, better text alignment
+\usepackage{marvosym} % For symbols like \Email, \Mobilefone, \Telefon
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=blue,
+}
+
+% --- Custom Commands and Layout ---
+
+% Section Titles (large, bold, with a rule underneath, slightly adjusted left margin)
+\titleformat{\section}{\vspace{-10pt}\normalfont\Large\textbf}{\relax}{0pt}{\hspace{-15pt}}[\titlerule]
+\titlespacing*{\section}{0pt}{10pt}{5pt} % Left, before, after
+
+% Reduce spacing before and after lists
+\setlist{itemsep=0pt, parsep=0pt, topsep=2pt, partopsep=0pt}
+
+% Custom list environment for resume items (indented bullet points)
+\newenvironment{resumelist}{
+    \begin{itemize}[label=\textbullet, leftmargin=1em, noitemsep, topsep=2pt, parsep=0pt, partopsep=0pt]
+}{
+    \end{itemize}
+}
+
+% Minimal page numbers
+\pagestyle{empty} % No page numbers
+
+\begin{document}
+
+% --- Header: Name and Contact Info ---
+\begin{center}
+    {\Huge \textbf{Mustansir}} \\ % Name
+    \vspace{2pt}
+    \small
+    \href{https://mustansir-ds.com}{mustansir-ds.com} \textbar \ \
+    \Mobilefone~+1 (123) 456-7890 \textbar \ % Phone
+    \href{mailto:mustansir.data@email.com}{\Email~mustansir.data@email.com} \textbar \ % Email
+    \href{https://linkedin.com/in/mustansir-datasci}{linkedin.com/in/mustansir-datasci} \textbar \ % LinkedIn
+    \href{https://github.com/mustansir-ds}{github.com/mustansir-ds} % GitHub
+\end{center}
+
+\vspace{-10pt} % Adjust spacing after header
+
+% --- Summary ---
+
+\section*{Summary}
+\begin{justify}
+An \textbf{experienced Data Scientist} with \textbf{over 5 years of expertise} in designing, building, and deploying \textbf{end-to-end machine learning and deep learning solutions}. Proficient in \textbf{statistical modeling}, \textbf{predictive analytics}, \textbf{natural language processing}, and \textbf{computer vision}. I excel at \textbf{transforming complex datasets} into powerful, \textbf{actionable insights} that drive \textbf{significant business growth} and \textbf{operational efficiency}. Eager to take on a \textbf{challenging Data Scientist role} and apply advanced analytical skills to create \textbf{innovative, data-driven strategies}.
+\end{justify}
+
+% --- Experience ---
+
+\section*{Experience}
+\begin{itemize}[leftmargin=*, label={}]% Top-level items (job roles) have no bullet
+\item \textbf{Senior Data Scientist} \hfill Jan 2022 -- Present \\
+    \textit{GlobalTech Solutions, New York, NY}
+    \begin{resumelist} % Bullet points for duties
+\item Led a team in developing and deploying predictive models for customer churn across a user base of 10M+, resulting in a 15\% reduction in churn rate and \$5M annual savings.
+\item Designed and implemented A/B testing frameworks for new product features, leading to data-driven decisions that increased user engagement by 20\%.
+\item Built and optimized real-time anomaly detection systems using time series forecasting and unsupervised learning techniques, reducing false positives by 30\%.
+\item Managed end-to-end MLOps pipeline using AWS SageMaker, Docker, and Kubernetes for model versioning, deployment, and monitoring.
+\item Mentored junior data scientists on best practices in model development, evaluation, and deployment.
+    \end{resumelist}
+     % Small space between experience blocks
+\item \textbf{Data Scientist} \hfill Aug 2019 -- Dec 2021 \\
+    \textit{Innovate Analytics Inc., San Francisco, CA}
+    \begin{resumelist}
+\item Developed and validated machine learning models for fraud detection, achieving an F1-score of 92\% and reducing fraudulent transactions by 25\%.
+\item Performed extensive exploratory data analysis and feature engineering on large-scale datasets using Python (Pandas, NumPy) and SQL.
+\item Collaborated with product and engineering teams to integrate data science solutions into core products, improving efficiency and user experience.
+\item Created interactive dashboards using Tableau and Power BI to visualize key performance indicators and communicate insights to stakeholders.
+\item Participated in the design and optimization of data warehousing solutions (PostgreSQL, Redshift) for analytical purposes.
+    \end{resumelist}
+\item \textbf{Junior Data Scientist} \hfill Jun 2017 -- Jul 2019 \\
+    \textit{Quantify Insights, Boston, MA}
+    \begin{resumelist}
+\item Assisted senior data scientists in data cleaning, preprocessing, and exploratory analysis for various projects.
+\item Built initial prototypes of predictive models for sales forecasting and customer segmentation using Scikit-learn.
+\item Generated weekly reports and presentations on key data trends and model performance.
+\item Automated data extraction and transformation processes using SQL and Python scripts.
+    \end{resumelist}
+\end{itemize}
+
+\section*{Projects}
+\begin{itemize}[leftmargin=*, label={}]
+    \item \textbf{Medical Image Classification using Deep Learning}
+    \begin{resumelist}
+        \item Developed a Convolutional Neural Network (CNN) model using TensorFlow and Keras to classify medical images (X-rays) for early disease detection.
+        \item Achieved state-of-the-art accuracy of 96.5\% on a public chest X-ray dataset, outperforming baseline models.
+        \item Implemented transfer learning (ResNet, VGG) and data augmentation techniques to improve model robustness and generalization.
+    \end{resumelist}
+    \vspace{4pt}
+
+    \item \textbf{Natural Language Processing for Market Trend Analysis}
+    \begin{resumelist}
+        \item Built an NLP pipeline to analyze real-time news articles and social media feeds to identify emerging market trends and sentiment for financial forecasting.
+        \item Utilized techniques such as TF-IDF, Word2Vec, BERT embeddings, and LSTM networks for text classification and sentiment scoring.
+        \item Visualized key insights and sentiment changes over time using custom Matplotlib and Seaborn dashboards.
+    \end{resumelist}
+    \vspace{4pt}
+
+    \item \textbf{E-commerce Recommendation System with Collaborative Filtering}
+    \begin{resumelist}
+        \item Designed and implemented a hybrid recommendation system combining collaborative filtering and content-based approaches.
+        \item Utilized Apache Spark for processing large user-item interaction datasets and deploying the model.
+        \item Improved product discovery and simulated a 10\% increase in average order value based on offline metrics.
+    \end{resumelist}
+\end{itemize}
+
+% --- Education ---
+
+\section*{Education}
+\begin{itemize}[leftmargin=*, label={}]
+    \item \textbf{Master of Science in Data Science} \hfill Sep 2016 -- May 2018 \\
+    \textit{University of Advanced Analytics, New York, NY}
+    \begin{resumelist}
+        \item \textit{Relevant Coursework:} Machine Learning, Deep Learning, Statistical Inference, Big Data Architectures, Predictive Modeling, Natural Language Processing, Computer Vision.
+        \item \textit{Thesis:} "Scalable Real-time Anomaly Detection in High-Dimensional Data Streams."
+    \end{resumelist}
+    \vspace{4pt}
+
+    \item \textbf{Bachelor of Science in Computer Science} \hfill Sep 2012 -- May 2016 \\
+    \textit{State University of Technology, Boston, MA}
+    \begin{resumelist}
+        \item \textit{Minor:} Applied Mathematics.
+        \item \textit{Awards:} Dean's List (all semesters).
+    \end{resumelist}
+\end{itemize}
+
+% --- Skills ---
+
+\section*{Skills}
+\begin{resumelist}
+    \item \textbf{Programming Languages:} Python (NumPy, Pandas, Scikit-learn, TensorFlow, PyTorch, Keras, Matplotlib, Seaborn, Flask), SQL, R, Scala, Bash.
+    \item \textbf{Machine Learning:} Supervised & Unsupervised Learning, Deep Learning (CNN, RNN, Transformers), NLP, Computer Vision, Time Series Analysis, Reinforcement Learning, Generative AI, A/B Testing, Feature Engineering, Model Interpretability (LIME, SHAP).
+    \item \textbf{Big Data Technologies:} Apache Spark, Hadoop, Kafka, Databricks, Hive.
+    \item \textbf{Cloud Platforms:} AWS (S3, EC2, SageMaker, Lambda, Redshift, Glue), Google Cloud Platform (GCP - BigQuery, AI Platform), Microsoft Azure (Azure ML).
+    \textbf{Databases:} PostgreSQL, MySQL, MongoDB, Redis, Cassandra.
+    \item \textbf{Tools & Technologies:} Git, Docker, Kubernetes, Airflow, Jupyter Notebook, Tableau, Power BI, Looker, DVC, MLflow.
+    \item \textbf{Methodologies:} Agile, CRISP-DM, Lean Startup.
+\end{resumelist}
+\end{document}
+

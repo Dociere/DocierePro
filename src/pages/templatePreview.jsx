@@ -3,24 +3,11 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import GoBack from "../assets/icons/goBack.svg?react";
 import { useSettings } from "../context/useSettings";
 
-const TEMPLATE_TITLES = {
-  ieee_conference: "IEEE Conference Paper",
-  ieee_journal: "IEEE Journal Paper",
-  acm_manuscript: "ACM Manuscript",
-  mla_format: "MLA Format",
-  resume: "Resume / CV",
-  springer_nature: "Springer Nature Journal",
-  mdpi: "MDPI Journal",
-  beamer: "Beamer Presentation",
-  aip: "AIP Journal",
-  frontiers: "Frontiers Journal",
-};
-
 const TemplatePreview = () => {
   const { templateKey } = useParams();
   const navigate = useNavigate();
   const { settings } = useSettings();
-  const title = TEMPLATE_TITLES[templateKey] || "Template Preview";
+  const title = decodeURIComponent(templateKey);
 
   return (
     <div className="h-screen overflow-y-auto flex flex-col ml-36 mr-20 pb-10 mt-10">
