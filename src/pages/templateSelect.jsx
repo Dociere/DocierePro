@@ -126,6 +126,7 @@ function TemplateSelect() {
           {/* Built-in templates + Blank */}
           <div className="flex flex-row flex-wrap mt-10 gap-x-20 gap-y-12">
             <Link
+              id="tour-blank-template"
               to="/detailPage/blank"
               className="transform hover:scale-105 transition-transform duration-200"
             >
