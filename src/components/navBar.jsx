@@ -29,6 +29,8 @@ const NavBar = ({ onStartTour }) => {
   const showToast = useToast();
   const { isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState("");
 
   const hasProject = projectDetails.currentProject !== null;
   // File Menu Actions
@@ -78,6 +80,29 @@ const NavBar = ({ onStartTour }) => {
       showToast("success", "Saved Project");
     } catch (error) {
       console.error("Save failed:", error);
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim()) return;
+
+    try {
+      const res = await axios.post(`${API_URL}/api/templates/save`, {
+        name: templateName.trim(),
+        files: projectDetails.currentProject.files,
+      });
+
+      if (res.data.success) {
+        showToast("success", `Template "${templateName.trim()}" saved`);
+        setShowSaveTemplateModal(false);
+        setTemplateName("");
+      } else {
+        showToast("error", res.data.error || "Failed to save template");
+      }
+    } catch (error) {
+      const msg =
+        error.response?.data?.error || "Failed to save template";
+      showToast("error", msg);
     }
   };
 
@@ -334,6 +359,11 @@ const NavBar = ({ onStartTour }) => {
     //   action: handleSaveAs,
     //   disabled: !hasProject,
     // },
+    {
+      label: "Save as Template",
+      action: () => setShowSaveTemplateModal(true),
+      disabled: !hasProject,
+    },
     { divider: true },
     {
       label: "Export as PDF",
@@ -923,6 +953,109 @@ const NavBar = ({ onStartTour }) => {
       {/* Shortcuts Modal */}
       {showShortcutsModal && (
         <ShortcutsModal onClose={() => setShowShortcutsModal(false)} />
+      )}
+
+      {/* Save as Template Modal */}
+      {showSaveTemplateModal && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50"
+          onClick={() => setShowSaveTemplateModal(false)}
+        >
+          <div
+            className="rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
+            style={{
+              background:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .background,
+              border: `1px solid ${settings.appearance.customThemes[settings.appearance.theme].border}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              className="text-xl font-inter font-semibold mb-1"
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text1,
+              }}
+            >
+              Save as Template
+            </h3>
+            <p
+              className="text-sm font-inter mb-5"
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text3,
+              }}
+            >
+              All project files will be saved as a reusable template.
+            </p>
+
+            <label
+              className="block text-sm font-inter font-medium mb-2"
+              style={{
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text2,
+              }}
+            >
+              Template Name
+            </label>
+            <input
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveAsTemplate();
+              }}
+              placeholder="e.g. My Research Paper"
+              autoFocus
+              className="w-full px-3 py-2 rounded border outline-none text-sm font-inter mb-6"
+              style={{
+                background:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .background,
+                borderColor:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .border,
+                color:
+                  settings.appearance.customThemes[settings.appearance.theme]
+                    .text1,
+              }}
+            />
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowSaveTemplateModal(false);
+                  setTemplateName("");
+                }}
+                className="px-4 py-2 rounded text-sm font-inter font-medium transition-colors hover:opacity-80"
+                style={{
+                  color:
+                    settings.appearance.customThemes[settings.appearance.theme]
+                      .text2,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAsTemplate}
+                disabled={!templateName.trim()}
+                className="px-4 py-2 rounded text-sm font-inter font-medium text-white transition-colors"
+                style={{
+                  background: templateName.trim()
+                    ? "#AB2D2D"
+                    : "#ccc",
+                  cursor: templateName.trim() ? "pointer" : "not-allowed",
+                }}
+              >
+                Save as Local Template
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
