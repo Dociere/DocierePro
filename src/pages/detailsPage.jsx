@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { useSettings } from "../context/useSettings";
 import { createProject } from "../api/projectHandling";
+import LinearLoading from "../components/loading/linearLoading";
 
 const DetailsPage = () => {
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ const DetailsPage = () => {
 
   return (
     <div className="flex justify-center items-center w-full min-h-screen">
+      {isLoading && <LinearLoading />}
       <div className="w-[90vw] max-w-[830px] h-auto bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
         {/* Heading */}
         <h1 className="font-playfair text-4xl md:text-5xl font-bold mb-3">

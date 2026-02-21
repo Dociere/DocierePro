@@ -91,7 +91,7 @@ const SearchBar = ({ data }) => {
   }, [filteredResults]); // Add filteredResults as dependency for Enter key navigation
 
   return (
-    <div className="relative w-80 mt-2">
+    <div className="relative w-[24vw] mt-2">
       <div className="group flex items-center relative">
         <svg
           className="absolute left-4 fill-gray-600 w-4 h-4"

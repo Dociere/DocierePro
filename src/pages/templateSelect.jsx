@@ -103,9 +103,7 @@ function TemplateSelect() {
         <div className="mt-0 ml-20 w-[72vw] mb-10">
           <div className="flex justify-between items-end mb-8">
             <div>
-              <p className="font-playfair text-5xl font-bold">
-                Standard Templates
-              </p>
+              <p className="font-playfair text-5xl font-bold">Templates</p>
               <p
                 className={`mt-2 font-inter font-medium ${isDark ? "text-gray-400" : "text-[#7D7D7D]"}`}
               >
