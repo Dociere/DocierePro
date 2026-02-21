@@ -829,8 +829,8 @@ app.post("/api/projects/create", async (req, res) => {
       title,
       created: new Date().toISOString(),
       modified: new Date().toISOString(),
-      owner: Owner || "Unknown",
-      files: files, // Save the full files object
+      owner: Owner || "",
+      files: files,
     };
 
     await fs.writeJSON(path.join(projectPath, "project.json"), projectData);

@@ -21,12 +21,16 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     console.log("User:", user);
     console.log("All cookies:", document.cookie);
 
+    if (!isOwner) {
+      await handleOwnership();
+    }
+
     //Below code to be deleted
-    const token = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("uid="))
-      ?.split("=")[1];
-    console.log("UID token:", token);
+    // const token = document.cookie
+    //   .split("; ")
+    //   .find((row) => row.startsWith("uid="))
+    //   ?.split("=")[1];
+    // console.log("UID token:", token);
 
     if (!collaboratorEmail) {
       setMessage("Please enter collaborator email");
@@ -124,12 +128,11 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     }
   };
 
-  const handleOwnership = async (e) => {
-    e.preventDefault();
-    console.log(user?.emailId);
+  const handleOwnership = async () => {
+    // e.preventDefault();
     const updatedProject = {
       ...projectDetails.currentProject,
-      owner: user?.emailId,
+      owner: user?.userId,
     };
 
     updateProjectDetails({ currentProject: updatedProject });
@@ -138,138 +141,252 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-[600px] min-h-[50vh] overflow-auto">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-xl font-inter font-medium text-black">
-            Share Project
+    // <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    //   <div className="bg-white rounded-lg shadow-xl w-[600px] min-h-[50vh] overflow-auto">
+    //     <div className="flex items-center justify-between p-4 border-b border-gray-200">
+    //       <h2 className="text-xl font-inter font-medium text-black">
+    //         Share Project
+    //       </h2>
+    //       <button
+    //         onClick={onClose}
+    //         className="px-3 py-1 rounded-full hover:bg-gray-100 transition-colors font-poppins"
+    //       >
+    //         X
+    //       </button>
+    //     </div>
+    //     <button
+    //       onClick={() => setIsOpen(true)}
+    //       className="px-4 py-2 bg-black text-white rounded hover:bg-gray-900 ml-20 mt-20"
+    //     >
+    //       {projectDetails?.currentProject?.id
+    //         ? "Share Project"
+    //         : "Join Project"}
+    //     </button>
+
+    //     {isOpen && (
+    //       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    //         <div className="bg-white rounded-lg p-6 w-96 max-w-full">
+    //           <div className="flex justify-between items-center mb-4 text-black font-inter">
+    //             <h2 className="text-xl font-semibold">
+    //               {projectDetails?.currentProject?.id
+    //                 ? "Share Project"
+    //                 : "Join Project"}
+    //             </h2>
+    //             <button
+    //               onClick={() => setIsOpen(false)}
+    //               className="text-gray-500 hover:text-gray-700"
+    //             >
+    //               ✕
+    //             </button>
+    //           </div>
+
+    //           {projectDetails?.currentProject?.id ? (
+    //             <div className="space-y-4">
+    //               <div>
+    //                 <label className="block text-sm font-normal mb-2 text-black font-inter">
+    //                   Collaborator Email
+    //                 </label>
+    //                 <input
+    //                   type="email"
+    //                   value={collaboratorEmail}
+    //                   onChange={(e) => setCollaboratorEmail(e.target.value)}
+    //                   className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+    //                   placeholder="collaborator@example.com"
+    //                 />
+    //               </div>
+
+    //               <button
+    //                 onClick={handleShare}
+    //                 disabled={loading}
+    //                 className="w-full px-4 py-2 bg-black text-white rounded hover:bg-gray-900 disabled:bg-gray-400"
+    //               >
+    //                 {loading ? "Generating..." : "Generate Share Link"}
+    //               </button>
+
+    //               {shareLink && (
+    //                 <div className="mt-4 p-3 bg-gray-100 rounded">
+    //                   <p className="text-sm font-medium mb-2">Share Link:</p>
+    //                   <div className="flex gap-2">
+    //                     <input
+    //                       type="text"
+    //                       value={shareLink}
+    //                       readOnly
+    //                       className="flex-1 px-2 py-1 text-sm border rounded bg-white"
+    //                     />
+    //                     <button
+    //                       onClick={() => {
+    //                         navigator.clipboard.writeText(shareLink);
+    //                         setMessage("Copied to clipboard!");
+    //                       }}
+    //                       className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+    //                     >
+    //                       Copy
+    //                     </button>
+    //                   </div>
+    //                 </div>
+    //               )}
+    //             </div>
+    //           ) : (
+    //             <div className="space-y-4">
+    //               <div>
+    //                 <label className="block text-sm font-medium mb-2">
+    //                   Enter Join Token
+    //                 </label>
+    //                 <input
+    //                   type="text"
+    //                   value={joinToken}
+    //                   onChange={(e) => setJoinToken(e.target.value)}
+    //                   className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+    //                   placeholder="Paste token here"
+    //                 />
+    //               </div>
+
+    //               <button
+    //                 onClick={handleJoin}
+    //                 disabled={loading}
+    //                 className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+    //               >
+    //                 {loading ? "Joining..." : "Join Project"}
+    //               </button>
+    //             </div>
+    //           )}
+
+    //           {message && (
+    //             <div
+    //               className={`mt-4 p-3 rounded text-sm ${
+    //                 message.includes("Success") || message.includes("generated")
+    //                   ? "bg-green-100 text-green-700"
+    //                   : "bg-red-100 text-red-700"
+    //               }`}
+    //             >
+    //               {message}
+    //             </div>
+    //           )}
+    //         </div>
+    //       </div>
+    //     )}
+    //   </div>
+    // </div>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl w-[640px] max-w-full max-h-[70vh] overflow-x-auto scrollbar-hide transition-all duration-300 font-inter pb-8">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
+            Project Actions
           </h2>
           <button
             onClick={onClose}
-            className="px-3 py-1 rounded-full hover:bg-gray-100 transition-colors font-poppins"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200/70 transition"
           >
-            X
+            ✕
           </button>
         </div>
-        <button
-          onClick={() => setIsOpen(true)}
-          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-900 ml-20 mt-20"
-        >
-          {isOwner ? "Share Project" : "Join Project"}
-        </button>
 
-        {!isOwner && (
-          <div className="mt-10 ml-20">
-            {" "}
-            <button
-              onClick={handleOwnership}
-              className="bg-red-500 px-4 py-2 rounded-sm font-inter text-white"
-            >
-              Become Owner
-            </button>
-          </div>
-        )}
+        {/* Body */}
+        <div className="pl-6 pr-8 space-y-2">
+          {/* Share Section (only if project exists) */}
+          {projectDetails?.currentProject?.id && (
+            <div className="space-y-2 border-b pb-8">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Share Project
+              </h3>
 
-        {isOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96 max-w-full">
-              <div className="flex justify-between items-center mb-4 text-black font-inter">
-                <h2 className="text-xl font-semibold">
-                  {isOwner ? "Share Project" : "Join Project"}
-                </h2>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700">
+                  Collaborator Email
+                </label>
+                <input
+                  type="email"
+                  value={collaboratorEmail}
+                  onChange={(e) => setCollaboratorEmail(e.target.value)}
+                  placeholder="collaborator@example.com"
+                  className="w-full px-4 py-1 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                />
               </div>
 
-              {isOwner ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-normal mb-2 text-black font-inter">
-                      Collaborator Email
-                    </label>
-                    <input
-                      type="email"
-                      value={collaboratorEmail}
-                      onChange={(e) => setCollaboratorEmail(e.target.value)}
-                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="collaborator@example.com"
-                    />
-                  </div>
+              <button
+                onClick={handleShare}
+                disabled={loading}
+                className="w-full py-[0.9vh] rounded-md bg-black text-white font-medium text-[13px] tracking-wide hover:scale-[1.02] hover:bg-gray-900 transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? "Generating..." : "Generate Share Link"}
+              </button>
 
-                  <button
-                    onClick={handleShare}
-                    disabled={loading}
-                    className="w-full px-4 py-2 bg-black text-white rounded hover:bg-gray-900 disabled:bg-gray-400"
-                  >
-                    {loading ? "Generating..." : "Generate Share Link"}
-                  </button>
-
-                  {shareLink && (
-                    <div className="mt-4 p-3 bg-gray-100 rounded">
-                      <p className="text-sm font-medium mb-2">Share Link:</p>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={shareLink}
-                          readOnly
-                          className="flex-1 px-2 py-1 text-sm border rounded bg-white"
-                        />
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(shareLink);
-                            setMessage("Copied to clipboard!");
-                          }}
-                          className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Enter Join Token
-                    </label>
+              {shareLink && (
+                <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                  <p className="text-sm font-medium text-gray-900 mb-2">
+                    Share Link
+                  </p>
+                  <div className="flex gap-2">
                     <input
                       type="text"
-                      value={joinToken}
-                      onChange={(e) => setJoinToken(e.target.value)}
-                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Paste token here"
+                      value={shareLink}
+                      readOnly
+                      className="flex-1 px-3 py-2 text-sm rounded-lg border bg-white"
                     />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(shareLink);
+                        setMessage("Copied to clipboard!");
+                        setTimeout(() => setMessage(""), 2000);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-[13px] font-semibold hover:bg-emerald-800 transition"
+                    >
+                      COPY
+                    </button>
                   </div>
-
-                  <button
-                    onClick={handleJoin}
-                    disabled={loading}
-                    className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-                  >
-                    {loading ? "Joining..." : "Join Project"}
-                  </button>
-                </div>
-              )}
-
-              {message && (
-                <div
-                  className={`mt-4 p-3 rounded text-sm ${
-                    message.includes("Success") || message.includes("generated")
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {message}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+
+          {!shareLink && (
+            <>
+              {/* Join Section (always visible) */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Join Project
+                </h3>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Enter Join Token
+                  </label>
+                  <input
+                    type="text"
+                    value={joinToken}
+                    onChange={(e) => setJoinToken(e.target.value)}
+                    placeholder="Paste token here"
+                    className="w-full px-4 py-1 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  />
+                </div>
+
+                <button
+                  onClick={handleJoin}
+                  disabled={loading}
+                  className="w-full py-[0.9vh] rounded-md bg-black text-white font-medium text-[13px] tracking-wide hover:scale-[1.02] hover:bg-gray-900 transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Joining..." : "Join Project"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Message */}
+          {message && (
+            <div
+              className={`mt-4 p-2 rounded-md text-sm font-medium transition text-center ${
+                message.toLowerCase().includes("success") ||
+                message.toLowerCase().includes("generated") ||
+                message === "Copied to clipboard!"
+                  ? "bg-green-100 text-green-700 border border-green-700"
+                  : "bg-red-200 text-red-700 border border-red-700"
+              }`}
+            >
+              {message}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

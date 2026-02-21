@@ -171,7 +171,13 @@ const DynamicSideBar = ({
                   </span>
                 </Link>
                 {/* Section Space */}
-                <div id="tour-section-space" onClick={toggleSectionSpace}>
+                <div
+                  id="tour-section-space"
+                  onClick={toggleSectionSpace}
+                  className={`border-r-[1.5px] ml-1 pr-1 ${
+                    isSectionSpaceOpen ? "border-black" : "border-transparent"
+                  }`}
+                >
                   <span
                     className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                     title="Section Space"
@@ -231,25 +237,6 @@ const DynamicSideBar = ({
               </>
             )}
 
-            {/* Extensions */}
-            <Link id="tour-extensions" to="/canvas">
-              <span
-                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
-                title="Extensions"
-              >
-                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                  <ExtensionIcon
-                    style={{
-                      fill: settings.appearance.customThemes[
-                        settings.appearance.theme
-                      ].icon1,
-                    }}
-                    className="w-4 h-4"
-                  />
-                </div>
-              </span>
-            </Link>
-
             {projectDetails?.currentProject?.id && (
               <>
                 {/* Insert Table */}
@@ -290,25 +277,6 @@ const DynamicSideBar = ({
                   </span>
                 </Link>
 
-                {/* Share / Collaborate */}
-                <div id="tour-share" onClick={handleShareIconClick}>
-                  <span
-                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
-                    title="Share"
-                  >
-                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
-                      <ShareIcon
-                        style={{
-                          fill: settings.appearance.customThemes[
-                            settings.appearance.theme
-                          ].icon1,
-                        }}
-                        className="w-4 h-4"
-                      />
-                    </div>
-                  </span>
-                </div>
-
                 {/* Draft Versioning */}
                 <div
                   id="tour-versioning"
@@ -330,7 +298,49 @@ const DynamicSideBar = ({
                     </div>
                   </span>
                 </div>
+              </>
+            )}
 
+            {/* Extensions */}
+            <Link id="tour-extensions" to="/canvas">
+              <span
+                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                title="Extensions"
+              >
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                  <ExtensionIcon
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
+                    className="w-4 h-4"
+                  />
+                </div>
+              </span>
+            </Link>
+
+            {/* Share / Collaborate */}
+            <div id="tour-share" onClick={handleShareIconClick}>
+              <span
+                className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                title="Share"
+              >
+                <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                  <ShareIcon
+                    style={{
+                      fill: settings.appearance.customThemes[
+                        settings.appearance.theme
+                      ].icon1,
+                    }}
+                    className="w-4 h-4"
+                  />
+                </div>
+              </span>
+            </div>
+
+            {projectDetails?.currentProject?.id && (
+              <>
                 {/* AI Chat */}
                 <div id="tour-ai-chat" onClick={onOpenAIChat}>
                   <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
