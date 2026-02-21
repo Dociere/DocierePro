@@ -6,7 +6,7 @@ const TemplateCards = ({ title }) => {
   return (
     <>
       <div className="flex flex-col">
-        <div className="w-44 h-56 bg-[#F9F9F9] border-[#c6c6c6] border-2 flex-shrink-0"></div>
+        <div className="w-44 h-56 bg-[#F9F9F9] border-[#c6c6c6] border-2 flex-shrink-0 rounded-md"></div>
         <p
           className="mt-2 font-inter text-center font-normal w-44 break-words"
           style={{

@@ -108,7 +108,7 @@ const SearchBar = ({ data }) => {
           onChange={handleChange}
           onBlur={handleBlur}
           onFocus={() => setIsActive(true)} // Show dropdown on focus
-          className="w-full h-8 text-sm font-inter pl-10 pr-12 text-[gray-800] bg-[#F9F9F9] border-solid border-2 border-[#CFCFCF] outline-none transition duration-300 placeholder:text-[#656565]"
+          className="w-full h-8 text-sm font-inter pl-10 pr-12 text-[gray-800] bg-[#F9F9F9] border-solid border-2 rounded-sm border-[#CFCFCF] outline-none transition duration-300 placeholder:text-[#656565]"
         />
         {query && (
           <button
