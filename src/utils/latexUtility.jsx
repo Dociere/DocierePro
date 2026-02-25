@@ -343,7 +343,9 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
   let currentSection = null;
   let currentSubsection = null;
 
-  for (const segment of segments) {
+  // Use index-based loop to enable peek-ahead for merging env blocks with \input{}
+  for (let si = 0; si < segments.length; si++) {
+    const segment = segments[si];
     if (segment.type === "input") {
       // ---- FILE-REFERENCE BLOCK ----
       const rawName = segment.fileName;
@@ -423,11 +425,28 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
           }
         }
       } else {
-        // File not found in fileMap — create a placeholder block
+        // File not found or empty — create block with empty content
+        // If a preceding env block already adopted this file, skip creating a duplicate
+        if (currentSection && currentSection.contentFileName === fileName) {
+          // Already merged — skip
+          continue;
+        }
+
         const displayName = rawName
           .replace(/\.tex$/, "")
           .replace(/[_-]/g, " ")
           .replace(/\b\w/g, (c) => c.toUpperCase());
+
+        // If a preceding env block (like \begin{abstract}) is waiting for content,
+        // merge this empty file into it rather than creating a duplicate block
+        if (currentSection && currentSection._pendingEnvMerge) {
+          currentSection.content = "";
+          currentSection.contentFileName = fileName;
+          currentSection.source = "file";
+          currentSection.fileName = fileName;
+          delete currentSection._pendingEnvMerge;
+          continue;
+        }
 
         const placeholderBlock = {
           id: Date.now() + Math.random(),
@@ -437,9 +456,7 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
           subtype: "standard",
           envTag: null,
           name: displayName,
-          content: fileContent === null
-            ? `% File "${fileName}" not found in project`
-            : "",
+          content: "",
           children: [],
         };
 
@@ -449,7 +466,18 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
       }
     } else {
       // ---- INLINE CONTENT ----
-      const { blocks, leadingContent } = parseBodyIntoBlocks(segment.content);
+      // Strip \end{envTag} lines that belong to a preceding env block
+      // (e.g. \end{abstract} after \begin{abstract}...\input{abstract})
+      let cleanedContent = segment.content;
+      if (currentSection && currentSection.envTag) {
+        const endPattern = new RegExp(
+          `\\\\end\\{${currentSection.envTag}\\}\\s*`, "i"
+        );
+        cleanedContent = cleanedContent.replace(endPattern, "").trim();
+      }
+
+      const { blocks, leadingContent: rawLeading } = parseBodyIntoBlocks(cleanedContent);
+      const leadingContent = rawLeading;
 
       // Handle inner preamble (content before any section)
       if (!innerPreambleHandled) {
@@ -474,6 +502,62 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
 
       for (const block of blocks) {
         block.source = "inline";
+
+        // Check if this block (section, env, etc.) has empty content and is
+        // immediately followed by \input{} — if so, merge the file content
+        // into this block to prevent duplicate cells.
+        // Pattern: \section{Intro}\n\input{sections/intro} or \begin{abstract}\n\input{abstract}
+        // Also handles \begin{thebibliography}{1}\n\input{references} where {1} is an env argument
+        let effectivelyEmpty = !block.content || !block.content.trim();
+
+        // For env blocks, check if "content" is just a LaTeX argument like {1} or {99}
+        // These are part of the env header, not real content
+        if (!effectivelyEmpty && block.subtype === "env" && block.content) {
+          const argMatch = block.content.trim().match(/^\{[^}]*\}$/);
+          if (argMatch) {
+            block.envArg = block.content.trim(); // Store the argument separately
+            block.content = ""; // Clear the content so it's treated as empty
+            effectivelyEmpty = true;
+          }
+        }
+
+        if (effectivelyEmpty) {
+          const nextSeg = segments[si + 1];
+          if (nextSeg && nextSeg.type === "input") {
+            const nextFileName = canonicalFileName(nextSeg.fileName);
+            let nextFileContent = resolveFileContent(nextSeg.fileName, fileMap);
+
+            // For env blocks, strip any structural \begin{} / \end{} / args
+            // that may have leaked into the file from previous saves
+            if (nextFileContent && block.subtype === "env" && block.envTag) {
+              const tag = block.envTag;
+              nextFileContent = nextFileContent
+                .replace(new RegExp(`\\\\begin\\{${tag}\\}(\\{[^}]*\\})?\\s*`, "gi"), "")
+                .replace(new RegExp(`\\\\end\\{${tag}\\}\\s*`, "gi"), "")
+                .trim();
+            }
+
+            // Check if the file has no section structure (raw content injection)
+            if (nextFileContent === null || !nextFileContent.trim()) {
+              // Empty or missing file — merge into this block
+              block.content = nextFileContent || "";
+              block.contentFileName = nextFileName;
+              block.source = "file";
+              block.fileName = nextFileName;
+              si++; // Skip the \input{} segment
+            } else {
+              const { blocks: fileBlocks } = parseBodyIntoBlocks(nextFileContent);
+              if (fileBlocks.length === 0) {
+                // Raw content — merge into this block
+                block.content = nextFileContent.trim();
+                block.contentFileName = nextFileName;
+                block.source = "file";
+                block.fileName = nextFileName;
+                si++; // Skip the \input{} segment
+              }
+            }
+          }
+        }
 
         if (block.type === "section") {
           currentSection = block;
@@ -533,7 +617,8 @@ const serializeNodeInline = (node) => {
     header = "";
   } else if (node.subtype === "env") {
     const tag = node.envTag || node.name.toLowerCase();
-    header = `\\begin{${tag}}`;
+    const envArgStr = node.envArg || "";
+    header = `\\begin{${tag}}${envArgStr}`;
   } else if (node.subtype === "starred") {
     header = `\\${node.type}*{${node.name}}`;
   } else {
@@ -584,27 +669,66 @@ export const sectionsToLatex = (sections) => {
     if (node.source === "file" && node.fileName && isTopLevel) {
       const fileName = node.fileName;
 
-      // Serialize this node's content for the external file
-      const fileContent = serializeNodeInline(node);
-
-      // Accumulate content for this file (multiple sections can map to one file)
-      if (fileUpdates[fileName]) {
-        fileUpdates[fileName] += "\n\n" + fileContent;
-      } else {
-        fileUpdates[fileName] = fileContent;
-      }
-
-      // Emit \input{} in main.tex only once per file
-      if (!emittedFiles.has(fileName)) {
-        // Add spacing
-        if (latex.length > 0 && !latex.endsWith("\n\n")) {
-          if (latex.endsWith("\n")) latex += "\n";
-          else latex += "\n\n";
+      // For env blocks (abstract, thebibliography, etc.), emit the wrapper
+      // in main.tex and only save raw content to the file
+      if (node.subtype === "env") {
+        const tag = node.envTag || node.name.toLowerCase();
+        // Save only raw content to the external file
+        const rawContent = node.content || "";
+        if (fileUpdates[fileName]) {
+          fileUpdates[fileName] += "\n\n" + rawContent;
+        } else {
+          fileUpdates[fileName] = rawContent;
         }
-        // \input{name} without .tex extension (LaTeX convention)
-        const inputName = fileName.replace(/\.tex$/, "");
-        latex += `\\input{${inputName}}\n`;
-        emittedFiles.add(fileName);
+
+        // Emit \begin{env} + \input{} + \end{env} in main.tex
+        if (!emittedFiles.has(fileName)) {
+          if (latex.length > 0 && !latex.endsWith("\n\n")) {
+            if (latex.endsWith("\n")) latex += "\n";
+            else latex += "\n\n";
+          }
+          const inputName = fileName.replace(/\.tex$/, "");
+          const envArgStr = node.envArg || "";
+          latex += `\\begin{${tag}}${envArgStr}\n\\input{${inputName}}\n\\end{${tag}}\n`;
+          emittedFiles.add(fileName);
+        }
+      } else {
+        // For regular section blocks, emit \section{} + \input{} in main.tex
+        // and only save raw content to the file
+        let header = "";
+        if (node.subtype === "starred") {
+          header = `\\${node.type}*{${node.name}}`;
+        } else {
+          header = `\\${node.type}{${node.name}}`;
+        }
+
+        // Save only raw content (without header) to the external file
+        const rawContent = node.content || "";
+        // Also serialize children content for the file
+        let childContent = "";
+        if (node.children && node.children.length > 0) {
+          for (const child of node.children) {
+            childContent += "\n\n" + serializeNodeInline(child);
+          }
+        }
+        const fullFileContent = (rawContent + childContent).trim();
+
+        if (fileUpdates[fileName]) {
+          fileUpdates[fileName] += "\n\n" + fullFileContent;
+        } else {
+          fileUpdates[fileName] = fullFileContent;
+        }
+
+        // Emit header + \input{} in main.tex only once per file
+        if (!emittedFiles.has(fileName)) {
+          if (latex.length > 0 && !latex.endsWith("\n\n")) {
+            if (latex.endsWith("\n")) latex += "\n";
+            else latex += "\n\n";
+          }
+          const inputName = fileName.replace(/\.tex$/, "");
+          latex += `${header}\n\\input{${inputName}}\n`;
+          emittedFiles.add(fileName);
+        }
       }
       return;
     }
@@ -615,7 +739,8 @@ export const sectionsToLatex = (sections) => {
       header = "";
     } else if (node.subtype === "env") {
       const tag = node.envTag || node.name.toLowerCase();
-      header = `\\begin{${tag}}`;
+      const envArgStr = node.envArg || "";
+      header = `\\begin{${tag}}${envArgStr}`;
     } else if (node.subtype === "starred") {
       header = `\\${node.type}*{${node.name}}`;
     } else {
@@ -637,6 +762,11 @@ export const sectionsToLatex = (sections) => {
       const fileName = node.contentFileName;
       const inputName = fileName.replace(/\.tex$/, "");
       latex += `\\input{${inputName}}`;
+      // If this is an env block, emit \\end{tag} in main.tex
+      if (node.subtype === "env") {
+        const tag = node.envTag || node.name.toLowerCase();
+        latex += `\n\\end{${tag}}`;
+      }
       // Save the section content to the file
       fileUpdates[fileName] = node.content || "";
     } else if (node.content && node.type !== "preamble") {

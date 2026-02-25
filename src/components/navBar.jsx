@@ -4,6 +4,7 @@ import SearchBar from "./searchBar";
 import MenuDropdown from "./menuDropdown";
 import ShortcutsModal from "./shortcutsModal";
 import { projectContext } from "../context/useProject";
+import ConfirmModal from "./confirmModal";
 import EditIcon from "../assets/icons/edit.svg?react";
 import { saveProject } from "../api/projectHandling";
 import TickIcon from "../assets/icons/tickIcon.svg?react";
@@ -31,6 +32,7 @@ const NavBar = ({ onStartTour }) => {
   const { settings } = useSettings();
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   const hasProject = projectDetails.currentProject !== null;
   // File Menu Actions
@@ -280,20 +282,19 @@ const NavBar = ({ onStartTour }) => {
   };
 
   const handleCloseProject = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to close this project? Unsaved changes will be lost.",
-      )
-    ) {
-      updateProjectDetails({
-        currentProject: null,
-        activeFile: null,
-        latexContent: "",
-        richTextContent: "",
-        pdfUrl: "",
-      });
-      navigate("/");
-    }
+    setShowCloseConfirm(true);
+  };
+
+  const confirmClose = () => {
+    updateProjectDetails({
+      currentProject: null,
+      activeFile: null,
+      latexContent: "",
+      richTextContent: "",
+      pdfUrl: "",
+    });
+    setShowCloseConfirm(false);
+    navigate("/");
   };
 
   // View Menu Actions
@@ -1057,6 +1058,15 @@ const NavBar = ({ onStartTour }) => {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={showCloseConfirm}
+        onConfirm={confirmClose}
+        onCancel={() => setShowCloseConfirm(false)}
+        title="Close Project"
+        message="Are you sure you want to close this project? Unsaved changes will be lost."
+        confirmText="Close Project"
+        isDanger={true}
+      />
     </>
   );
 };

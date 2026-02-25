@@ -3,6 +3,7 @@ import { useSettings } from "../context/useSettings";
 import { useAuth } from "../context/useAuth";
 import { useOutletContext, useNavigate, Link } from "react-router-dom";
 import GoBack from "../assets/icons/goBack.svg?react";
+import ConfirmModal from "../components/confirmModal";
 
 const SettingsPage = () => {
   const { isSectionSpaceOpen } = useOutletContext();
@@ -11,6 +12,7 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("editor");
   const [showToken, setShowToken] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const tabs = [
     { id: "editor", label: "Editor" },
@@ -31,11 +33,12 @@ const SettingsPage = () => {
   };
 
   const handleResetSettings = () => {
-    if (
-      window.confirm("Are you sure you want to reset all settings to defaults?")
-    ) {
-      resetSettings();
-    }
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = () => {
+    resetSettings();
+    setShowResetConfirm(false);
   };
 
   const isDark = settings.appearance.theme === "dark";
@@ -593,6 +596,15 @@ const SettingsPage = () => {
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        onConfirm={confirmReset}
+        onCancel={() => setShowResetConfirm(false)}
+        title="Reset All Settings"
+        message="Are you sure you want to reset all settings to their default values? This action cannot be undone."
+        confirmText="Reset to Defaults"
+        isDanger={true}
+      />
     </div>
   );
 };

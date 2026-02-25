@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../context/useAuth";
+import { useNavigate } from "react-router-dom";
 import {
   TbX,
   TbCopy,
@@ -7,6 +9,7 @@ import {
   TbSearch,
   TbLoader,
 } from "react-icons/tb";
+import ConfirmModal from "./confirmModal";
 
 const API_BASE_URL = "http://localhost:5000";
 
@@ -25,12 +28,16 @@ const initialFormData = {
 };
 
 const CitationManager = ({ onClose }) => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("create");
   const [formData, setFormData] = useState(initialFormData);
   const [previewUrl, setPreviewUrl] = useState("");
   const [latexCode, setLatexCode] = useState("");
   const [isCompiling, setIsCompiling] = useState(false);
   const [savedCitations, setSavedCitations] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [citationToDelete, setCitationToDelete] = useState(null);
 
   // Fetch citations only when on saved tab
   useEffect(() => {
@@ -130,23 +137,30 @@ const CitationManager = ({ onClose }) => {
   }, []);
 
   const handleDeleteCitation = useCallback(
-    async (fileName) => {
-      if (!window.confirm(`Delete citation "${fileName}"?`)) return;
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/citation/${fileName}`, {
-          method: "DELETE",
-        });
-        if (res.ok) {
-          loadSavedCitations();
-        } else {
-          alert("Failed to delete citation");
-        }
-      } catch (err) {
+    (fileName) => {
+      setCitationToDelete(fileName);
+      setShowDeleteConfirm(true);
+    },
+    [],
+  );
+
+  const confirmDelete = useCallback(async () => {
+    if (!citationToDelete) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/citation/${citationToDelete}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        loadSavedCitations();
+        setShowDeleteConfirm(false);
+        setCitationToDelete(null);
+      } else {
         alert("Failed to delete citation");
       }
-    },
-    [loadSavedCitations],
-  );
+    } catch (err) {
+      alert("Failed to delete citation");
+    }
+  }, [citationToDelete, loadSavedCitations]);
 
   const loadCitation = useCallback((citation) => {
     setFormData({
@@ -291,36 +305,58 @@ const CitationManager = ({ onClose }) => {
                       Academic Search & Auto-Fill
                     </label>
                     <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            setSearchStatus(null);
-                          }}
-                          onKeyDown={(e) =>
-                            e.key === "Enter" && performSearch()
-                          }
-                          placeholder="Search by Title, Author, Journal or DOI..."
-                          className="w-full bg-white px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all text-sm shadow-sm"
-                        />
-                        <TbSearch
-                          size={18}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                      </div>
-                      <button
-                        onClick={performSearch}
-                        disabled={isSearching}
-                        className="px-6 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-all text-sm font-bold flex items-center gap-2 shadow-md disabled:opacity-50 shrink-0"
-                      >
-                        {isSearching ? (
-                          <TbLoader size={16} className="animate-spin" />
-                        ) : (
-                          "Search"
-                        )}
-                      </button>
+                      {!isAuthenticated ? (
+                        <div className="flex-1 text-center py-3">
+                          <p className="text-xs text-[#7D7D7D] font-inter mb-2">Sign in to search academic papers</p>
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => navigate("/login")}
+                              className="px-4 py-1.5 bg-[#AB2D2D] text-white rounded-md font-inter text-xs hover:bg-[#8a2424] transition-colors"
+                            >
+                              Sign In
+                            </button>
+                            <button
+                              onClick={() => navigate("/signup")}
+                              className="px-4 py-1.5 border border-[#CFCFCF] text-[#343434] rounded-md font-inter text-xs hover:bg-[#F9F9F9] transition-colors"
+                            >
+                              Create Account
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setSearchStatus(null);
+                              }}
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && performSearch()
+                              }
+                              placeholder="Search by Title, Author, Journal or DOI..."
+                              className="w-full bg-white px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all text-sm shadow-sm"
+                            />
+                            <TbSearch
+                              size={18}
+                              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            />
+                          </div>
+                          <button
+                            onClick={performSearch}
+                            disabled={isSearching}
+                            className="px-6 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 transition-all text-sm font-bold flex items-center gap-2 shadow-md disabled:opacity-50 shrink-0"
+                          >
+                            {isSearching ? (
+                              <TbLoader size={16} className="animate-spin" />
+                            ) : (
+                              "Search"
+                            )}
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     {/* Search Results Dropdown */}
@@ -698,6 +734,18 @@ const CitationManager = ({ onClose }) => {
           )}
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setCitationToDelete(null);
+        }}
+        title="Delete Citation"
+        message={`Are you sure you want to delete the citation "${citationToDelete}"? This action cannot be undone.`}
+        confirmText="Delete"
+        isDanger={true}
+      />
     </div>
   );
 };

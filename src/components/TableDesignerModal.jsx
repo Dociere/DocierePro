@@ -826,13 +826,7 @@ const TableDesignerModal = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-white flex-shrink-0">
-          <button
-            onClick={copyToClipboard}
-            className="flex items-center gap-1 text-sm text-gray-600 hover:text-black px-2 py-1 hover:bg-gray-100 rounded"
-          >
-            <TbCopy size={14} /> Copy
-          </button>
+        <div className="flex justify-end items-center px-6 py-3 border-t border-gray-200 bg-white flex-shrink-0">
           <div className="flex gap-2">
             <button
               onClick={onClose}
@@ -841,10 +835,10 @@ const TableDesignerModal = ({
               Cancel
             </button>
             <button
-              onClick={handleInsert}
+              onClick={copyToClipboard}
               className="px-5 py-1.5 bg-black text-white rounded hover:bg-gray-800 font-medium"
             >
-              {initialData ? "Update" : "Insert"}
+              Copy
             </button>
           </div>
         </div>

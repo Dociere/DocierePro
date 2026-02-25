@@ -1,9 +1,11 @@
 import React, { useState, useContext } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
 import ShareProject from "./shareProject";
 import VersionManager from "./versionManager";
+import TableDesignerModal from "./TableDesignerModal";
+import ImageInsertModal from "./ImageInsertModal";
 import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SectionIcon from "../assets/icons/sectionIcon.svg?react";
 import CitationIcon from "../assets/icons/citation-manager.svg?react";
@@ -35,9 +37,11 @@ const DynamicSideBar = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
-  const { user, isServerConnected } = useAuth();
+  const { user, isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
+  const navigate = useNavigate();
 
   console.log("user", user);
   console.log("isServerConnected", isServerConnected);
@@ -50,6 +54,10 @@ const DynamicSideBar = ({
 
   const handleShareIconClick = (e) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
     setIsShareModalOpen(true);
   };
 
@@ -240,7 +248,7 @@ const DynamicSideBar = ({
             {projectDetails?.currentProject?.id && (
               <>
                 {/* Insert Table */}
-                <Link onClick={handleTableIconClick}>
+                <div onClick={handleTableIconClick}>
                   <span
                     className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                     title="Insert Table"
@@ -256,10 +264,10 @@ const DynamicSideBar = ({
                       />
                     </div>
                   </span>
-                </Link>
+                </div>
 
                 {/* Insert Image */}
-                <Link onClick={handleImageIconClick}>
+                <div onClick={handleImageIconClick}>
                   <span
                     className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                     title="Insert Image"
@@ -275,7 +283,7 @@ const DynamicSideBar = ({
                       />
                     </div>
                   </span>
-                </Link>
+                </div>
 
                 {/* Draft Versioning */}
                 <div
@@ -454,11 +462,11 @@ const DynamicSideBar = ({
       )}
 
       {isImageModalOpen && (
-        <ImageInsertModal onClose={() => setIsImageModalOpen(false)} />
+        <ImageInsertModal isOpen={true} onClose={() => setIsImageModalOpen(false)} />
       )}
 
       {isTableModalOpen && (
-        <TableDesignerModal onClose={() => setIsTableModalOpen(false)} />
+        <TableDesignerModal isOpen={true} onClose={() => setIsTableModalOpen(false)} />
       )}
 
       {/* Share Project Modal */}
@@ -476,6 +484,37 @@ const DynamicSideBar = ({
       )}
 
       {isSectionSpaceOpen && <SectionSpace />}
+
+      {/* Auth Modal for Share */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[80]">
+          <div className="bg-white rounded-xl shadow-xl p-8 w-[380px] max-w-full text-center font-inter">
+            <div className="text-5xl mb-3">👤</div>
+            <h3 className="font-semibold text-lg text-[#343434] mb-1">Not Signed In</h3>
+            <p className="text-sm text-[#7D7D7D] mb-5">Sign in to share and collaborate on projects</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => navigate("/login")}
+                className="px-5 py-2 bg-[#AB2D2D] text-white rounded-md text-sm hover:bg-[#8a2424] transition-colors"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-5 py-2 border border-[#CFCFCF] text-[#343434] rounded-md text-sm hover:bg-[#F9F9F9] transition-colors"
+              >
+                Create Account
+              </button>
+            </div>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="mt-4 text-xs text-[#7D7D7D] hover:text-[#343434] transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
