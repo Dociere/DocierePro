@@ -116,8 +116,11 @@ const parseLatexTable = (latex) => {
     const captionPosition = captionBeforeTabular ? "top" : "bottom";
 
     // Detect if first row had textbf (header styling)
-    const firstRowHasTextbf = latex.match(/\\begin\{tabular\}[\s\S]*?\\textbf\{/);
+    const firstRowHasTextbf = latex.match(/\\begin\\{tabular\\}[\\s\\S]*?\\textbf\\{/);
     
+    const centerTable = latex.includes("\\centering");
+    const resizeToFit = latex.includes("\\resizebox");
+
     return {
       positioning,
       caption,
@@ -129,6 +132,8 @@ const parseLatexTable = (latex) => {
       captionPosition,
       headerRow: !!firstRowHasTextbf,
       mergedCells, // Return merged cells info
+      centerTable,
+      resizeToFit,
     };
   } catch (e) {
     console.error("Failed to parse table:", e);
@@ -147,6 +152,8 @@ const generateLatexTable = ({
   captionPosition,
   headerRow,
   mergedCells = [],
+  centerTable = true,
+  resizeToFit = false,
 }) => {
   let colDef = "";
   const hasVerticalBorders = borderStyle === "all" || borderStyle === "vertical";
@@ -210,13 +217,22 @@ const generateLatexTable = ({
   const captionStr = caption ? `\\caption{${caption}}\n` : "";
   const labelStr = label ? `\\label{${label}}\n` : "";
 
-  let result = `\\begin{table}[${positioning}]\n\\centering\n`;
+  let result = `\\begin{table}[${positioning}]\n`;
+  if (centerTable) result += `\\centering\n`;
   
   if (captionPosition === "top") {
     result += captionStr + labelStr;
   }
   
+  if (resizeToFit) {
+    result += `\\resizebox{\\linewidth}{!}{\n`;
+  }
+  
   result += `\\begin{tabular}{${colDef}}\n${tableBody}\\end{tabular}\n`;
+  
+  if (resizeToFit) {
+    result += `}\n`;
+  }
   
   if (captionPosition === "bottom" || !captionPosition) {
     result += captionStr + labelStr;
@@ -293,6 +309,8 @@ const TableDesignerModal = ({
   const [label, setLabel] = useState("");
   const [captionPosition, setCaptionPosition] = useState("bottom");
   const [headerRow, setHeaderRow] = useState(false);
+  const [centerTable, setCenterTable] = useState(true);
+  const [resizeToFit, setResizeToFit] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [compiledPreviewUrl, setCompiledPreviewUrl] = useState(null);
   const [isCompiling, setIsCompiling] = useState(false);
@@ -315,6 +333,8 @@ const TableDesignerModal = ({
       setLabel(existingData.label || "");
       setCaptionPosition(existingData.captionPosition || "bottom");
       setHeaderRow(existingData.headerRow || false);
+      setCenterTable(existingData.centerTable !== undefined ? existingData.centerTable : true);
+      setResizeToFit(existingData.resizeToFit || false);
     } else {
       const newCells = Array(rows).fill(null).map(() => Array(cols).fill(""));
       setCells(newCells);
@@ -414,6 +434,8 @@ const TableDesignerModal = ({
       captionPosition,
       headerRow,
       mergedCells,
+      centerTable,
+      resizeToFit,
     });
   };
 
@@ -628,43 +650,64 @@ const TableDesignerModal = ({
               {/* Caption & Label */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Caption</label>
-                <input
-                  type="text"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Table caption..."
-                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-                />
-                <div className="flex gap-1 mt-2">
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Table caption..."
+                    className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
                   <input
                     type="text"
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     placeholder="tab:label"
-                    className="flex-1 px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   />
                   <select
                     value={captionPosition}
                     onChange={(e) => setCaptionPosition(e.target.value)}
-                    className="px-2 py-1.5 bg-white border border-gray-300 rounded text-xs"
+                    className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
-                    <option value="top">Top</option>
-                    <option value="bottom">Btm</option>
+                    <option value="top">Caption Position: Top</option>
+                    <option value="bottom">Caption Position: Bottom</option>
                   </select>
                 </div>
               </div>
 
               {/* Options */}
               <div>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={headerRow}
-                    onChange={(e) => setHeaderRow(e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
-                  Bold header row
-                </label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Options</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={headerRow}
+                      onChange={(e) => setHeaderRow(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Bold header row
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={centerTable}
+                      onChange={(e) => setCenterTable(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Center table
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={resizeToFit}
+                      onChange={(e) => setResizeToFit(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Resize to fit page
+                  </label>
+                </div>
               </div>
 
               {/* Column Alignments */}
@@ -689,32 +732,6 @@ const TableDesignerModal = ({
                   )}
                 </div>
               </div>
-
-              {/* Merge Controls */}
-              {selectedCells.length > 0 && (
-                <div className="bg-gray-200 rounded p-2 border border-gray-300">
-                  <span className="text-xs font-bold text-gray-600">{selectedCells.length} selected</span>
-                  <div className="flex gap-1 mt-2">
-                    <button
-                      onClick={mergeCells}
-                      disabled={!canMergeCells()}
-                      className={`flex-1 px-2 py-1 text-xs rounded ${
-                        canMergeCells()
-                          ? "bg-black text-white hover:bg-gray-800"
-                          : "bg-gray-300 text-gray-500"
-                      }`}
-                    >
-                      Merge
-                    </button>
-                    <button
-                      onClick={() => setSelectedCells([])}
-                      className="px-2 py-1 text-xs rounded bg-white border border-gray-300 hover:bg-gray-100"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -722,7 +739,32 @@ const TableDesignerModal = ({
           <div className="flex-1 flex flex-col min-w-0 bg-white">
             {/* Table Grid */}
             <div className="flex-1 p-4 overflow-auto">
-              <div className="text-xs text-gray-400 mb-2">Ctrl+Click cells to select for merge</div>
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-xs text-gray-400">Ctrl+Click cells to select for merge</div>
+                {selectedCells.length > 0 && (
+                  <div className="flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
+                    <span className="text-xs font-bold text-gray-600">{selectedCells.length} cells selected</span>
+                    <button
+                      onClick={mergeCells}
+                      disabled={!canMergeCells()}
+                      className={`px-3 py-1.5 text-xs rounded font-medium transition-colors ${
+                        canMergeCells()
+                          ? "bg-black text-white hover:bg-gray-800"
+                          : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      }`}
+                    >
+                      Merge Cells
+                    </button>
+                    <button
+                      onClick={() => setSelectedCells([])}
+                      className="p-1.5 text-gray-500 hover:text-black rounded hover:bg-gray-100 transition-colors bg-white border border-gray-200"
+                      title="Clear selection"
+                    >
+                      <TbX size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="inline-block border border-gray-200 rounded-lg bg-white min-w-full">
                 <table className="border-collapse">
                   <tbody>
@@ -741,7 +783,7 @@ const TableDesignerModal = ({
                             <td 
                               key={colIndex} 
                               className={`p-0 border border-gray-300 relative ${
-                                isSelected ? "bg-blue-100 ring-2 ring-blue-500 ring-inset" : ""
+                                isSelected ? "bg-gray-200 ring-2 ring-black ring-inset" : ""
                               } ${merged ? "bg-gray-100" : ""}`}
                               colSpan={colSpan}
                             >
@@ -767,7 +809,7 @@ const TableDesignerModal = ({
                                   }
                                 }}
                                 className={`w-full px-2 py-1.5 text-sm outline-none min-w-[70px] ${
-                                  isSelected ? "bg-blue-100" : ""
+                                  isSelected ? "bg-gray-200" : ""
                                 } ${headerRow && rowIndex === 0 ? "font-bold bg-gray-100" : ""}`}
                                 placeholder={`${rowIndex + 1},${colIndex + 1}`}
                               />
