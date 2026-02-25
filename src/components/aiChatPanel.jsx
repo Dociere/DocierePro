@@ -5,10 +5,14 @@ import {
   loadChatHistory,
 } from "../api/projectHandling";
 import { projectContext } from "../context/useProject";
+import { useAuth } from "../context/useAuth";
+import { useNavigate } from "react-router-dom";
 import GoBack from "../assets/icons/goBack.svg?react";
 
 const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
   const { updateProjectDetails } = useContext(projectContext);
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);        // API request in-flight
@@ -453,40 +457,62 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
       </div>
 
       <div className="p-4 bg-white border-t border-[#CFCFCF]">
-        <form
-          onSubmit={handleSend}
-          className="flex items-center gap-2 border border-[#CFCFCF] rounded-lg p-1 bg-[#F9F9F9] focus-within:border-[#5F5F5F] transition-colors"
-        >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Describe your edit..."
-            disabled={isBusy}
-            className={`flex-1 bg-transparent px-3 py-2 text-sm text-[#343434] outline-none placeholder:text-gray-400 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() && !isBusy}
-            className={`p-2 rounded-md transition-colors ${
-              isBusy
-                ? "bg-red-500 text-white hover:bg-red-600"
-                : input.trim()
-                  ? "bg-[#343434] text-white hover:bg-black"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
+        {!isAuthenticated ? (
+          <div className="text-center py-4">
+            <div className="text-4xl mb-2">👤</div>
+            <h3 className="font-inter font-semibold text-sm text-[#343434] mb-1">Not Signed In</h3>
+            <p className="text-xs text-[#7D7D7D] font-inter mb-3">Sign in to use AI features</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => navigate("/login")}
+                className="px-4 py-1.5 bg-[#AB2D2D] text-white rounded-md font-inter text-xs hover:bg-[#8a2424] transition-colors"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-4 py-1.5 border border-[#CFCFCF] text-[#343434] rounded-md font-inter text-xs hover:bg-[#F9F9F9] transition-colors"
+              >
+                Create Account
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={handleSend}
+            className="flex items-center gap-2 border border-[#CFCFCF] rounded-lg p-1 bg-[#F9F9F9] focus-within:border-[#5F5F5F] transition-colors"
           >
-            {isBusy ? (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-              </svg>
-            )}
-          </button>
-        </form>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Describe your edit..."
+              disabled={isBusy}
+              className={`flex-1 bg-transparent px-3 py-2 text-sm text-[#343434] outline-none placeholder:text-gray-400 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() && !isBusy}
+              className={`p-2 rounded-md transition-colors ${
+                isBusy
+                  ? "bg-red-500 text-white hover:bg-red-600"
+                  : input.trim()
+                    ? "bg-[#343434] text-white hover:bg-black"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {isBusy ? (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+              )}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

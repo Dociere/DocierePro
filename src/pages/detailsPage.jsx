@@ -8,7 +8,7 @@ import LinearLoading from "../components/loading/linearLoading";
 const DetailsPage = () => {
   const navigate = useNavigate();
   const { templateTitle } = useParams(); // templateTitle is actually the templateKey (e.g. "ieee_conference")
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { settings } = useSettings();
   const isDark = settings.appearance.mode === "dark";
 
@@ -20,11 +20,16 @@ const DetailsPage = () => {
   const [userIdea, setUserIdea] = useState("");
   const [isGenChecked, setIsGenChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Derived — no useEffect needed
   const isFormValid = title.trim() !== "";
 
   const handleGenCheck = () => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
     setIsGenChecked(!isGenChecked);
   };
 
@@ -71,6 +76,7 @@ const DetailsPage = () => {
   };
 
   return (
+    <>
     <div className="flex justify-center items-center w-full min-h-screen">
       {isLoading && <LinearLoading />}
       <div className="w-[90vw] max-w-[830px] h-auto bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
@@ -232,6 +238,38 @@ const DetailsPage = () => {
         </p>
       </div>
     </div>
+
+    {/* Auth Modal */}
+    {showAuthModal && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[80]">
+        <div className="bg-white rounded-xl shadow-xl p-8 w-[380px] max-w-full text-center font-inter">
+          <div className="text-5xl mb-3">👤</div>
+          <h3 className="font-semibold text-lg text-[#343434] mb-1">Not Signed In</h3>
+          <p className="text-sm text-[#7D7D7D] mb-5">Sign in to generate a boilerplate document</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => navigate("/login")}
+              className="px-5 py-2 bg-[#AB2D2D] text-white rounded-md text-sm hover:bg-[#8a2424] transition-colors"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => navigate("/signup")}
+              className="px-5 py-2 border border-[#CFCFCF] text-[#343434] rounded-md text-sm hover:bg-[#F9F9F9] transition-colors"
+            >
+              Create Account
+            </button>
+          </div>
+          <button
+            onClick={() => setShowAuthModal(false)}
+            className="mt-4 text-xs text-[#7D7D7D] hover:text-[#343434] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

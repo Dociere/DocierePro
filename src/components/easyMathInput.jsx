@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../context/useAuth";
+import { useNavigate } from "react-router-dom";
 import {
   TbX,
   TbCopy,
@@ -20,6 +22,8 @@ import {
 const API_BASE_URL = "http://localhost:5000";
 
 const EasyMathInput = ({ onClose }) => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   // --- STATE ---
   const [activeTab, setActiveTab] = useState("editor");
   const [latexCode, setLatexCode] = useState("");
@@ -48,6 +52,7 @@ const EasyMathInput = ({ onClose }) => {
   const [equationMode, setEquationMode] = useState("numbered");
 
   const [toastMessage, setToastMessage] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Default expanded categories
   const [expandedCategories, setExpandedCategories] = useState(
@@ -743,7 +748,13 @@ const EasyMathInput = ({ onClose }) => {
                       {isAiMode ? "AI Mode" : "LaTeX Builder"}
                     </span>
                     <button
-                      onClick={() => setIsAiMode(!isAiMode)}
+                      onClick={() => {
+                        if (!isAiMode && !isAuthenticated) {
+                          setShowAuthModal(true);
+                        } else {
+                          setIsAiMode(!isAiMode);
+                        }
+                      }}
                       className={`text-xs font-medium hover:underline ${isAiMode ? "text-purple-600" : "text-gray-500"}`}
                     >
                       Switch to {isAiMode ? "Manual Builder" : "AI Assistant"}
@@ -1055,6 +1066,37 @@ const EasyMathInput = ({ onClose }) => {
           {toastMessage}
         </div>
       </div>
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[80]">
+          <div className="bg-white rounded-xl shadow-xl p-8 w-[380px] max-w-full text-center font-inter">
+            <div className="text-5xl mb-3">👤</div>
+            <h3 className="font-semibold text-lg text-[#343434] mb-1">Not Signed In</h3>
+            <p className="text-sm text-[#7D7D7D] mb-5">Sign in to use the AI equation assistant</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => navigate("/login")}
+                className="px-5 py-2 bg-[#AB2D2D] text-white rounded-md text-sm hover:bg-[#8a2424] transition-colors"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-5 py-2 border border-[#CFCFCF] text-[#343434] rounded-md text-sm hover:bg-[#F9F9F9] transition-colors"
+              >
+                Create Account
+              </button>
+            </div>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="mt-4 text-xs text-[#7D7D7D] hover:text-[#343434] transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
