@@ -54,91 +54,25 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
     navigator.clipboard.writeText(text);
   };
 
-  // Track which files were resolved so we can reconstruct even if AI strips markers
-  const resolvedFilesRef = useRef([]);
-
-  // ---- Resolve \input{} directives: inline file contents with markers ----
-  const resolveInputs = (latexContent) => {
+  // ---- Build file map from all project files ----
+  const buildFileMap = () => {
     const files = projectDetails.currentProject?.files || {};
-    const resolved = [];
+    const fileMap = {};
 
-    const result = latexContent.replace(/\\input\{([^}]+)\}/g, (match, inputName) => {
-      const fileName = inputName.endsWith(".tex") ? inputName : inputName + ".tex";
-      const fileEntry = files[fileName];
-      if (fileEntry && fileEntry.content !== undefined) {
-        resolved.push({ fileName, inputName, originalContent: (fileEntry.content || "").trim() });
-        return `%% BEGIN_INPUT{${fileName}} %%\n${(fileEntry.content || "").trim()}\n%% END_INPUT{${fileName}} %%`;
-      }
-      return match; // Leave as-is if file not found
-    });
+    for (const [filePath, fileData] of Object.entries(files)) {
+      // Skip non-content files
+      if (filePath.endsWith('.gitkeep')) continue;
+      if (/\.(cls|sty|pdf|png|jpg|jpeg|gif|svg|eps)$/i.test(filePath)) continue;
+      if (filePath === 'main.tex') continue; // main.tex is sent as latexContent
+      if (fileData.isImage) continue;
 
-    resolvedFilesRef.current = resolved;
-    return result;
-  };
-
-  // ---- Reconstruct \input{} from AI response ----
-  // Strategy: try markers first, then fallback to content-matching for stripped markers
-  const reconstructInputs = (aiLatex) => {
-    const fileUpdates = {};
-    const MARKER_REGEX = /%% BEGIN_INPUT\{([^}]+)\} %%\n([\s\S]*?)\n%% END_INPUT\{\1\} %%/g;
-
-    // 1. Check if any markers survive
-    let hasMarkers = MARKER_REGEX.test(aiLatex);
-    MARKER_REGEX.lastIndex = 0; // reset regex state
-
-    if (hasMarkers) {
-      // Markers preserved — extract as before
-      const reconstructed = aiLatex.replace(MARKER_REGEX, (match, fileName, content) => {
-        fileUpdates[fileName] = content.trim();
-        const inputName = fileName.replace(/\.tex$/, "");
-        return `\\input{${inputName}}`;
-      });
-      return { latex: reconstructed, fileUpdates };
-    }
-
-    // 2. Fallback: AI stripped the markers. Check if \input{} directives still exist.
-    //    If they do, the AI didn't change those sections — no fileUpdates needed.
-    const inputDirRegex = /\\input\{([^}]+)\}/g;
-    let inputMatch;
-    const remainingInputs = new Set();
-    while ((inputMatch = inputDirRegex.exec(aiLatex)) !== null) {
-      const fn = inputMatch[1].endsWith(".tex") ? inputMatch[1] : inputMatch[1] + ".tex";
-      remainingInputs.add(fn);
-    }
-
-    // For each resolved file, check if its \input{} is still in the AI output
-    let latex = aiLatex;
-    for (const { fileName, inputName, originalContent } of resolvedFilesRef.current) {
-      if (remainingInputs.has(fileName)) {
-        // \input{} still present — AI left it alone, no update needed
-        continue;
-      }
-
-      // The \input{} was removed and content was inlined by the AI.
-      // Try to find the inlined content and extract it back.
-      // Use the original content as an anchor — look for a region that
-      // either matches or is near the original content's location.
-      
-      // Strategy: search for the original content (or a prefix of it) in the AI output.
-      // If found, replace it with \input{} and save the new content.
-      // If the content was modified by the AI, we try to find any content between
-      // the surrounding \input{} or structural markers.
-      
-      // Simple approach: if the original content appears verbatim, restore \input
-      if (originalContent && latex.includes(originalContent)) {
-        fileUpdates[fileName] = originalContent;
-        latex = latex.replace(originalContent, `\\input{${inputName}}`);
-      } else {
-        // Content was modified by AI. We need to find it.
-        // Look for the AI's version of this section by searching for content
-        // that appeared where the original was (using surrounding context).
-        // For now, don't try to extract — just let the inline change go through
-        // but warn. The user can reject the change.
-        console.warn(`AI inlined and modified content from ${fileName}. Content will be applied to main document.`);
+      // Include .tex and .bib files
+      if (/\.(tex|bib)$/i.test(filePath)) {
+        fileMap[filePath] = fileData.content || "";
       }
     }
 
-    return { latex, fileUpdates };
+    return Object.keys(fileMap).length > 0 ? fileMap : null;
   };
 
 
@@ -247,14 +181,15 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
       // Build context from sections
       const context = buildContext();
 
-      // Resolve \input{} directives so AI can see file contents
-      const resolvedLatex = resolveInputs(projectDetails.latexContent);
+      // Build file map of all project files (excluding main.tex)
+      const fileMap = buildFileMap();
 
       const result = await editDocumentWithAI(
         userMsg.text,
-        resolvedLatex,
+        projectDetails.latexContent,
         abortControllerRef.current.signal,
-        context
+        context,
+        fileMap
       );
 
       abortControllerRef.current = null;
@@ -273,6 +208,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
           isAction: true,
           snippet: result.changedSnippet || "Changes applied globally.",
           newContent: result.latexContent,
+          fileUpdates: result.fileUpdates || {},
           isStreaming: true,
         };
         setMessages((prev) => [...prev, aiMsg]);
@@ -312,12 +248,9 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
     );
   };
 
-  const handleApplyChanges = (msgId, newContent) => {
-    // Reconstruct \input{} from markers and extract file updates
-    const { latex, fileUpdates } = reconstructInputs(newContent);
-
+  const handleApplyChanges = (msgId, newContent, fileUpdates) => {
     if (onApplyChanges) {
-      onApplyChanges(latex, fileUpdates);
+      onApplyChanges(newContent, fileUpdates || {});
     }
 
     setMessages((prev) =>
@@ -412,7 +345,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
               {msg.isAction && (
                 <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
                   <button
-                    onClick={() => handleApplyChanges(msg.id, msg.newContent)}
+                    onClick={() => handleApplyChanges(msg.id, msg.newContent, msg.fileUpdates)}
                     className="flex-1 bg-[#343434] hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded transition-colors flex items-center justify-center gap-2"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -66,6 +66,7 @@ export const editDocumentWithAI = async (
   currentLatex,
   signal = null,
   context = null,
+  fileMap = null,
 ) => {
   try {
     const response = await axios.post(
@@ -74,10 +75,11 @@ export const editDocumentWithAI = async (
         prompt,
         latexContent: currentLatex,
         context,
+        fileMap,
       },
       { signal }, // Pass abort signal to axios
     );
-    return response.data; // Returns { success: true, latexContent: "..." }
+    return response.data; // Returns { success, latexContent, fileUpdates, changedSnippet }
   } catch (error) {
     console.error("AI Edit Failed:", error);
     throw error;
