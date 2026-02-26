@@ -408,7 +408,7 @@ app.post("/api/synctex", async (req, res) => {
 // API: AI Edit LaTeX
 app.post("/api/edit", async (req, res) => {
   try {
-    const { prompt, latexContent, context } = req.body;
+    const { prompt, latexContent, context, fileMap } = req.body;
 
     if (!prompt || !latexContent) {
       return res
@@ -424,6 +424,7 @@ app.post("/api/edit", async (req, res) => {
       prompt,
       latexContent,
       context,
+      fileMap,
     });
 
     if (aiResponse.data.success) {
@@ -431,6 +432,8 @@ app.post("/api/edit", async (req, res) => {
         success: true,
         latexContent: aiResponse.data.latexContent,
         changedSnippet: aiResponse.data.changedSnippet,
+        aiMessage: aiResponse.data.message,
+        fileUpdates: aiResponse.data.fileUpdates || {},
       });
     } else {
       throw new Error(aiResponse.data.error || "AI edit failed");

@@ -1081,11 +1081,13 @@ const EditorPage = () => {
               projectDetails={projectDetails}
               sections={sections}
               onApplyChanges={(newContent, fileUpdates) => {
-                // If AI edited content from \input{} files, apply file updates first
+                // Apply file updates from AI response
+                const updatedFiles = {
+                  ...projectDetails.currentProject.files,
+                };
+
+                // Apply per-file updates
                 if (fileUpdates && Object.keys(fileUpdates).length > 0) {
-                  const updatedFiles = {
-                    ...projectDetails.currentProject.files,
-                  };
                   for (const [fileName, content] of Object.entries(
                     fileUpdates,
                   )) {
@@ -1096,20 +1098,34 @@ const EditorPage = () => {
                       };
                     } else {
                       updatedFiles[fileName] = {
-                        name: fileName,
+                        name: fileName.split('/').pop(),
                         content,
                         type: "tex",
                       };
                     }
                   }
-                  updateProjectDetails({
-                    currentProject: {
-                      ...projectDetails.currentProject,
-                      files: updatedFiles,
-                    },
-                  });
                 }
-                updateAllEditors("monaco", newContent);
+
+                // Update main.tex content
+                updatedFiles["main.tex"] = {
+                  ...updatedFiles["main.tex"],
+                  content: newContent,
+                };
+
+                updateProjectDetails({
+                  currentProject: {
+                    ...projectDetails.currentProject,
+                    files: updatedFiles,
+                  },
+                });
+
+                // If the active file was updated by the AI, refresh the editor with its new content
+                const activeFile = projectDetails.activeFile || "main.tex";
+                if (activeFile !== "main.tex" && fileUpdates && fileUpdates[activeFile]) {
+                  updateAllEditors("monaco", fileUpdates[activeFile]);
+                } else {
+                  updateAllEditors("monaco", newContent);
+                }
               }}
               onClose={() => setShowAIChat(false)}
             />
