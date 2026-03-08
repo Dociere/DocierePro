@@ -16,10 +16,19 @@
   "build": {
     "appId": "com.docierepro.app",
     "productName": "DocierePro",
-    "icon": "public/dociere.png",
+    "icon": "public/dociereLogo6.png",
     "directories": {
       "output": "release"
     },
+    "asarUnpack": [
+      "server.js",
+      "routes/**/*",
+      "node_modules/**/*",
+      "renderStrategies.js",
+      "projects/*",
+      "templates/*",
+      "settings/*"
+    ],
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -37,7 +46,21 @@
     "linux": {
       "target": "AppImage",
       "icon": "build/icon.png"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "server.js",
+        "to": "app.asar.unpacked/server.js"
+      },
+      {
+        "from": "routes",
+        "to": "app.asar.unpacked/routes"
+      },
+      {
+        "from": "renderStrategies.js",
+        "to": "app.asar.unpacked/renderStrategies.js"
+      }
+    ]
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
