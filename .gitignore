@@ -35,3 +35,6 @@ projects
 
 # Environment Variables
 *.env
+
+# Production
+release
