@@ -102,8 +102,7 @@ const NavBar = ({ onStartTour }) => {
         showToast("error", res.data.error || "Failed to save template");
       }
     } catch (error) {
-      const msg =
-        error.response?.data?.error || "Failed to save template";
+      const msg = error.response?.data?.error || "Failed to save template";
       showToast("error", msg);
     }
   };
@@ -744,10 +743,11 @@ const NavBar = ({ onStartTour }) => {
   return (
     <>
       <div
-        className="z-[9999] fixed w-full top-0 "
+        className="z-[10001] fixed w-full top-0 pointer-events-auto"
         style={{
           WebkitAppRegion: "drag",
         }}
+        id="navbar"
       >
         <div
           className="h-7 w-full top-[3px] bottom-0 border-b-[0.5px] flex"
@@ -1046,9 +1046,7 @@ const NavBar = ({ onStartTour }) => {
                 disabled={!templateName.trim()}
                 className="px-4 py-2 rounded text-sm font-inter font-medium text-white transition-colors"
                 style={{
-                  background: templateName.trim()
-                    ? "#AB2D2D"
-                    : "#ccc",
+                  background: templateName.trim() ? "#AB2D2D" : "#ccc",
                   cursor: templateName.trim() ? "pointer" : "not-allowed",
                 }}
               >

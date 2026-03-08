@@ -9,7 +9,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import sharp from "sharp";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+import { dirname, join } from "path";
 import * as TemplateEngine from "./renderStrategies.js";
 import util from "util";
 dotenv.config();
@@ -31,14 +31,49 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+//System Environment
+// const isDev = !app.isPackaged;
+// const isDev = __dirname.includes("app.asar") === false;
+
+const isDev = !process.env.USER_DATA_PATH; // if not set, we're in dev
+const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
+
+// Base directory: userData in production, current directory in development
+// const baseDir = isDev ? __dirname : electronApp.getPath("userData");
+console.log("isDev, baseDir", isDev, baseDir);
+
 // Directories
-const SETTINGS_DIR = path.join(__dirname);
-const PROJECTS_DIR = path.join(__dirname, "projects");
-const TEMP_DIR = path.join(__dirname, "temp");
-const OUTPUT_DIR = path.join(__dirname, "output");
-const EQUATIONS_DIR = path.join(__dirname, "equations");
-const CITATIONS_DIR = path.join(__dirname, "citations");
-const TEMPLATES_DIR = path.join(__dirname, "templates");
+// const SETTINGS_DIR = path.join(__dirname);
+// const PROJECTS_DIR = path.join(__dirname, "projects");
+// const TEMP_DIR = path.join(__dirname, "temp");
+// const OUTPUT_DIR = path.join(__dirname, "output");
+// const EQUATIONS_DIR = path.join(__dirname, "equations");
+// const CITATIONS_DIR = path.join(__dirname, "citations");
+// const TEMPLATES_DIR = path.join(__dirname, "templates");
+
+const SETTINGS_DIR = isDev ? __dirname : join(baseDir, "settings");
+const PROJECTS_DIR = join(baseDir, "projects");
+const TEMP_DIR = join(baseDir, "projects/temp");
+const OUTPUT_DIR = join(baseDir, "projects/output");
+const EQUATIONS_DIR = join(baseDir, "projects/equations");
+const CITATIONS_DIR = join(baseDir, "projects/citations");
+const TEMPLATES_DIR = join(baseDir, "templates");
+
+//Create all Directories
+[
+  SETTINGS_DIR,
+  PROJECTS_DIR,
+  TEMP_DIR,
+  OUTPUT_DIR,
+  EQUATIONS_DIR,
+  CITATIONS_DIR,
+  TEMPLATES_DIR,
+].forEach((dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 // STEP 1: Add this helper function at the top of your file (after imports)
 // This replaces the existing runPdfLatex if you have one
@@ -580,9 +615,7 @@ async function getTemplateFiles(templatePath) {
 app.get("/api/templates", async (req, res) => {
   try {
     const entries = await fs.readdir(TEMPLATES_DIR, { withFileTypes: true });
-    const templates = entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name);
+    const templates = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     res.json({ success: true, templates });
   } catch (error) {
     console.error("❌ Template list error:", error);
@@ -610,9 +643,10 @@ app.post("/api/templates/save", async (req, res) => {
     const templateDir = path.join(TEMPLATES_DIR, name.trim());
 
     if (await fs.pathExists(templateDir)) {
-      return res
-        .status(409)
-        .json({ success: false, error: "A template with this name already exists" });
+      return res.status(409).json({
+        success: false,
+        error: "A template with this name already exists",
+      });
     }
 
     await fs.ensureDir(templateDir);
@@ -648,9 +682,7 @@ app.post("/api/templates/save", async (req, res) => {
     res.json({ success: true, message: "Template saved successfully" });
   } catch (error) {
     console.error("❌ Template save error:", error);
-    res
-      .status(500)
-      .json({ success: false, error: "Failed to save template" });
+    res.status(500).json({ success: false, error: "Failed to save template" });
   }
 });
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, contextBridge } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 
@@ -6,26 +6,28 @@ let backendProcess = null;
 let mainWindow = null;
 
 function startBackend() {
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev = !app.isPackaged;
+  const userDataPath = app.getPath("userData"); // get it here in main process
 
   if (isDev) {
-    // In development, run your backend with nodemon
     backendProcess = spawn("npm", ["start"], {
       shell: true,
-      cwd: __dirname.replace("/electron", ""), // Root directory
+      cwd: __dirname.replace("/electron", ""),
       stdio: "inherit",
+      env: { ...process.env, USER_DATA_PATH: userDataPath },
     });
   } else {
-    // In production, run your backend directly
-    backendProcess = spawn("node", ["server.js"], {
-      cwd: process.resourcesPath || path.join(__dirname, ".."),
+    const backendPath = path.join(
+      process.resourcesPath,
+      "app.asar.unpacked",
+      "server.js",
+    );
+    backendProcess = spawn("node", [backendPath], {
+      cwd: path.join(process.resourcesPath, "app.asar.unpacked"),
       stdio: "inherit",
+      env: { ...process.env, USER_DATA_PATH: userDataPath }, // pass it here
     });
   }
-
-  backendProcess.on("error", (err) => {
-    console.error("Failed to start backend:", err);
-  });
 }
 
 function createWindow() {
@@ -41,13 +43,19 @@ function createWindow() {
     },
   });
 
-  const isDev = process.env.NODE_ENV === "development";
+  // const isDev = process.env.NODE_ENV === "development";
+  const isDev = !app.isPackaged;
 
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
+    // mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
+    const filePath = path.join(__dirname, "../dist/index.html");
+    console.log("Loading file:", filePath);
+    console.log("File exists:", require("fs").existsSync(filePath));
+    mainWindow.loadFile(filePath);
+    mainWindow.webContents.openDevTools();
   }
 
   mainWindow.setMenu(null);
