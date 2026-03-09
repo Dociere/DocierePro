@@ -5,6 +5,7 @@ import StartingPage from "./pages/startingPage";
 import TemplateSelect from "./pages/templateSelect";
 import DetailsPage from "./pages/detailsPage";
 import CanvasPage from "./pages/canvasPage";
+import TemplateBuilderPage from "./pages/TemplateBuilderPage";
 import Signup from "./pages/User_Account/signup";
 import Login from "./pages/User_Account/login";
 import SettingsPage from "./pages/settingsPage";
@@ -24,6 +25,7 @@ function App() {
           element={<TemplatePreview />}
         />
         <Route path="/template/browse" element={<TemplateBrowse />} />
+        <Route path="/template/builder" element={<TemplateBuilderPage />} />
         <Route path="/detailPage/:templateTitle" element={<DetailsPage />} />
         <Route path="/canvas" element={<CanvasPage />} />
         <Route path="/settings" element={<SettingsPage />} />

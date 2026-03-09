@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import GoBack from "../assets/icons/goBack.svg?react";
 import TemplateCards from "../components/templateCards";
+import TemplateSetupModal from "../components/TemplateSetupModal";
 import { useAuth } from "../context/useAuth";
 import { useSettings } from "../context/useSettings";
 import axios from "axios";
@@ -51,6 +52,7 @@ function TemplateSelect() {
   const { settings } = useSettings();
   const isDark = settings.appearance.mode === "dark";
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
   const [userTemplates, setUserTemplates] = useState([]);
 
   useEffect(() => {
@@ -111,16 +113,24 @@ function TemplateSelect() {
               </p>
             </div>
 
-            <button
-              onClick={handleBrowseClick}
-              className={`px-6 py-2 rounded font-medium border transition-colors ${
-                isDark
-                  ? "border-gray-600 hover:bg-gray-800"
-                  : "border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              Browse More Templates
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsSetupModalOpen(true)}
+                className="px-6 py-2 rounded font-semibold bg-black text-white hover:bg-gray-800 transition-colors shadow-sm"
+              >
+                + Create Custom Template
+              </button>
+              <button
+                onClick={handleBrowseClick}
+                className={`px-6 py-2 rounded font-medium border transition-colors ${
+                  isDark
+                    ? "border-gray-600 hover:bg-gray-800"
+                    : "border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Browse More Templates
+              </button>
+            </div>
           </div>
 
           {/* Built-in templates + Blank */}
@@ -171,6 +181,15 @@ function TemplateSelect() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSignIn={handleSignIn}
+      />
+
+      <TemplateSetupModal
+        isOpen={isSetupModalOpen}
+        onClose={() => setIsSetupModalOpen(false)}
+        onSubmit={(config) => {
+          setIsSetupModalOpen(false);
+          navigate("/template/builder", { state: config });
+        }}
       />
     </div>
   );
