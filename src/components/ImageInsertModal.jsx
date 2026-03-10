@@ -318,7 +318,7 @@ const ImageInsertModal = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-xl flex flex-col overflow-hidden max-h-[90vh]">
+      <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-5xl h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2 font-inter">
@@ -334,268 +334,308 @@ const ImageInsertModal = ({
         </div>
 
         {/* Main Content */}
-        <div className="p-5 space-y-4 overflow-y-auto">
-          {/* Image Selection */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Image File</label>
-            {imageFiles.length > 0 ? (
-              <select
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {/* Left Panel - Settings */}
+          <div className="w-[280px] flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto p-4 space-y-5">
+            
+            {/* Image Selection */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Image File</label>
+              {imageFiles.length > 0 ? (
+                <select
+                  value={imagePath}
+                  onChange={(e) => setImagePath(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                >
+                  <option value="">Select an image...</option>
+                  {imageFiles.map((file) => (
+                    <option key={file} value={file}>{file}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="text-xs text-gray-500 mb-1">No images in project.</div>
+              )}
+              <input
+                type="text"
                 value={imagePath}
                 onChange={(e) => setImagePath(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-              >
-                <option value="">Select an image...</option>
-                {imageFiles.map((file) => (
-                  <option key={file} value={file}>{file}</option>
-                ))}
-              </select>
-            ) : (
-              <div className="text-xs text-gray-500 mb-1">No images in project. Upload via sidebar.</div>
-            )}
-            <input
-              type="text"
-              value={imagePath}
-              onChange={(e) => setImagePath(e.target.value)}
-              placeholder="path/to/image.png"
-              className="w-full mt-2 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 font-mono"
-            />
-          </div>
-
-          {/* Size Options */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Size</label>
-            <div className="flex gap-1 mb-3">
-              {["width", "height", "scale"].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setSizeMode(mode)}
-                  className={`px-3 py-1.5 text-xs rounded font-medium transition-colors ${
-                    sizeMode === mode 
-                      ? "bg-black text-white" 
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                </button>
-              ))}
+                placeholder="path/to/image.png"
+                className="w-full mt-2 px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 font-mono"
+              />
             </div>
-            
-            {sizeMode === "width" && (
-              <div className="space-y-2">
-                <div className="flex gap-2 items-center">
+
+            {/* Size Options */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Size Mode</label>
+              <div className="flex gap-1 mb-3">
+                {["width", "height", "scale"].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setSizeMode(mode)}
+                    className={`flex-1 px-2 py-1 text-xs rounded font-medium transition-colors ${
+                      sizeMode === mode 
+                        ? "bg-black text-white" 
+                        : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </button>
+                ))}
+              </div>
+              
+              {sizeMode === "width" && (
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={widthValue}
+                      onChange={(e) => setWidthValue(e.target.value)}
+                      className="w-20 px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                      placeholder="0.8"
+                    />
+                    <select
+                      value={widthUnit}
+                      onChange={(e) => setWidthUnit(e.target.value)}
+                      className="flex-1 px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    >
+                      <option value="\\textwidth">\textwidth</option>
+                      <option value="\\columnwidth">\columnwidth</option>
+                      <option value="\\linewidth">\linewidth</option>
+                      <option value="\\paperwidth">\paperwidth</option>
+                      <option value="cm">cm</option>
+                      <option value="mm">mm</option>
+                      <option value="in">in</option>
+                      <option value="pt">pt</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {WIDTH_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        onClick={() => { setWidthValue(preset.value); setWidthUnit(preset.unit); }}
+                        className="px-2 py-1 text-[10px] bg-white border border-gray-200 hover:bg-gray-100 rounded text-gray-600"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {sizeMode === "height" && (
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={heightValue}
+                      onChange={(e) => setHeightValue(e.target.value)}
+                      className="w-20 px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                      placeholder="5"
+                    />
+                    <select
+                      value={heightUnit}
+                      onChange={(e) => setHeightUnit(e.target.value)}
+                      className="flex-1 px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    >
+                      <option value="cm">cm</option>
+                      <option value="mm">mm</option>
+                      <option value="in">in</option>
+                      <option value="pt">pt</option>
+                      <option value="\\textheight">\textheight</option>
+                      <option value="\\paperheight">\paperheight</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {HEIGHT_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        onClick={() => { setHeightValue(preset.value); setHeightUnit(preset.unit); }}
+                        className="px-2 py-1 text-[10px] bg-white border border-gray-200 hover:bg-gray-100 rounded text-gray-600"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {sizeMode === "scale" && (
+                <div className="space-y-2">
                   <input
                     type="number"
                     step="0.1"
-                    min="0"
-                    value={widthValue}
-                    onChange={(e) => setWidthValue(e.target.value)}
-                    className="w-24 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-                    placeholder="0.8"
+                    min="0.1"
+                    max="3"
+                    value={scale}
+                    onChange={(e) => setScale(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    placeholder="1.0"
                   />
+                  <div className="flex flex-wrap gap-1">
+                    {SCALE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        onClick={() => setScale(preset.value)}
+                        className="px-2 py-1 text-[10px] bg-white border border-gray-200 hover:bg-gray-100 rounded text-gray-600"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Layout Options */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Layout</label>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs text-gray-500">Position</span>
                   <select
-                    value={widthUnit}
-                    onChange={(e) => setWidthUnit(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    value={positioning}
+                    onChange={(e) => setPositioning(e.target.value)}
+                    className="w-full mt-1 px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
-                    <option value="\\textwidth">\textwidth</option>
-                    <option value="\\columnwidth">\columnwidth</option>
-                    <option value="\\linewidth">\linewidth</option>
-                    <option value="\\paperwidth">\paperwidth</option>
-                    <option value="cm">cm</option>
-                    <option value="mm">mm</option>
-                    <option value="in">inches</option>
-                    <option value="pt">points</option>
+                    <option value="h">Here [h]</option>
+                    <option value="t">Top [t]</option>
+                    <option value="b">Bottom [b]</option>
+                    <option value="H">Exact [H]</option>
+                    <option value="!htbp">Force [!htbp]</option>
                   </select>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {WIDTH_PRESETS.map((preset) => (
-                    <button
-                      key={preset.label}
-                      onClick={() => { setWidthValue(preset.value); setWidthUnit(preset.unit); }}
-                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {sizeMode === "height" && (
-              <div className="space-y-2">
-                <div className="flex gap-2 items-center">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
                   <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={heightValue}
-                    onChange={(e) => setHeightValue(e.target.value)}
-                    className="w-24 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-                    placeholder="5"
+                    type="checkbox"
+                    checked={centering}
+                    onChange={(e) => setCentering(e.target.checked)}
+                    className="rounded border-gray-300"
                   />
-                  <select
-                    value={heightUnit}
-                    onChange={(e) => setHeightUnit(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-                  >
-                    <option value="cm">cm</option>
-                    <option value="mm">mm</option>
-                    <option value="in">inches</option>
-                    <option value="pt">points</option>
-                    <option value="\\textheight">\textheight</option>
-                    <option value="\\paperheight">\paperheight</option>
-                  </select>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {HEIGHT_PRESETS.map((preset) => (
-                    <button
-                      key={preset.label}
-                      onClick={() => { setHeightValue(preset.value); setHeightUnit(preset.unit); }}
-                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
+                  Center image
+                </label>
               </div>
-            )}
-            
-            {sizeMode === "scale" && (
+            </div>
+
+            {/* Caption & Label */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Caption</label>
               <div className="space-y-2">
                 <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  max="3"
-                  value={scale}
-                  onChange={(e) => setScale(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-                  placeholder="1.0"
+                  type="text"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Figure caption..."
+                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                 />
-                <div className="flex gap-1">
-                  {SCALE_PRESETS.map((preset) => (
-                    <button
-                      key={preset.label}
-                      onClick={() => setScale(preset.value)}
-                      className="px-2 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                <input
+                  type="text"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="fig:label"
+                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                />
+                <select
+                  value={captionPosition}
+                  onChange={(e) => setCaptionPosition(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                >
+                  <option value="top">Caption Position: Top</option>
+                  <option value="bottom">Caption Position: Bottom</option>
+                </select>
+              </div>
+            </div>
+            
+          </div>
+
+          {/* Right Panel - Preview & Editor */}
+          <div className="flex-1 flex flex-col min-w-0 bg-white p-6 overflow-y-auto">
+            
+            {/* Preview Section */}
+            <div className="mb-6 flex flex-col flex-1 min-h-[300px]">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-semibold text-gray-800">Preview</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowPreview(!showPreview)}
+                    className={`text-xs px-3 py-1.5 rounded font-medium border transition-colors ${
+                      showPreview ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    View Code
+                  </button>
+                  <button
+                    onClick={handleCompilePreview}
+                    disabled={isCompiling || !imagePath}
+                    className="text-xs bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1.5 font-medium transition-colors"
+                  >
+                    <TbPlayerPlay size={14} />
+                    {isCompiling ? "Compiling..." : "Compile Preview"}
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Layout Row */}
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Position</label>
-              <select
-                value={positioning}
-                onChange={(e) => setPositioning(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-              >
-                <option value="h">Here [h]</option>
-                <option value="t">Top [t]</option>
-                <option value="b">Bottom [b]</option>
-                <option value="H">Exact [H]</option>
-                <option value="!htbp">Force [!htbp]</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Options</label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 py-2">
-                <input
-                  type="checkbox"
-                  checked={centering}
-                  onChange={(e) => setCentering(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                Center image
-              </label>
-            </div>
-          </div>
-
-          {/* Caption & Label */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Caption</label>
-            <input
-              type="text"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="Figure caption..."
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-            />
-            <div className="flex gap-2 mt-2">
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="fig:label"
-                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-              />
-              <select
-                value={captionPosition}
-                onChange={(e) => setCaptionPosition(e.target.value)}
-                className="px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-              >
-                <option value="top">Top</option>
-                <option value="bottom">Bottom</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Preview Section */}
-          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-bold text-gray-500 uppercase">Preview</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowPreview(!showPreview)}
-                  className="text-xs text-gray-600 hover:text-black px-2 py-1 hover:bg-gray-200 rounded"
-                >
-                  {showPreview ? "Hide Code" : "Code"}
-                </button>
-                <button
-                  onClick={handleCompilePreview}
-                  disabled={isCompiling || !imagePath}
-                  className="text-xs bg-gray-800 text-white px-3 py-1 rounded hover:bg-black disabled:opacity-50 flex items-center gap-1"
-                >
-                  <TbPlayerPlay size={12} />
-                  {isCompiling ? "..." : "Compile"}
-                </button>
+              
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg flex flex-col overflow-hidden relative">
+                {showPreview ? (
+                  <div className="absolute inset-0 z-10 bg-gray-900 text-gray-100 p-4 font-mono text-sm overflow-auto">
+                    <pre>{getLatex()}</pre>
+                  </div>
+                ) : null}
+                
+                <div className="flex-1 flex items-center justify-center p-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2YwZjBmMCIgc3Ryb2tlLXdpZHRoPSIxIiAvPgo8L3N2Zz4=')]">
+                  {compiledPreviewUrl ? (
+                    <img 
+                      src={compiledPreviewUrl} 
+                      alt="Figure preview" 
+                      className="max-w-full max-h-full object-contain shadow-md border border-gray-200 bg-white" 
+                    />
+                  ) : (
+                    <div className="text-center text-gray-400">
+                      <TbPhoto size={48} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Click Compile to generate preview</p>
+                      {!imagePath && <p className="text-xs mt-1 text-amber-500">Image path is required</p>}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            {showPreview && (
-              <pre className="bg-gray-900 text-gray-100 p-2 rounded text-xs overflow-x-auto max-h-[80px] font-mono mb-2">
-                {getLatex()}
-              </pre>
-            )}
-            {compiledPreviewUrl && (
-              <div className="bg-white border border-gray-200 rounded p-2 text-center overflow-auto">
-                <img src={compiledPreviewUrl} alt="Figure preview" className="max-h-[100px] mx-auto" />
-              </div>
-            )}
+
           </div>
         </div>
 
-        {/* Footer - Copy only, no Insert */}
-        <div className="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-white flex-shrink-0">
-          <div className="text-xs text-gray-500">Copy and paste into your document</div>
-          <div className="flex gap-2">
+        {/* Footer */}
+        <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+          <div className="text-sm text-gray-500 font-medium">
+            {initialData ? "Updating existing figure" : "Ready to insert"}
+          </div>
+          <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-1.5 text-gray-600 hover:bg-gray-100 rounded font-medium"
+              className="px-5 py-2 text-gray-600 hover:bg-gray-200 rounded-md font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={copyToClipboard}
-              className="flex items-center gap-1.5 px-5 py-1.5 bg-black text-white rounded hover:bg-gray-800 font-medium"
+              className="px-5 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium transition-colors flex items-center gap-2 shadow-sm"
+              title="Copy to clipboard"
             >
-              <TbCopy size={16} /> Copy LaTeX
+              <TbCopy size={18} /> Copy
             </button>
+            {onInsert && (
+              <button
+                onClick={() => {
+                  onInsert(getLatex());
+                  onClose();
+                }}
+                className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 font-medium transition-colors shadow-sm"
+              >
+                {initialData ? "Update Figure" : "Insert Figure"}
+              </button>
+            )}
           </div>
         </div>
       </div>
