@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { useSettings } from "../context/useSettings";
 import { createProject } from "../api/projectHandling";
 import LinearLoading from "../components/loading/linearLoading";
+import ConfirmModal from "../components/confirmModal";
+import axios from "axios";
 
 const DetailsPage = () => {
   const navigate = useNavigate();
@@ -21,6 +23,10 @@ const DetailsPage = () => {
   const [isGenChecked, setIsGenChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const fileInputRef = useRef(null);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: "", message: "" });
 
   // Derived — no useEffect needed
   const isFormValid = title.trim() !== "";
@@ -33,10 +39,54 @@ const DetailsPage = () => {
     setIsGenChecked(!isGenChecked);
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["pdf", "txt", "md"].includes(ext)) {
+      setAlertModal({ isOpen: true, title: "Unsupported File", message: "Only PDF, TXT, and Markdown files are supported." });
+      return;
+    }
+
+    setUploadedFile(file);
+    setIsExtracting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post(
+        "http://localhost:5000/api/extract-file-text",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      if (response.data.success) {
+        setUserIdea(response.data.text);
+      } else {
+        setAlertModal({ isOpen: true, title: "Extraction Failed", message: response.data.error || "Failed to extract text from file." });
+        setUploadedFile(null);
+      }
+    } catch (err) {
+      console.error("File extraction error:", err);
+      setAlertModal({ isOpen: true, title: "Extraction Failed", message: "Failed to extract text from the uploaded file." });
+      setUploadedFile(null);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setUserIdea("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleNextClick = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
-      alert("Please enter a project title.");
+      setAlertModal({ isOpen: true, title: "Missing Title", message: "Please enter a project title." });
       return;
     }
 
@@ -183,6 +233,59 @@ const DetailsPage = () => {
                 placeholder="E.g., A research paper on machine learning applications in healthcare..."
                 className="w-full max-w-md h-32 border border-[#CFCFCF] bg-[#F9F9F9] px-2 py-2 resize-none"
               />
+
+              {/* File Upload */}
+              <div className="mt-3 max-w-md">
+                <div className="flex items-center gap-3">
+                  <label
+                    className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 border border-[#CFCFCF] bg-white hover:bg-gray-50 text-sm font-inter text-gray-600 rounded transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Upload a file
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.txt,.md"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-xs text-gray-400 font-inter">PDF, TXT, or MD</span>
+                </div>
+
+                {isExtracting && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-500 font-inter">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Extracting text...
+                  </div>
+                )}
+
+                {uploadedFile && !isExtracting && (
+                  <div className="mt-2 flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-200 rounded text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                      <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <span className="text-green-700 font-inter truncate">{uploadedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
+                      title="Remove file"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="text-[10px] text-gray-500 mt-2 text-center font-inter max-w-md">
                 Content generated by AI is purely for reference. We do not promote academic dishonesty.
               </div>
@@ -272,6 +375,17 @@ const DetailsPage = () => {
         </div>
       </div>
     )}
+
+    {/* Alert Modal */}
+    <ConfirmModal
+      isOpen={alertModal.isOpen}
+      title={alertModal.title}
+      message={alertModal.message}
+      confirmText="OK"
+      cancelText=""
+      onConfirm={() => setAlertModal({ isOpen: false, title: "", message: "" })}
+      onCancel={() => setAlertModal({ isOpen: false, title: "", message: "" })}
+    />
     </>
   );
 };

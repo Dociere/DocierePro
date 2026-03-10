@@ -5,6 +5,7 @@ import path from "path";
 import { exec, spawn } from "child_process";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
+import { PDFParse as pdfParse } from "pdf-parse";
 import axios from "axios";
 import dotenv from "dotenv";
 import sharp from "sharp";
@@ -683,6 +684,70 @@ app.post("/api/templates/save", async (req, res) => {
   } catch (error) {
     console.error("❌ Template save error:", error);
     res.status(500).json({ success: false, error: "Failed to save template" });
+  }
+});
+
+// --- File text extraction for boilerplate generation ---
+const boilerplateUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = [".pdf", ".txt", ".md"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF, TXT, and MD files are allowed"));
+    }
+  },
+});
+
+app.post("/api/extract-file-text", boilerplateUpload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    let extractedText = "";
+
+    if (ext === ".pdf") {
+      // Extract text from PDF — save buffer to temp file, then parse
+      const tempPdfPath = path.join(TEMP_DIR, `upload_${Date.now()}.pdf`);
+      try {
+        await fs.writeFile(tempPdfPath, req.file.buffer);
+        const parser = new pdfParse({ url: tempPdfPath });
+        const result = await parser.getText();
+        extractedText = result.text || "";
+        await parser.destroy();
+        console.log(`📄 PDF parsed: ${extractedText.length} chars`);
+      } catch (pdfErr) {
+        console.error("❌ pdf-parse error:", pdfErr.message);
+        return res.status(400).json({
+          success: false,
+          error: `PDF parsing failed: ${pdfErr.message}`,
+        });
+      } finally {
+        // Clean up temp file
+        await fs.remove(tempPdfPath).catch(() => {});
+      }
+    } else {
+      // .txt or .md — read as UTF-8 string
+      extractedText = req.file.buffer.toString("utf-8");
+    }
+
+    if (!extractedText || extractedText.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Could not extract text from the file. The file may be scanned/image-based.",
+      });
+    }
+
+    console.log(`📄 Extracted ${extractedText.length} chars from ${req.file.originalname}`);
+    res.json({ success: true, text: extractedText.trim() });
+  } catch (error) {
+    console.error("❌ File text extraction error:", error);
+    res.status(500).json({ success: false, error: `Failed to extract text: ${error.message}` });
   }
 });
 
