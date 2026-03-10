@@ -38,6 +38,10 @@ const CitationManager = ({ onClose }) => {
   const [savedCitations, setSavedCitations] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [citationToDelete, setCitationToDelete] = useState(null);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: "", message: "" });
+
+  const showAlert = (title, message) => setAlertModal({ isOpen: true, title, message });
+  const closeAlert = () => setAlertModal({ isOpen: false, title: "", message: "" });
 
   // Fetch citations only when on saved tab
   useEffect(() => {
@@ -65,7 +69,7 @@ const CitationManager = ({ onClose }) => {
   const compileCitation = useCallback(async () => {
     const { authors, title, year } = formData;
     if (!authors || !title || !year) {
-      alert("Please fill in at least Authors, Title, and Year");
+      showAlert("Missing Fields", "Please fill in at least Authors, Title, and Year");
       return;
     }
     setIsCompiling(true);
@@ -81,11 +85,11 @@ const CitationManager = ({ onClose }) => {
         setPreviewUrl(`${API_BASE_URL}${data.previewUrl}?t=${Date.now()}`);
         setLatexCode(data.latexCode);
       } else {
-        alert("Compilation failed: " + (data.error || "Unknown error"));
+        showAlert("Compilation Failed", "Compilation failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Compilation error:", err);
-      alert("Failed to compile citation");
+      showAlert("Compilation Error", "Failed to compile citation");
     } finally {
       setIsCompiling(false);
     }
@@ -94,7 +98,7 @@ const CitationManager = ({ onClose }) => {
 
   const handleSave = useCallback(async () => {
     if (!latexCode) {
-      alert("Please generate a citation first");
+      showAlert("No Citation", "Please generate a citation first");
       return;
     }
     try {
@@ -115,14 +119,14 @@ const CitationManager = ({ onClose }) => {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Citation saved as [${data.citationNumber}]`);
+        showAlert("Citation Saved", `Citation saved as [${data.citationNumber}]`);
         loadSavedCitations();
       } else {
-        alert("Save failed: " + (data.error || "Unknown error"));
+        showAlert("Save Failed", "Save failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save citation");
+      showAlert("Save Error", "Failed to save citation");
     }
     // eslint-disable-next-line
   }, [formData, latexCode, loadSavedCitations]);
@@ -130,9 +134,9 @@ const CitationManager = ({ onClose }) => {
   const copyToClipboard = useCallback(async (text, message) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert(message);
+      showAlert("Copied", message);
     } catch {
-      alert("Failed to copy");
+      showAlert("Copy Failed", "Failed to copy");
     }
   }, []);
 
@@ -155,10 +159,10 @@ const CitationManager = ({ onClose }) => {
         setShowDeleteConfirm(false);
         setCitationToDelete(null);
       } else {
-        alert("Failed to delete citation");
+        showAlert("Delete Failed", "Failed to delete citation");
       }
     } catch (err) {
-      alert("Failed to delete citation");
+      showAlert("Delete Error", "Failed to delete citation");
     }
   }, [citationToDelete, loadSavedCitations]);
 
@@ -748,6 +752,15 @@ const CitationManager = ({ onClose }) => {
         message={`Are you sure you want to delete the citation "${citationToDelete}"? This action cannot be undone.`}
         confirmText="Delete"
         isDanger={true}
+      />
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="OK"
+        cancelText=""
+        onConfirm={closeAlert}
+        onCancel={closeAlert}
       />
     </div>
   );
