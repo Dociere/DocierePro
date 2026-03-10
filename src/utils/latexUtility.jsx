@@ -901,6 +901,15 @@ export const latexToRichText = (latexBody) => {
           .join("")}</ol>`,
     );
 
+  // Advanced Academic Formats & Inserts
+  processed = processed
+    .replace(/\\cite\{([^}]+)\}/g, '<span class="ql-latex-inline" data-latex-type="citation" data-latex-value="$1"></span>')
+    .replace(/\\footnote\{([^}]+)\}/g, '<span class="ql-latex-inline" data-latex-type="footnote" data-latex-value="$1"></span>')
+    .replace(/\\ref\{([^}]+)\}/g, '<span class="ql-latex-inline" data-latex-type="ref" data-latex-value="$1"></span>')
+    .replace(/\\newpage/g, '<hr class="ql-pagebreak">')
+    .replace(/\\begin\{quote\}([\s\S]*?)\\end\{quote\}/g, "<blockquote>$1</blockquote>")
+    .replace(/\\textsc\{([^}]+)\}/g, '<span class="ql-smallcaps">$1</span>');
+
   // Formatting
   processed = processed
     .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>")
@@ -1017,6 +1026,22 @@ export const richTextToLatex = (richText) => {
     },
   );
 
+  // Extract Academic Inline Blots BEFORE span stripping
+  const inlineBlocks = [];
+  latex = latex.replace(
+    /<span[^>]*data-latex-type="([^"]+)"[^>]*data-latex-value="([^"]+)"[^>]*>[\s\S]*?<\/span>/gi,
+    (_, type, val) => {
+      inlineBlocks.push({ type, val });
+      return `__INLINEBLOCK${inlineBlocks.length - 1}__`;
+    }
+  );
+
+  // Page Breaks
+  latex = latex.replace(/<hr[^>]*class="ql-pagebreak"[^>]*\/?>/gi, "\\newpage\n\n");
+
+  // Advanced formatting classes
+  latex = latex.replace(/<span[^>]*class="ql-smallcaps"[^>]*>([\s\S]*?)<\/span>/gi, "\\textsc{$1}");
+
   // Basic HTML to LaTeX conversions
   latex = latex
     .replace(/<br\s*\/?>/gi, "\n")
@@ -1096,10 +1121,9 @@ export const richTextToLatex = (richText) => {
 
   // Strip any remaining HTML tags that slipped through converters
   latex = latex
-    .replace(/<blockquote[^>]*>/gi, "")
-    .replace(/<\/blockquote>/gi, "\n")
-    .replace(/<pre[^>]*>([^<]*)<\/pre>/gi, "$1")
-    .replace(/<span[^>]*>([^<]*)<\/span>/gi, "$1")
+    .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, "\n\\begin{quote}\n$1\n\\end{quote}\n")
+    .replace(/<pre[^>]*>([^<]*)<\/pre>/gi, "\n\\begin{verbatim}\n$1\n\\end{verbatim}\n")
+    .replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, "$1") // safe to strip now because data-latex-type spans were extracted
     .replace(/<div[^>]*>([^<]*)<\/div>/gi, "$1\n")
     .replace(/<[^>]+>/g, "");
 
@@ -1113,6 +1137,15 @@ export const richTextToLatex = (richText) => {
   // RESTORE LATEX BLOCKS (tables, figures) AT THE END
   latexBlocks.forEach((block, i) => {
     latex = latex.replace(new RegExp(`__LATEXBLOCK${i}__`, "g"), block);
+  });
+
+  // RESTORE INLINE BLOCKS (citations, footnotes, refs) AT THE END
+  inlineBlocks.forEach((block, i) => {
+    let macro = "";
+    if (block.type === "citation") macro = `\\cite{${block.val}}`;
+    else if (block.type === "footnote") macro = `\\footnote{${block.val}}`;
+    else if (block.type === "ref") macro = `\\ref{${block.val}}`;
+    latex = latex.replace(new RegExp(`__INLINEBLOCK${i}__`, "g"), macro);
   });
 
   // Combine

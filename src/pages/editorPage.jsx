@@ -14,6 +14,8 @@ import { compileDocument } from "../api/projectHandling";
 import AIChatPanel from "../components/aiChatPanel.jsx";
 import TableDesignerModal from "../components/TableDesignerModal";
 import ImageInsertModal from "../components/ImageInsertModal";
+import MathInsertModal from "../components/MathInsertModal";
+import { getRichTextHandlers } from "../components/richTextToolbar.jsx";
 import GoBack from "../assets/icons/goBack.svg?react";
 import FileIcon from "../assets/icons/file.svg?react";
 import "react-quill-new/dist/quill.snow.css";
@@ -79,9 +81,11 @@ const EditorPage = () => {
   // Table and Image modal state for main Monaco editor
   const [showTableModal, setShowTableModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showMathModal, setShowMathModal] = useState(false);
   const [editingTableData, setEditingTableData] = useState(null);
   const [editingImageData, setEditingImageData] = useState(null);
   const [editingRange, setEditingRange] = useState(null);
+  const [insertTargetQuill, setInsertTargetQuill] = useState(null);
 
   // View Notice State
   const [showTextViewNotice, setShowTextViewNotice] = useState(false);
@@ -817,26 +821,44 @@ const EditorPage = () => {
     }
   };
 
-  const quillModules = {
+  const quillModules = useMemo(() => ({
     toolbar: {
-      container: [
-        [{ header: [2, 3, 4, false] }],
-        ["bold", "italic", "underline", "strike"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        [{ script: "super" }, { script: "sub" }],
-        ["link", "code"],
-        ["clean"],
-      ],
+      container: "#richtext-main-toolbar",
+      handlers: getRichTextHandlers()
     },
     clipboard: {
       matchVisual: false,
     },
-  };
+  }), []);
 
   useEffect(() => {
+    const handleInsertTable = (e) => {
+      setInsertTargetQuill(e.detail?.quill || null);
+      setEditingTableData(null);
+      setEditingRange(null);
+      setShowTableModal(true);
+    };
+    const handleInsertImage = (e) => {
+      setInsertTargetQuill(e.detail?.quill || null);
+      setEditingImageData(null);
+      setEditingRange(null);
+      setShowImageModal(true);
+    };
+    const handleInsertMath = (e) => {
+      setInsertTargetQuill(e.detail?.quill || null);
+      setShowMathModal(true);
+    };
+
+    document.addEventListener("trigger-insert-table", handleInsertTable);
+    document.addEventListener("trigger-insert-image", handleInsertImage);
+    document.addEventListener("trigger-insert-math", handleInsertMath);
+
     return () => {
       if (updateTimeout.current) clearTimeout(updateTimeout.current);
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      document.removeEventListener("trigger-insert-table", handleInsertTable);
+      document.removeEventListener("trigger-insert-image", handleInsertImage);
+      document.removeEventListener("trigger-insert-math", handleInsertMath);
     };
   }, []);
 
@@ -858,6 +880,33 @@ const EditorPage = () => {
     );
   }
 
+  // Inject CSS for the new Quill Toolbar icons
+  const customToolbarCSS = `
+    .ql-snow .ql-toolbar button.ql-footnote { width: 32px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
+    .ql-snow .ql-toolbar button.ql-footnote::after { content: "Fn"; }
+    .ql-snow .ql-toolbar button.ql-citation { width: 34px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
+    .ql-snow .ql-toolbar button.ql-citation::after { content: "Cite"; }
+    .ql-snow .ql-toolbar button.ql-ref { width: 34px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
+    .ql-snow .ql-toolbar button.ql-ref::after { content: "Ref"; }
+    .ql-snow .ql-toolbar button.ql-pagebreak { width: 44px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
+    .ql-snow .ql-toolbar button.ql-pagebreak::after { content: "Break"; }
+    
+    .ql-snow .ql-toolbar button.ql-table { width: 40px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
+    .ql-snow .ql-toolbar button.ql-table::after { content: "Table"; }
+    .ql-snow .ql-toolbar button.ql-image { width: 40px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
+    .ql-snow .ql-toolbar button.ql-image::after { content: "Image"; }
+    .ql-snow .ql-toolbar button.ql-formula { width: 40px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
+    .ql-snow .ql-toolbar button.ql-formula::after { content: "Math"; }
+
+    .ql-snow .ql-toolbar button.ql-footnote:hover,
+    .ql-snow .ql-toolbar button.ql-citation:hover,
+    .ql-snow .ql-toolbar button.ql-ref:hover,
+    .ql-snow .ql-toolbar button.ql-pagebreak:hover,
+    .ql-snow .ql-toolbar button.ql-table:hover,
+    .ql-snow .ql-toolbar button.ql-image:hover,
+    .ql-snow .ql-toolbar button.ql-formula:hover { color: #2563eb !important; }
+  `;
+
   return (
     <div
       className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-7 ${
@@ -868,6 +917,7 @@ const EditorPage = () => {
           settings.appearance.customThemes[settings.appearance.theme].primary,
       }}
     >
+      <style>{customToolbarCSS}</style>
       <LeaveSession projectId={projectDetails.currentProject?.id} />
       {/* Left side of the screen */}
       <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r overflow-hidden ml-10 pb-[3.2vh]">
@@ -1208,10 +1258,18 @@ const EditorPage = () => {
           setShowTableModal(false);
           setEditingTableData(null);
           setEditingRange(null);
+          setInsertTargetQuill(null);
         }}
         initialData={editingTableData}
+        showInsertButton={!!insertTargetQuill}
         onInsert={(latex) => {
-          if (monacoEditorRef.current) {
+          if (insertTargetQuill) {
+            const cursorPosition = insertTargetQuill.getSelection()?.index || 0;
+            const b64Latex = btoa(unescape(encodeURIComponent(latex)));
+            insertTargetQuill.insertEmbed(cursorPosition, "latex-block", { type: "table", latex: b64Latex }, "user");
+            insertTargetQuill.insertText(cursorPosition + 1, "\n", "user");
+            insertTargetQuill.setSelection(cursorPosition + 2);
+          } else if (monacoEditorRef.current) {
             if (editingRange) {
               monacoEditorRef.current.replaceRange(editingRange, latex);
             } else if (monacoEditorRef.current.insertAtCursor) {
@@ -1228,6 +1286,7 @@ const EditorPage = () => {
           setShowImageModal(false);
           setEditingImageData(null);
           setEditingRange(null);
+          setInsertTargetQuill(null);
         }}
         initialData={editingImageData}
         projectFiles={
@@ -1237,13 +1296,41 @@ const EditorPage = () => {
               )
             : []
         }
+        showInsertButton={!!insertTargetQuill}
         onInsert={(latex) => {
-          if (monacoEditorRef.current) {
+          if (insertTargetQuill) {
+            const cursorPosition = insertTargetQuill.getSelection()?.index || 0;
+            const b64Latex = btoa(unescape(encodeURIComponent(latex)));
+            insertTargetQuill.insertEmbed(cursorPosition, "latex-block", { type: "image", latex: b64Latex }, "user");
+            insertTargetQuill.insertText(cursorPosition + 1, "\n", "user");
+            insertTargetQuill.setSelection(cursorPosition + 2);
+          } else if (monacoEditorRef.current) {
             if (editingRange) {
               monacoEditorRef.current.replaceRange(editingRange, latex);
             } else if (monacoEditorRef.current.insertAtCursor) {
               monacoEditorRef.current.insertAtCursor(latex);
             }
+          }
+        }}
+      />
+
+      {/* Math Insert Modal for main Monaco editor */}
+      <MathInsertModal
+        isOpen={showMathModal}
+        onClose={() => {
+          setShowMathModal(false);
+          setInsertTargetQuill(null);
+        }}
+        showInsertButton={!!insertTargetQuill}
+        onInsert={(latex) => {
+          if (insertTargetQuill) {
+            const cursorPosition = insertTargetQuill.getSelection()?.index || 0;
+            const b64Latex = btoa(unescape(encodeURIComponent(latex)));
+            insertTargetQuill.insertEmbed(cursorPosition, "latex-block", { type: "equation", latex: b64Latex }, "user");
+            insertTargetQuill.insertText(cursorPosition + 1, "\n", "user");
+            insertTargetQuill.setSelection(cursorPosition + 2);
+          } else if (monacoEditorRef.current && monacoEditorRef.current.insertAtCursor) {
+            monacoEditorRef.current.insertAtCursor(latex);
           }
         }}
       />
