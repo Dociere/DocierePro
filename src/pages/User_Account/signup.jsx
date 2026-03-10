@@ -177,9 +177,12 @@ function DynamicSignup() {
                 {/* Footer link */}
                 <p className="text-sm text-center mt-2 font-inter text-gray-600">
                   Already have an account?{" "}
-                  <a className="hover:text-[#0C2340]" href="/login">
+                  <p
+                    onClick={() => navigate("/login")}
+                    className="hover:text-[#0C2340] inline-block cursor-pointer"
+                  >
                     Login here
-                  </a>
+                  </p>
                 </p>
               </div>
             </div>
