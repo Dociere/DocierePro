@@ -21,7 +21,7 @@ import {
 
 const API_BASE_URL = "http://localhost:5000";
 
-const EasyMathInput = ({ onClose }) => {
+const EasyMathInput = ({ onClose, onInsert }) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   // --- STATE ---
@@ -785,11 +785,20 @@ const EasyMathInput = ({ onClose }) => {
                     </button>
                     <button
                       onClick={() => setShowSaveDialog(true)}
-                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200 flex items-center justify-center"
                       title="Save to Library"
                     >
                       <TbDeviceFloppy size={18} />
                     </button>
+                    {onInsert && (
+                      <button
+                        onClick={() => onInsert(getWrappedCode(latexCode))}
+                        className="p-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors border border-transparent shadow-sm flex items-center gap-1 font-medium text-xs px-3"
+                        title="Insert into Document"
+                      >
+                        <TbArrowUp size={16} /> Insert
+                      </button>
+                    )}
                     {!isAiMode && (
                       <button
                         onClick={() => handleCompile()}
@@ -964,11 +973,27 @@ const EasyMathInput = ({ onClose }) => {
                           onClick={() => {
                             navigator.clipboard.writeText(eq.latex);
                             alert("Copied");
+                            setToastMessage("✓ Copied to clipboard");
+                            setTimeout(() => setToastMessage(null), 2000);
                           }}
-                          className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg border border-transparent hover:border-gray-200"
+                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded transition-colors"
+                          title="Copy LaTeX"
                         >
                           <TbCopy size={18} />
                         </button>
+                        {onInsert && (
+                          <button
+                            onClick={() => {
+                              onInsert(eq.latex);
+                              setToastMessage("✓ Inserted into document");
+                              setTimeout(() => setToastMessage(null), 2000);
+                            }}
+                            className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-white rounded transition-colors"
+                            title="Insert to Document"
+                          >
+                            <TbArrowUp size={18} />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setLatexCode(eq.latex);

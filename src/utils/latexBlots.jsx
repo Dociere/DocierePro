@@ -101,4 +101,99 @@ class LatexBlockBlot extends BlockEmbed {
 
 Quill.register(LatexBlockBlot, true);
 
-export default LatexBlockBlot;
+// ==========================================
+// INLINE BLOTS (Citations, Footnotes, Refs)
+// ==========================================
+const Inline = Quill.import("blots/inline");
+
+class LatexInlineBlot extends Inline {
+  static blotName = "latex-inline";
+  static tagName = "SPAN";
+
+  static create(value) {
+    const node = super.create();
+    node.setAttribute("data-latex-type", value.type || "citation");
+    node.setAttribute("data-latex-value", value.value || "");
+    node.contentEditable = "false";
+
+    // Styling for the "pill" look
+    Object.assign(node.style, {
+      display: "inline-block",
+      margin: "0 2px",
+      padding: "2px 6px",
+      borderRadius: "12px",
+      fontSize: "0.85em",
+      fontWeight: "500",
+      cursor: "pointer",
+      userSelect: "none",
+      verticalAlign: "baseline",
+    });
+
+    let prefix = "";
+    let bgColor = "";
+    let color = "";
+
+    if (value.type === "citation") {
+      prefix = "Ref: ";
+      bgColor = "#e0e7ff"; // Indigo 100
+      color = "#3730a3"; // Indigo 800
+      node.title = `Citation: ${value.value}`;
+    } else if (value.type === "footnote") {
+      prefix = "Note: ";
+      bgColor = "#fef3c7"; // Amber 100
+      color = "#92400e"; // Amber 800
+      node.style.verticalAlign = "super";
+      node.style.fontSize = "0.75em";
+      node.title = `Footnote: ${value.value}`;
+    } else if (value.type === "ref") {
+      prefix = "Fig/Tab: ";
+      bgColor = "#dcfce7"; // Green 100
+      color = "#166534"; // Green 800
+      node.title = `Cross-Reference: ${value.value}`;
+    }
+
+    node.style.backgroundColor = bgColor;
+    node.style.color = color;
+    node.textContent = `[${prefix}${value.value}]`;
+
+    return node;
+  }
+
+  static value(node) {
+    return {
+      type: node.getAttribute("data-latex-type") || "citation",
+      value: node.getAttribute("data-latex-value") || "",
+    };
+  }
+}
+
+Quill.register(LatexInlineBlot, true);
+
+// ==========================================
+// BLOCK BLOTS (Page Break, etc)
+// ==========================================
+class PageBreakBlot extends BlockEmbed {
+  static blotName = "page-break";
+  static tagName = "HR";
+  static className = "ql-pagebreak";
+
+  static create() {
+    const node = super.create();
+    node.setAttribute("title", "Page Break (\\newpage)");
+    
+    Object.assign(node.style, {
+      margin: "24px 0",
+      border: "none",
+      borderTop: "2px dashed #d1d5db", // gray-300
+      position: "relative",
+      overflow: "visible",
+    });
+
+    return node;
+  }
+}
+
+Quill.register(PageBreakBlot, true);
+
+export { LatexBlockBlot, LatexInlineBlot, PageBreakBlot };
+

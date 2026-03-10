@@ -3,6 +3,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import "../utils/latexBlots.jsx";
 import "../assets/styles/synctex.css";
+import { RichTextToolbar } from "./richTextToolbar.jsx";
 
 const RichTextEditorPanel = ({
   value,
@@ -124,8 +125,9 @@ const RichTextEditorPanel = ({
   return (
     <div className="h-full w-full flex flex-col bg-white">
       <style>{docStyles}</style>
+      <RichTextToolbar id="richtext-main-toolbar" />
       {/* Rich Text Editor with proper scrolling */}
-      <div className="flex-1 overflow-hidden" onClick={handleClick}>
+      <div className="flex-1 overflow-hidden flex flex-col" onClick={handleClick}>
         <ReactQuill
           ref={quillRef}
           theme="snow"
@@ -133,13 +135,12 @@ const RichTextEditorPanel = ({
           onChange={handleChange}
           modules={quillModules}
           style={{
-            height: "calc(100% - 42px)", // Account for toolbar height
             display: "flex",
             flexDirection: "column",
             fontFamily: "Arial",
             fontSize: "20px",
           }}
-          className="h-full"
+          className="h-full flex-1 flex flex-col min-h-0"
         />
       </div>
     </div>

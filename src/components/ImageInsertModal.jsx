@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { TbX, TbPhoto, TbCopy, TbCheck, TbPlayerPlay, TbAlertTriangle } from "react-icons/tb";
+import { projectContext } from "../context/useProject";
 
 const API_BASE_URL = "http://localhost:5000";
 
@@ -155,7 +156,7 @@ const AlertModal = ({ isOpen, message, onClose }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
         <div className="flex items-center gap-3 mb-4">
           <TbAlertTriangle className="text-amber-500" size={24} />
@@ -184,7 +185,9 @@ const ImageInsertModal = ({
   onInsert,
   initialData = null,
   projectFiles = [],
+  showInsertButton = false,
 }) => {
+  const { projectDetails } = React.useContext(projectContext);
   const [imagePath, setImagePath] = useState("");
   const [widthValue, setWidthValue] = useState("0.8");
   const [widthUnit, setWidthUnit] = useState("\\textwidth");
@@ -315,7 +318,7 @@ const ImageInsertModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans"
+      className="fixed inset-0 z-[100000] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-5xl h-[85vh] flex flex-col overflow-hidden">
@@ -625,7 +628,7 @@ const ImageInsertModal = ({
             >
               <TbCopy size={18} /> Copy
             </button>
-            {onInsert && (
+            {showInsertButton && onInsert && (
               <button
                 onClick={() => {
                   onInsert(getLatex());

@@ -8,17 +8,64 @@ import TableDesignerModal from "./TableDesignerModal";
 import ImageInsertModal from "./ImageInsertModal";
 import "../assets/styles/synctex.css";
 import axios from "axios";
+import ReactDOM from "react-dom";
+import { RichTextToolbar, getRichTextHandlers } from "./richTextToolbar.jsx";
 
 // Quill modules matching the main text editor (LaTeX-compatible only)
 const SECTION_QUILL_MODULES = {
   toolbar: {
     container: [
+      [{ header: [2, 3, 4, false] }],
       ["bold", "italic", "underline", "strike"],
-      [{ list: "ordered" }, { list: "bullet" }],
       [{ script: "super" }, { script: "sub" }],
-      ["link", "code"],
+      ["blockquote", "code-block"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["footnote", "citation", "ref"],
+      ["table", "image", "formula"],
+      ["pagebreak"],
       ["clean"],
     ],
+    handlers: {
+      footnote: function () {
+        const text = prompt("Enter footnote text:");
+        if (text) {
+          const cursorPosition = this.quill.getSelection()?.index || 0;
+          this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "footnote", value: text }, "user");
+          this.quill.setSelection(cursorPosition + 1);
+        }
+      },
+      citation: function () {
+        const text = prompt("Enter citation key (e.g. Smith2024):");
+        if (text) {
+          const cursorPosition = this.quill.getSelection()?.index || 0;
+          this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "citation", value: text }, "user");
+          this.quill.setSelection(cursorPosition + 1);
+        }
+      },
+      ref: function () {
+        const text = prompt("Enter reference label (e.g. fig:1):");
+        if (text) {
+          const cursorPosition = this.quill.getSelection()?.index || 0;
+          this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "ref", value: text }, "user");
+          this.quill.setSelection(cursorPosition + 1);
+        }
+      },
+      pagebreak: function () {
+        const cursorPosition = this.quill.getSelection()?.index || 0;
+        this.quill.insertEmbed(cursorPosition, "page-break", true, "user");
+        this.quill.setSelection(cursorPosition + 1);
+      },
+      table: function () {
+        // Dispatches to React component
+        document.dispatchEvent(new CustomEvent("trigger-insert-table"));
+      },
+      image: function () {
+        document.dispatchEvent(new CustomEvent("trigger-insert-image"));
+      },
+      formula: function () {
+        document.dispatchEvent(new CustomEvent("trigger-insert-math", { detail: { quill: this.quill } }));
+      }
+    },
   },
   clipboard: {
     matchVisual: false,
@@ -576,10 +623,23 @@ const RecursiveSection = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Modal states for table and image insertion
+  const [activeTab, setActiveTab] = useState("content");
   const [showTableModal, setShowTableModal] = useState(false);
-  const [showImageModal, setShowImageModal] = useState(false);
   const [editingTableData, setEditingTableData] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [editingImageData, setEditingImageData] = useState(null);
+  
+  const sanitizedId = useMemo(() => String(section.id).replace(/\./g, '-'), [section.id]);
+
+  const sectionQuillModules = useMemo(() => ({
+    toolbar: {
+      container: `#richtext-toolbar-${sanitizedId}`,
+      handlers: getRichTextHandlers()
+    },
+    clipboard: {
+      matchVisual: false
+    }
+  }), [sanitizedId]);
 
   // Ref for Monaco editor to insert at cursor
   const monacoRef = useRef(null);
@@ -1067,7 +1127,8 @@ const RecursiveSection = ({
             >
               {isVisualMode ? (
                 /* Visual / Rich Text View */
-                <div className="section-quill flex-1 h-full overflow-hidden">
+                <div className="section-quill flex-1 flex flex-col h-full overflow-hidden">
+                  <RichTextToolbar id={`richtext-toolbar-${sanitizedId}`} />
                   <ReactQuill
                     theme="snow"
                     value={richTextValue}
@@ -1081,8 +1142,8 @@ const RecursiveSection = ({
                         onUpdate({ ...section, content: latex });
                       }
                     }}
-                    modules={SECTION_QUILL_MODULES}
-                    className="h-full flex flex-col"
+                    modules={sectionQuillModules}
+                    className="h-full flex flex-col flex-1 min-h-0"
                   />
                 </div>
               ) : (
