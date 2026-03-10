@@ -106,6 +106,10 @@ const SectionSpace = () => {
   const [renamingFolder, setRenamingFolder] = useState(null);
   const [renameFolderValue, setRenameFolderValue] = useState("");
   const renameFolderInputRef = useReactRef(null);
+  
+  // Track which folder is the target when right-clicking to upload
+  const [uploadTargetFolder, setUploadTargetFolder] = useState(null);
+  const folderUploadInputRef = useReactRef(null);
 
   const fileInputRef = React.useRef(null);
 
@@ -252,8 +256,12 @@ const SectionSpace = () => {
       const filesToProcess = Array.from(files);
       let skippedCount = 0;
 
+      // Extract the target folder, could be from right-click upload on folder
+      const targetPrefix = uploadTargetFolder ? uploadTargetFolder + "/" : "";
+
       for (const file of filesToProcess) {
-        const fileName = file.name;
+        // Prepend target folder correctly
+        const fileName = targetPrefix + file.name;
 
         // Check if file already exists - skip with info (no blocking confirm)
         if (newFiles[fileName]) {
@@ -333,8 +341,12 @@ const SectionSpace = () => {
       setError("Failed to upload file: " + err.message);
     } finally {
       setIsUploading(false);
+      setUploadTargetFolder(null); // Reset after upload
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
+      }
+      if (folderUploadInputRef.current) {
+        folderUploadInputRef.current.value = "";
       }
     }
   };
@@ -731,6 +743,18 @@ const SectionSpace = () => {
               type="file"
               multiple
               accept=".png,.jpg,.jpeg,.pdf,.eps,.svg,.tex,.bib,.sty,.cls"
+              onChange={(e) => {
+                setUploadTargetFolder(null); // Explicit root target
+                handleFileUpload(e);
+              }}
+              className="hidden"
+            />
+            {/* Hidden folder file input for custom uploads */}
+            <input
+              ref={folderUploadInputRef}
+              type="file"
+              multiple
+              accept=".png,.jpg,.jpeg,.pdf,.eps,.svg,.tex,.bib,.sty,.cls"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -819,6 +843,11 @@ const SectionSpace = () => {
                   isDark ? "hover:bg-[#333] text-gray-300" : "hover:bg-gray-100 text-gray-700"
                 }`}
                 onClick={() => handleFolderToggle(folderName)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setUploadTargetFolder(folderName);
+                  folderUploadInputRef.current?.click();
+                }}
               >
                 <div
                   className={`transition-transform duration-200 ${expandedFolders[folderName] ? "rotate-90" : ""}`}

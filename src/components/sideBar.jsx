@@ -462,7 +462,15 @@ const DynamicSideBar = ({
       )}
 
       {isImageModalOpen && (
-        <ImageInsertModal isOpen={true} onClose={() => setIsImageModalOpen(false)} />
+        <ImageInsertModal 
+          isOpen={true} 
+          onClose={() => setIsImageModalOpen(false)} 
+          projectFiles={
+            projectDetails?.currentProject?.files
+              ? Object.keys(projectDetails.currentProject.files)
+              : []
+          }
+        />
       )}
 
       {isTableModalOpen && (
