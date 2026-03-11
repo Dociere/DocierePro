@@ -15,6 +15,9 @@ import AIChatPanel from "../components/aiChatPanel.jsx";
 import TableDesignerModal from "../components/TableDesignerModal";
 import ImageInsertModal from "../components/ImageInsertModal";
 import MathInsertModal from "../components/MathInsertModal";
+import CitationManager from "../components/citationManager";
+import FootnotePanel from "../components/FootnotePanel";
+import CrossRefPanel from "../components/CrossRefPanel";
 import { getRichTextHandlers } from "../components/richTextToolbar.jsx";
 import GoBack from "../assets/icons/goBack.svg?react";
 import FileIcon from "../assets/icons/file.svg?react";
@@ -135,6 +138,20 @@ const EditorPage = () => {
       setIsAIChatOpen(false); // Reset so it can be triggered again
     }
   }, [isAIChatOpen, setIsAIChatOpen]);
+
+  // Handle Toolbar Sidebar Triggers
+  useEffect(() => {
+    const handleOpenSidebar = (e) => {
+      const { panelClass, quill } = e.detail;
+      setInsertTargetQuill(quill || null);
+      if (panelClass === 'citation') setActiveRightView("citation");
+      else if (panelClass === 'footnote') setActiveRightView("footnote");
+      else if (panelClass === 'crossref') setActiveRightView("crossref");
+    };
+
+    document.addEventListener("trigger-open-sidebar", handleOpenSidebar);
+    return () => document.removeEventListener("trigger-open-sidebar", handleOpenSidebar);
+  }, []);
 
   //Load Project
   useEffect(() => {
@@ -558,7 +575,9 @@ const EditorPage = () => {
                 hasPreambleMarker && hasPostambleMarker ? "success" : "warning",
               );
 
-              const bodyContent = richTextToLatex(content);
+              const rtResult = richTextToLatex(content);
+              const bodyContent = rtResult.latex;
+              const rtFileUpdates = rtResult.fileUpdates || {};
 
               const hasBegin = bodyContent.includes("\\begin{document}");
               const hasEnd = bodyContent.includes("\\end{document}");
@@ -573,6 +592,23 @@ const EditorPage = () => {
                 projectDetails.latexContent || lastSyncedLatex.current,
                 bodyContent,
               );
+
+              // Merge any per-file updates from richText conversion
+              if (Object.keys(rtFileUpdates).length > 0) {
+                addDebugLog(
+                  `📁 RT file updates: ${Object.keys(rtFileUpdates).join(", ")}`,
+                );
+                const rtUpdatedFiles = { ...projectDetails.currentProject.files };
+                for (const [fname, fcontent] of Object.entries(rtFileUpdates)) {
+                  if (rtUpdatedFiles[fname]) {
+                    rtUpdatedFiles[fname] = { ...rtUpdatedFiles[fname], content: fcontent };
+                  } else {
+                    rtUpdatedFiles[fname] = { content: fcontent };
+                  }
+                }
+                // Attach file updates for downstream merging
+                content = { _fileUpdates: rtUpdatedFiles };
+              }
 
               const finalHasBegin =
                 newLatexContent.includes("\\begin{document}");
@@ -631,9 +667,9 @@ const EditorPage = () => {
 
           lastSyncedLatex.current = newLatexContent;
 
-          // If sections source provided file updates, merge them into files
+          // If richText or sections source provided file updates, merge them into files
           const baseFiles =
-            source === "sections" && content._fileUpdates
+            (source === "sections" || source === "richText") && content?._fileUpdates
               ? content._fileUpdates
               : projectDetails.currentProject.files;
 
@@ -658,8 +694,8 @@ const EditorPage = () => {
           // Update derived states for non-active editors
           if (source !== "richText") {
             addDebugLog("🔄 Updating rich text from LaTeX");
-            const bodyContent = extractLatexBody(newLatexContent);
-            const richText = latexToRichText(bodyContent);
+            const rtBodyContent = extractLatexBody(newLatexContent);
+            const richText = latexToRichText(rtBodyContent, updatedProject.files);
 
             const hasPreamble = richText.includes("<!--LATEX_PREAMBLE:");
             const hasPostamble = richText.includes("<!--LATEX_POSTAMBLE:");
@@ -848,10 +884,22 @@ const EditorPage = () => {
       setInsertTargetQuill(e.detail?.quill || null);
       setShowMathModal(true);
     };
+    const handleInsertCitation = (e) => {
+      const quill = e.detail?.quill;
+      if (quill) {
+        const text = prompt("Enter citation key (e.g. Smith2024):");
+        if (text) {
+          const cursorPosition = quill.getSelection()?.index || 0;
+          quill.insertEmbed(cursorPosition, "latex-inline", { type: "citation", value: text }, "user");
+          quill.setSelection(cursorPosition + 1);
+        }
+      }
+    };
 
     document.addEventListener("trigger-insert-table", handleInsertTable);
     document.addEventListener("trigger-insert-image", handleInsertImage);
     document.addEventListener("trigger-insert-math", handleInsertMath);
+    document.addEventListener("trigger-insert-citation", handleInsertCitation);
 
     return () => {
       if (updateTimeout.current) clearTimeout(updateTimeout.current);
@@ -859,6 +907,7 @@ const EditorPage = () => {
       document.removeEventListener("trigger-insert-table", handleInsertTable);
       document.removeEventListener("trigger-insert-image", handleInsertImage);
       document.removeEventListener("trigger-insert-math", handleInsertMath);
+      document.removeEventListener("trigger-insert-citation", handleInsertCitation);
     };
   }, []);
 
@@ -1246,6 +1295,96 @@ const EditorPage = () => {
               ) : (
                 <div className="text-gray-400 italic">No logs available.</div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Sidebar Integrations */}
+        {activeRightView === "citation" && (
+          <div className="flex-1 overflow-hidden relative bg-[#FAFAFA] flex flex-col">
+            <button
+              onClick={() => setActiveRightView("preview")}
+              className="absolute top-2 left-4 z-10 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-gray-800 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border border-gray-100 hover:bg-gray-50 hover:shadow-[0_4px_6px_rgba(0,0,0,0.05)] transition-all max-w-[fit-content]"
+            >
+              <GoBack className="w-4 h-4" style={{ fill: "#0a0a0a" }} />
+              Back
+            </button>
+            <div className="pt-12 flex-1 overflow-y-auto w-full h-full">
+              <CitationManager 
+                 isModal={false}
+                 onClose={() => setActiveRightView("preview")}
+                 showInsertButton={!!insertTargetQuill || activeView === "code"}
+                 onInsert={(latex) => {
+                   if (insertTargetQuill) {
+                     const cursorPosition = insertTargetQuill.getSelection()?.index || insertTargetQuill.savedCursorPosition || 0;
+                     const citeWrapper = `\\cite{${latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex}}`;
+                     insertTargetQuill.insertEmbed(cursorPosition, "latex-inline", { type: "citation", value: citeWrapper.match(/\\cite\{([^}]+)\}/)?.[1] || latex }, "user");
+                     insertTargetQuill.setSelection(cursorPosition + 1);
+                   } else if (monacoEditorRef.current?.insertAtCursor) {
+                     monacoEditorRef.current.insertAtCursor(`\\cite{${latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex}}`);
+                   }
+                   setActiveRightView("preview");
+                 }}
+              />
+            </div>
+          </div>
+        )}
+        
+        {activeRightView === "footnote" && (
+          <div className="flex-1 overflow-hidden relative bg-[#FAFAFA] flex flex-col">
+            <button
+              onClick={() => setActiveRightView("preview")}
+              className="absolute top-2 left-4 z-10 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-gray-800 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border border-gray-100 hover:bg-gray-50 hover:shadow-[0_4px_6px_rgba(0,0,0,0.05)] transition-all max-w-[fit-content]"
+            >
+              <GoBack className="w-4 h-4" style={{ fill: "#0a0a0a" }} />
+              Back
+            </button>
+            <div className="pt-12 flex-1 overflow-y-auto w-full h-full">
+               <FootnotePanel 
+                 isModal={false}
+                 onClose={() => setActiveRightView("preview")}
+                 showInsertButton={!!insertTargetQuill || activeView === "code"}
+                 onInsert={(text) => {
+                   if (insertTargetQuill) {
+                     const cursorPosition = insertTargetQuill.getSelection()?.index || insertTargetQuill.savedCursorPosition || 0;
+                     insertTargetQuill.insertEmbed(cursorPosition, "latex-inline", { type: "footnote", value: text }, "user");
+                     insertTargetQuill.setSelection(cursorPosition + 1);
+                   } else if (monacoEditorRef.current?.insertAtCursor) {
+                     monacoEditorRef.current.insertAtCursor(`\\footnote{${text}}`);
+                   }
+                   setActiveRightView("preview");
+                 }}
+               />
+            </div>
+          </div>
+        )}
+
+        {activeRightView === "crossref" && (
+          <div className="flex-1 overflow-hidden relative bg-[#FAFAFA] flex flex-col">
+            <button
+              onClick={() => setActiveRightView("preview")}
+              className="absolute top-2 left-4 z-10 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-gray-800 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border border-gray-100 hover:bg-gray-50 hover:shadow-[0_4px_6px_rgba(0,0,0,0.05)] transition-all max-w-[fit-content]"
+            >
+              <GoBack className="w-4 h-4" style={{ fill: "#0a0a0a" }} />
+              Back
+            </button>
+            <div className="pt-12 flex-1 overflow-y-auto w-full h-full">
+               <CrossRefPanel 
+                 isModal={false}
+                 projectFiles={projectDetails.currentProject?.files || {}}
+                 onClose={() => setActiveRightView("preview")}
+                 showInsertButton={!!insertTargetQuill || activeView === "code"}
+                 onInsert={(label) => {
+                   if (insertTargetQuill) {
+                     const cursorPosition = insertTargetQuill.getSelection()?.index || insertTargetQuill.savedCursorPosition || 0;
+                     insertTargetQuill.insertEmbed(cursorPosition, "latex-inline", { type: "ref", value: label }, "user");
+                     insertTargetQuill.setSelection(cursorPosition + 1);
+                   } else if (monacoEditorRef.current?.insertAtCursor) {
+                     monacoEditorRef.current.insertAtCursor(`\\ref{${label}}`);
+                   }
+                   setActiveRightView("preview");
+                 }}
+               />
             </div>
           </div>
         )}

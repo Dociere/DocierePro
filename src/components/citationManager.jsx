@@ -8,6 +8,8 @@ import {
   TbListNumbers,
   TbSearch,
   TbLoader,
+  TbCheck,
+  TbPlus,
 } from "react-icons/tb";
 import ConfirmModal from "./confirmModal";
 
@@ -27,7 +29,7 @@ const initialFormData = {
   format: "IEEE",
 };
 
-const CitationManager = ({ onClose }) => {
+const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("create");
@@ -39,6 +41,7 @@ const CitationManager = ({ onClose }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [citationToDelete, setCitationToDelete] = useState(null);
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: "", message: "" });
+  const [copiedItem, setCopiedItem] = useState(null);
 
   const showAlert = (title, message) => setAlertModal({ isOpen: true, title, message });
   const closeAlert = () => setAlertModal({ isOpen: false, title: "", message: "" });
@@ -131,14 +134,25 @@ const CitationManager = ({ onClose }) => {
     // eslint-disable-next-line
   }, [formData, latexCode, loadSavedCitations]);
 
-  const copyToClipboard = useCallback(async (text, message) => {
+  const copyToClipboard = useCallback(async (text, message, itemId = null) => {
     try {
       await navigator.clipboard.writeText(text);
-      showAlert("Copied", message);
+      if (itemId) {
+        setCopiedItem(itemId);
+        setTimeout(() => setCopiedItem(null), 2000);
+      } else {
+        showAlert("Copied", message);
+      }
     } catch {
       showAlert("Copy Failed", "Failed to copy");
     }
   }, []);
+
+  const handleInsert = (content) => {
+    if (onInsert) {
+      onInsert(content);
+    }
+  };
 
   const handleDeleteCitation = useCallback(
     (fileName) => {
@@ -252,8 +266,8 @@ const CitationManager = ({ onClose }) => {
   // --- Render ---
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 font-inter text-gray-800">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-6xl h-[90vh] flex flex-col overflow-hidden">
+    <div className={isModal ? "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 font-inter text-gray-800" : "flex flex-col h-full bg-[#FAFAFA] font-inter text-gray-800"}>
+      <div className={isModal ? "bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-6xl h-[90vh] flex flex-col overflow-hidden" : "flex flex-col flex-1 overflow-hidden bg-white"}>
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center gap-6">
