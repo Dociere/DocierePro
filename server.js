@@ -13,7 +13,31 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import * as TemplateEngine from "./renderStrategies.js";
 import util from "util";
+import crypto from "crypto";
 dotenv.config();
+
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef", "utf8"); // 32 bytes
+const IV_LENGTH = 16;
+
+function encrypt(text) {
+  if (!text) return text;
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+function decrypt(text) {
+  if (!text || !text.includes(":")) return text;
+  const textParts = text.split(":");
+  const iv = Buffer.from(textParts.shift(), "hex");
+  const encryptedText = Buffer.from(textParts.join(":"), "hex");
+  const decipher = crypto.createDecipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
 
 const execAsync = util.promisify(exec);
 const app = express();
@@ -39,6 +63,37 @@ const __dirname = dirname(__filename);
 
 const isDev = !process.env.USER_DATA_PATH; // if not set, we're in dev
 const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
+
+async function getActiveAIConfig() {
+  try {
+    const settingsDir = path.join(SETTINGS_DIR, "config.json");
+    console.log(`🔍 Checking for config at: ${settingsDir}`);
+    if (await fs.pathExists(settingsDir)) {
+      const settings = await fs.readJSON(settingsDir);
+      if (settings.app && settings.app.aiConfigs) {
+        const active = settings.app.aiConfigs.find((c) => c.active);
+        if (active) {
+          console.log(`✅ Found active AI config: ${active.name} (${active.provider})`);
+          const config = { ...active };
+          if (config.provider === "gemini" && config.apiKey) {
+            console.log(`🔐 Decrypting API key for ${active.name}`);
+            config.apiKey = decrypt(config.apiKey);
+          }
+          return config;
+        } else {
+          console.log("⚠️ No active AI configuration found in settings.app.aiConfigs");
+        }
+      } else {
+        console.log("⚠️ settings.app.aiConfigs is missing");
+      }
+    } else {
+      console.log("⚠️ config.json not found");
+    }
+  } catch (error) {
+    console.error("❌ Error loading active AI config:", error);
+  }
+  return null;
+}
 
 // Base directory: userData in production, current directory in development
 // const baseDir = isDev ? __dirname : electronApp.getPath("userData");
@@ -456,11 +511,15 @@ app.post("/api/edit", async (req, res) => {
       `🤖 Editing LaTeX with AI prompt: "${prompt.substring(0, 50)}..."`,
     );
 
+    const aiConfig = await getActiveAIConfig();
+    console.log(`📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || 'default'}`);
+    
     const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/edit-latex`, {
       prompt,
       latexContent,
       context,
       fileMap,
+      aiConfig, // Pass active config
     });
 
     if (aiResponse.data.success) {
@@ -495,21 +554,24 @@ app.post("/api/generate-equation", async (req, res) => {
     console.log(`🤖 Generating equation for prompt: "${prompt}"`);
 
     // Call Python AI Service
-    const aiResponse = await axios.post(
+    const aiConfig = await getActiveAIConfig();
+    const response = await axios.post(
       `${AI_SERVICE_URL}/api/generate-equation`,
       {
-        prompt: prompt,
+        prompt,
+        aiConfig,
       },
+      { timeout: 30000 },
     );
 
-    if (aiResponse.data && aiResponse.data.success) {
+    if (response.data && response.data.success) {
       console.log("✅ AI Equation generated successfully");
       res.json({
         success: true,
-        latexEquation: aiResponse.data.latexEquation,
+        latexEquation: response.data.latexEquation,
       });
     } else {
-      throw new Error(aiResponse.data.error || "AI service failed");
+      throw new Error(response.data.error || "AI service failed");
     }
   } catch (error) {
     console.error("❌ AI Equation Generation Error:", error.message);
@@ -786,16 +848,17 @@ app.post("/api/projects/create", async (req, res) => {
       if (generateBoilerplate && userIdea) {
         try {
           console.log("🤖 Generating boilerplate for blank document...");
+          const aiConfig = await getActiveAIConfig();
           const aiResponse = await axios.post(
             `${AI_SERVICE_URL}/api/generate-latex`,
             {
               userIdea,
               title,
-              templateType: "Blank Document",
+              templateType: templateType, // Using existing templateType
+              authorDetails: "", // Placeholder as authorDetails is not in scope
+              aiConfig,
             },
-          );
-
-          if (aiResponse.data.success && aiResponse.data.latexContent) {
+          );if (aiResponse.data.success && aiResponse.data.latexContent) {
             mainContent = aiResponse.data.latexContent;
             console.log("✅ AI-generated blank document content received");
           }
@@ -856,12 +919,20 @@ app.post("/api/projects/create", async (req, res) => {
           });
 
           if (templateFileKeys.length > 0) {
+            const aiConfig = await getActiveAIConfig();
+            // Assuming templateJson is defined elsewhere or should be derived from templatePath
+            // For now, using templateFileKeys as it was before, as templateJson is not defined.
+            // If templateJson is meant to be a path to a JSON file describing the template,
+            // it needs to be defined or derived. Sticking to the original logic for templateFiles
+            // as the instruction's `JSON.parse(fs.readFileSync(templateJson, "utf8"))`
+            // would cause a ReferenceError for `templateJson`.
             const aiResponse = await axios.post(
               `${AI_SERVICE_URL}/api/generate-boilerplate`,
               {
-                title,
                 userIdea,
-                templateFiles: templateFileKeys,
+                title,
+                templateFiles: templateFileKeys, // Reverted to templateFileKeys as templateJson is undefined
+                aiConfig,
               },
             );
 
@@ -2295,10 +2366,33 @@ app.get("/api/drafts/:id", async (req, res) => {
 app.patch("/api/settings", async (req, res) => {
   try {
     const { settings } = req.body;
-    console.log("settings", settings);
     const settingsDir = path.join(SETTINGS_DIR, "config.json");
+    
+    // Load existing settings to compare and avoid overwriting keys with masks
+    let existingSettings = {};
+    if (await fs.pathExists(settingsDir)) {
+      existingSettings = await fs.readJSON(settingsDir);
+    }
 
-    // Save updated draft.json
+    // Encrypt any AI API keys before saving
+    if (settings.app && settings.app.aiConfigs) {
+      settings.app.aiConfigs = settings.app.aiConfigs.map((config) => {
+        if (config.provider === "gemini") {
+          // If the frontend sends the mask, restore the existing encrypted key
+          if (config.apiKey === "********") {
+            const existingConfig = existingSettings.app?.aiConfigs?.find(c => c.id === config.id);
+            return { ...config, apiKey: existingConfig ? existingConfig.apiKey : "" };
+          }
+          // If it's a new or changed key (no ':' separator), encrypt it
+          if (config.apiKey && !config.apiKey.includes(":")) {
+            return { ...config, apiKey: encrypt(config.apiKey) };
+          }
+        }
+        return config;
+      });
+    }
+
+    // Save updated config.json
     await fs.writeJSON(settingsDir, settings, { spaces: 2 });
 
     console.log(`✅ Saved Setting`);
@@ -2323,6 +2417,17 @@ app.get("/api/settings", async (req, res) => {
         .json({ success: false, error: "config.json not found" });
     }
     const settings = await fs.readJSON(settingsDir);
+
+    // Mask AI API keys before sending to frontend
+    if (settings.app && settings.app.aiConfigs) {
+      settings.configWithMaskedKeys = JSON.parse(JSON.stringify(settings)); // Clone
+      settings.app.aiConfigs = settings.app.aiConfigs.map((config) => {
+        if (config.provider === "gemini" && config.apiKey) {
+          return { ...config, apiKey: "********" };
+        }
+        return config;
+      });
+    }
 
     console.log(`✅ Loaded Settings`);
     res.json({ success: true, settings: settings });

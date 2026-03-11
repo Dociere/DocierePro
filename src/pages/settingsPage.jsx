@@ -13,6 +13,15 @@ const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState("editor");
   const [showToken, setShowToken] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isAddingConfig, setIsAddingConfig] = useState(false);
+  const [newConfig, setNewConfig] = useState({
+    name: "",
+    provider: "gemini", // "gemini" or "ollama"
+    model: "gemini-2.5-flash",
+    apiKey: "", // For gemini
+    url: "http://localhost:11434/api/generate", // For ollama
+    active: false,
+  });
 
   const tabs = [
     { id: "editor", label: "Editor" },
@@ -39,6 +48,44 @@ const SettingsPage = () => {
   const confirmReset = () => {
     resetSettings();
     setShowResetConfirm(false);
+  };
+
+  const handleAddConfig = () => {
+    const configId = Date.now().toString();
+    const currentConfigs = settings.app?.aiConfigs || [];
+    const updatedConfigs = [
+      ...currentConfigs,
+      { ...newConfig, id: configId, active: currentConfigs.length === 0 }
+    ];
+    handleSettingChange("app", "aiConfigs", updatedConfigs);
+    setIsAddingConfig(false);
+    setNewConfig({
+      name: "",
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      apiKey: "",
+      url: "http://localhost:11434/api/generate",
+      active: false,
+    });
+  };
+
+  const handleDeleteConfig = (id) => {
+    const currentConfigs = settings.app?.aiConfigs || [];
+    const updatedConfigs = currentConfigs.filter(c => c.id !== id);
+    // If we deleted the active one, pick the first one remaining as active
+    if (updatedConfigs.length > 0 && currentConfigs.find(c => c.id === id)?.active) {
+      updatedConfigs[0].active = true;
+    }
+    handleSettingChange("app", "aiConfigs", updatedConfigs);
+  };
+
+  const handleToggleActive = (id) => {
+    const currentConfigs = settings.app?.aiConfigs || [];
+    const updatedConfigs = currentConfigs.map(c => ({
+      ...c,
+      active: c.id === id
+    }));
+    handleSettingChange("app", "aiConfigs", updatedConfigs);
   };
 
   const isDark = settings.appearance.theme === "dark";
@@ -220,148 +267,217 @@ const SettingsPage = () => {
 
             {/* Configuration Tab */}
             {activeTab === "configuration" && (
-              <div className="space-y-6">
-                <h2
-                  className={`text-2xl font-playfair font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
-                >
-                  Configuration
-                </h2>
-
-                {/* LLM API Token */}
-                <div className="space-y-2">
-                  <label
-                    className={`block text-sm font-inter font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+              <div className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <h2 className={`text-2xl font-playfair font-semibold ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                    Configurations
+                  </h2>
+                  <button 
+                    onClick={() => setIsAddingConfig(true)}
+                    className="px-4 py-2 bg-[#AB2D2D] text-white rounded-md font-inter text-sm hover:bg-[#8a2424] transition-colors flex items-center gap-2"
                   >
-                    LLM API Token
-                  </label>
-                  <p
-                    className={`text-xs mb-2 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
-                  >
-                    Enter your API token for AI-powered features
-                  </p>
-                  <div className="flex">
-                    <div className="relative max-w-md">
-                      <input
-                        type={showToken ? "text" : "password"}
-                        // value={settings.configuration.llmApiToken}
-                        // onChange={(e) =>
-                        //   handleSettingChange(
-                        //     "configuration",
-                        //     "llmApiToken",
-                        //     e.target.value,
-                        //   )
-                        // }
-                        placeholder="Enter your API token"
-                        className={`w-full px-4 py-2 pr-24 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] focus:border-transparent ${
-                          isDark
-                            ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5] placeholder-[#666]"
-                            : "bg-white border-[#CFCFCF] text-[#212121] placeholder-gray-400"
-                        }`}
-                      />
-                      <button
-                        onClick={() => setShowToken(!showToken)}
-                        className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-inter ${
-                          isDark
-                            ? "text-[#a0a0a0] hover:text-[#e5e5e5]"
-                            : "text-[#7D7D7D] hover:text-[#212121]"
-                        }`}
-                      >
-                        {showToken ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                    <div>
-                      <select
-                        name="aiProvider"
-                        defaultValue=""
-                        class="w-full border rounded-md ml-5 border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 font-inter select-none
-         focus:ring-2 focus:ring-[#AB2D2D] outline-none focus:border-transparent"
-                      >
-                        <option value="" disabled>
-                          Select AI Provider
-                        </option>
-                        <option value="openai">OpenAI</option>
-                        <option value="gemini">Google Gemini</option>
-                        <option value="claude">Anthropic Claude</option>
-                        <option value="mistral">Mistral</option>
-                        <option value="deepseek">DeepSeek</option>
-                      </select>
-                    </div>
-                  </div>
+                    <span>+</span> Add Model
+                  </button>
                 </div>
 
-                {/* Hosting Method */}
-                <div className="space-y-2">
+                {/* Config Form Modal-like inline section */}
+                {isAddingConfig && (
+                  <div className={`p-6 rounded-lg border-2 border-dashed ${isDark ? "bg-[#1a1a1a] border-[#404040]" : "bg-[#f9f9f9] border-[#CFCFCF]"}`}>
+                    <h3 className={`text-lg font-inter font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                      New AI Configuration
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                          Config Name
+                        </label>
+                        <input 
+                          type="text"
+                          value={newConfig.name}
+                          onChange={(e) => setNewConfig({...newConfig, name: e.target.value})}
+                          placeholder="e.g. My Gemini Pro"
+                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                          AI Provider
+                        </label>
+                        <select 
+                          value={newConfig.provider}
+                          onChange={(e) => {
+                            const provider = e.target.value;
+                            setNewConfig({
+                              ...newConfig, 
+                              provider,
+                              model: provider === "gemini" ? "gemini-2.0-flash" : "qwen2.5-coder:7b",
+                              url: provider === "ollama" ? "http://localhost:11434/api/generate" : ""
+                            });
+                          }}
+                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                        >
+                          <option value="gemini">Google Gemini</option>
+                          <option value="ollama">Ollama Local LLM</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                          Model Name
+                        </label>
+                        <input 
+                          type="text"
+                          value={newConfig.model}
+                          onChange={(e) => setNewConfig({...newConfig, model: e.target.value})}
+                          placeholder={newConfig.provider === "gemini" ? "gemini-2.0-flash" : "qwen2.5-coder:7b"}
+                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                        />
+                      </div>
+                      
+                      {newConfig.provider === "gemini" ? (
+                        <div className="space-y-2">
+                          <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                            API Token
+                          </label>
+                          <div className="relative">
+                            <input 
+                              type={showToken ? "text" : "password"}
+                              value={newConfig.apiKey}
+                              onChange={(e) => setNewConfig({...newConfig, apiKey: e.target.value})}
+                              placeholder="Enter Gemini API Key"
+                              className={`w-full px-4 py-2 pr-16 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                            />
+                            {isAuthenticated && (
+                              <button 
+                                onClick={() => setShowToken(!showToken)}
+                                className={`absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-[10px] font-bold uppercase ${isDark ? "text-[#a0a0a0] hover:text-[#e5e5e5]" : "text-[#7D7D7D] hover:text-[#212121]"}`}
+                              >
+                                {showToken ? "Hide" : "Show"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                            Ollama URL
+                          </label>
+                          <input 
+                            type="text"
+                            value={newConfig.url}
+                            onChange={(e) => setNewConfig({...newConfig, url: e.target.value})}
+                            placeholder="http://localhost:11434/api/generate"
+                            className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-3 mt-6">
+                      <button 
+                        onClick={handleAddConfig}
+                        disabled={!newConfig.name}
+                        className={`px-6 py-2 bg-green-600 text-white rounded-md font-inter text-sm hover:bg-green-700 transition-colors disabled:opacity-50`}
+                      >
+                        Save Configuration
+                      </button>
+                      <button 
+                        onClick={() => setIsAddingConfig(false)}
+                        className={`px-6 py-2 border rounded-md font-inter text-sm ${isDark ? "border-[#404040] text-[#a0a0a0] hover:bg-[#2d2d2d]" : "border-[#CFCFCF] text-[#7D7D7D] hover:bg-[#f3f4f6]"}`}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Config List */}
+                <div className="space-y-4">
+                  {(settings.app?.aiConfigs || []).length === 0 ? (
+                    <div className={`p-12 text-center border-2 border-dashed rounded-lg ${isDark ? "border-[#404040] text-[#a0a0a0]" : "border-[#CFCFCF] text-[#7D7D7D]"}`}>
+                      <p className="text-sm">No AI configurations found. Add one to get started!</p>
+                    </div>
+                  ) : (
+                    settings.app.aiConfigs.map((config) => (
+                      <div 
+                        key={config.id}
+                        className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${config.active ? "border-[#AB2D2D] bg-[#AB2D2D]/5" : isDark ? "border-[#404040] bg-[#1a1a1a]" : "border-[#CFCFCF] bg-white"}`}
+                      >
+                        <input 
+                          type="radio"
+                          checked={config.active}
+                          onChange={() => handleToggleActive(config.id)}
+                          className="w-5 h-5 accent-[#AB2D2D] cursor-pointer"
+                        />
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-sm font-bold truncate ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                              {config.name}
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${config.provider === 'gemini' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                              {config.provider === 'gemini' ? 'Google Gemini' : 'Ollama'}
+                            </span>
+                          </div>
+                          <div className={`text-xs font-mono truncate ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                            {config.model} | {config.provider === 'gemini' ? '********' : config.url}
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={() => handleDeleteConfig(config.id)}
+                          className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-[#333] text-[#a0a0a0]" : "hover:bg-red-50 text-[#7D7D7D] hover:text-red-600"}`}
+                          title="Delete Configuration"
+                        >
+                          <span className="text-lg">🗑️</span>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Separator */}
+                <div className={`border-t pt-6 ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}>
+                  {/* Hosting Method */}
+                  <div className="space-y-2">
                   <label
                     className={`block text-sm font-inter font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
                   >
                     Hosting Method
-                  </label>
+                    </label>
                   <p
                     className={`text-xs mb-2 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
                   >
                     Choose how you want to host your documents
-                  </p>
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hostingMethod"
-                        value="self-hosted"
-                        // checked={
-                        //   settings.configuration.hostingMethod === "self-hosted"
-                        // }
-                        // onChange={(e) =>
-                        //   handleSettingChange(
-                        //     "configuration",
-                        //     "hostingMethod",
-                        //     e.target.value,
-                        //   )
-                        // }
-                        className="w-4 h-4 text-[#AB2D2D] focus:ring-[#AB2D2D]"
-                      />
-                      <div>
-                        <span
-                          className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
-                        >
-                          Self-hosted
-                        </span>
-                        <p
-                          className={`text-xs ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
-                        >
-                          Run locally on your machine
-                        </p>
-                      </div>
-                    </label>
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hostingMethod"
-                        value="cloud"
-                        // checked={
-                        //   settings.configuration.hostingMethod === "cloud"
-                        // }
-                        // onChange={(e) =>
-                        //   handleSettingChange(
-                        //     "configuration",
-                        //     "hostingMethod",
-                        //     e.target.value,
-                        //   )
-                        // }
-                        className="w-4 h-4 text-[#AB2D2D] focus:ring-[#AB2D2D]"
-                      />
-                      <div>
-                        <span
-                          className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
-                        >
-                          Cloud-based hosting
-                        </span>
-                        <p
-                          className={`text-xs ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
-                        >
-                          Use cloud servers for compilation
-                        </p>
-                      </div>
-                    </label>
+                    </p>
+                    <div className="space-y-3">
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="hostingMethod"
+                          value="self-hosted"
+                          className="w-4 h-4 text-[#AB2D2D] focus:ring-[#AB2D2D]"
+                          defaultChecked
+                        />
+                        <div>
+                          <span className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                            Local Machine (Self-hosted)
+                          </span>
+                        </div>
+                      </label>
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="hostingMethod"
+                          value="self-hosted"
+                          className="w-4 h-4 text-[#AB2D2D] focus:ring-[#AB2D2D]"
+                          defaultChecked
+                        />
+                        <div>
+                          <span className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                            Remote Machine (Cloud-based Hosting)
+                          </span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
