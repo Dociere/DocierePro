@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = {
     autoSave: true,
     showLineHighlight: "all",
     minimap: false,
+    aiConfigs: [],
   },
   recentFiles: [],
   shortcuts: {
