@@ -76,15 +76,54 @@ const TEMPLATES_DIR = join(baseDir, "templates");
   }
 });
 
-// STEP 1: Add this helper function at the top of your file (after imports)
-// This replaces the existing runPdfLatex if you have one
+const getPdflatexPath = () => {
+  const tinyTexBaseDir = isDev
+    ? path.join(
+        __dirname,
+        "resources",
+        "TinyTex",
+        process.platform === "win32"
+          ? "win"
+          : process.platform === "darwin"
+            ? "mac"
+            : "linux",
+      )
+    : path.join(process.resourcesPath, "TinyTex");
+
+  let binaryName = "pdflatex";
+  let archFolder = "";
+
+  if (process.platform === "win32") {
+    binaryName = "pdflatex.exe";
+    archFolder = "windows";
+  } else if (process.platform === "darwin") {
+    archFolder = "universal-darwin";
+  } else {
+    archFolder = "x86_64-linux";
+  }
+
+  return path.join(tinyTexBaseDir, "bin", archFolder, binaryName);
+};
+
+//FIXME: Convert to C++
 function runPdfLatexPermissive(texFilePath, outputPath) {
   return new Promise((resolve, reject) => {
     console.log(`🔧 Running pdflatex on: ${texFilePath}`);
     console.log(`🔧 Output directory: ${outputPath}`);
 
+    const pdflatexPath = getPdflatexPath();
+
     const pdflatex = spawn(
-      "pdflatex",
+      // "pdflatex",
+      // path.join(
+      //   baseDir,
+      //   "resources",
+      //   "TinyTex",
+      //   "bin",
+      //   "x86_64-linux",
+      //   "pdflatex",
+      // ),
+      pdflatexPath,
       [
         `-output-directory=${outputPath}`,
         "-interaction=nonstopmode", // Never stop for errors
@@ -122,24 +161,6 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
   });
 }
 
-// Helper function for default template
-function getDefaultTemplate(title, authorDetails) {
-  return `\\documentclass{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage{amsmath}
-\\usepackage{amsfonts}
-\\usepackage{amssymb}
-\\usepackage{graphicx}
-\\title{${title || "New Document"}}
-\\author{${authorDetails?.name || "Author Name"}}
-\\date{\\today}
-\\begin{document}
-\\maketitle
-\\section{Introduction}
-Welcome to your new LaTeX document! Start writing your content here.
-\\end{document}`;
-}
-
 // Initialize directories
 async function initDirectories() {
   await fs.ensureDir(PROJECTS_DIR);
@@ -150,34 +171,36 @@ async function initDirectories() {
   console.log("✅ Directories initialized");
 }
 
+//FIXME: To delete the code below
 // Auto-detect LaTeX installation
-const detectLaTeX = () => {
-  const possiblePaths = [
-    "C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-    "C:\\Users\\jerde\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-    "C:\\Program Files (x86)\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-    path.join(
-      process.env.USERPROFILE || "",
-      "AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-    ),
-    "/usr/bin/pdflatex",
-    "/usr/local/bin/pdflatex",
-    "pdflatex",
-  ];
+// const detectLaTeX = () => {
+//   const possiblePaths = [
+//     "C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
+//     "C:\\Users\\jerde\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
+//     "C:\\Program Files (x86)\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
+//     path.join(
+//       process.env.USERPROFILE || "",
+//       "AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
+//     ),
+//     "/usr/bin/pdflatex",
+//     "/usr/local/bin/pdflatex",
+//     "pdflatex",
+//   ];
 
-  for (const pdflatexPath of possiblePaths) {
-    try {
-      if (fs.existsSync(pdflatexPath) || pdflatexPath === "pdflatex") {
-        console.log(`✅ Found pdfLaTeX at: ${pdflatexPath}`);
-        return pdflatexPath;
-      }
-    } catch (error) {
-      continue;
-    }
-  }
-  throw new Error("❌ pdfLaTeX not found! Please install MiKTeX or TeX Live");
-};
+//   for (const pdflatexPath of possiblePaths) {
+//     try {
+//       if (fs.existsSync(pdflatexPath) || pdflatexPath === "pdflatex") {
+//         console.log(`✅ Found pdfLaTeX at: ${pdflatexPath}`);
+//         return pdflatexPath;
+//       }
+//     } catch (error) {
+//       continue;
+//     }
+//   }
+//   throw new Error("❌ pdfLaTeX not found! Please install MiKTeX or TeX Live");
+// };
 
+//FIXME: The below code makes NOOO sense
 // Detect LaTeX on startup
 let PDFLATEX_PATH;
 try {
@@ -204,7 +227,7 @@ const cleanupFiles = async (baseFilename, directory) => {
     try {
       await fs.remove(path.join(directory, `${baseFilename}.${ext}`));
     } catch (error) {
-      // Ignore cleanup errors
+      console.log("Error related to Temp File Cleanup", error);
     }
   }
 };
@@ -702,54 +725,66 @@ const boilerplateUpload = multer({
   },
 });
 
-app.post("/api/extract-file-text", boilerplateUpload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: "No file uploaded" });
-    }
+app.post(
+  "/api/extract-file-text",
+  boilerplateUpload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ success: false, error: "No file uploaded" });
+      }
 
-    const ext = path.extname(req.file.originalname).toLowerCase();
-    let extractedText = "";
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      let extractedText = "";
 
-    if (ext === ".pdf") {
-      // Extract text from PDF — save buffer to temp file, then parse
-      const tempPdfPath = path.join(TEMP_DIR, `upload_${Date.now()}.pdf`);
-      try {
-        await fs.writeFile(tempPdfPath, req.file.buffer);
-        const parser = new pdfParse({ url: tempPdfPath });
-        const result = await parser.getText();
-        extractedText = result.text || "";
-        await parser.destroy();
-        console.log(`📄 PDF parsed: ${extractedText.length} chars`);
-      } catch (pdfErr) {
-        console.error("❌ pdf-parse error:", pdfErr.message);
+      if (ext === ".pdf") {
+        // Extract text from PDF — save buffer to temp file, then parse
+        const tempPdfPath = path.join(TEMP_DIR, `upload_${Date.now()}.pdf`);
+        try {
+          await fs.writeFile(tempPdfPath, req.file.buffer);
+          const parser = new pdfParse({ url: tempPdfPath });
+          const result = await parser.getText();
+          extractedText = result.text || "";
+          await parser.destroy();
+          console.log(`📄 PDF parsed: ${extractedText.length} chars`);
+        } catch (pdfErr) {
+          console.error("❌ pdf-parse error:", pdfErr.message);
+          return res.status(400).json({
+            success: false,
+            error: `PDF parsing failed: ${pdfErr.message}`,
+          });
+        } finally {
+          // Clean up temp file
+          await fs.remove(tempPdfPath).catch(() => {});
+        }
+      } else {
+        // .txt or .md — read as UTF-8 string
+        extractedText = req.file.buffer.toString("utf-8");
+      }
+
+      if (!extractedText || extractedText.trim().length === 0) {
         return res.status(400).json({
           success: false,
-          error: `PDF parsing failed: ${pdfErr.message}`,
+          error:
+            "Could not extract text from the file. The file may be scanned/image-based.",
         });
-      } finally {
-        // Clean up temp file
-        await fs.remove(tempPdfPath).catch(() => {});
       }
-    } else {
-      // .txt or .md — read as UTF-8 string
-      extractedText = req.file.buffer.toString("utf-8");
-    }
 
-    if (!extractedText || extractedText.trim().length === 0) {
-      return res.status(400).json({
+      console.log(
+        `📄 Extracted ${extractedText.length} chars from ${req.file.originalname}`,
+      );
+      res.json({ success: true, text: extractedText.trim() });
+    } catch (error) {
+      console.error("❌ File text extraction error:", error);
+      res.status(500).json({
         success: false,
-        error: "Could not extract text from the file. The file may be scanned/image-based.",
+        error: `Failed to extract text: ${error.message}`,
       });
     }
-
-    console.log(`📄 Extracted ${extractedText.length} chars from ${req.file.originalname}`);
-    res.json({ success: true, text: extractedText.trim() });
-  } catch (error) {
-    console.error("❌ File text extraction error:", error);
-    res.status(500).json({ success: false, error: `Failed to extract text: ${error.message}` });
-  }
-});
+  },
+);
 
 // API: Create new project
 app.post("/api/projects/create", async (req, res) => {
@@ -2482,7 +2517,18 @@ async function startServer() {
       console.log("✨ All routes from both servers merged successfully!");
       console.log("=".repeat(60));
 
-      const testPdfLatex = spawn("pdflatex", ["--version"]);
+      // const testPdfLatex = spawn("pdflatex", ["--version"]);
+      const testPdfLatex = spawn(
+        path.join(
+          baseDir,
+          "resources",
+          "TinyTex",
+          "bin",
+          "x86_64-linux",
+          "pdflatex",
+        ),
+        ["--version"],
+      );
       testPdfLatex.on("close", (code) => {
         if (code === 0) {
           console.log("✅ pdflatex is available and ready");

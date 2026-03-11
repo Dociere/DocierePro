@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "electron:dev": "concurrently \"npm run dev\" \"npm run start\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
     "electron:build": "npm run build && electron-builder",
-    "electron:crossbuild": "npm run build && electron-builder -mwl",
+    "electron:crossbuild": "npm run build && electron-builder -wl",
     "preview": "vite preview"
   },
   "build": {
@@ -60,6 +60,13 @@
       {
         "from": "renderStrategies.js",
         "to": "app.asar.unpacked/renderStrategies.js"
+      },
+      {
+        "from": "resources/TinyTex/${os}",
+        "to": "TinyTex",
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   },
