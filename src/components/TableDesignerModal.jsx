@@ -250,7 +250,7 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
         <div className="flex items-center gap-3 mb-4">
           <TbAlertTriangle className="text-amber-500" size={24} />
@@ -298,6 +298,7 @@ const TableDesignerModal = ({
   onClose,
   onInsert,
   initialData = null,
+  showInsertButton = false,
 }) => {
   const [rowCount, setRowCount] = useState(3);
   const [colCount, setColCount] = useState(3);
@@ -535,7 +536,7 @@ const TableDesignerModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans"
+      className="fixed inset-0 z-[100000] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-5xl h-[85vh] flex flex-col overflow-hidden">
@@ -878,10 +879,18 @@ const TableDesignerModal = ({
             </button>
             <button
               onClick={copyToClipboard}
-              className="px-5 py-1.5 bg-black text-white rounded hover:bg-gray-800 font-medium"
+              className="px-5 py-1.5 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 font-medium"
             >
               Copy
             </button>
+            {showInsertButton && onInsert && (
+              <button
+                onClick={handleInsert}
+                className="px-5 py-1.5 bg-black text-white rounded hover:bg-gray-800 font-medium"
+              >
+                {initialData ? "Update Table" : "Insert Table"}
+              </button>
+            )}
           </div>
         </div>
       </div>

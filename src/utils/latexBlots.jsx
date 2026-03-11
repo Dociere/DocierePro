@@ -99,7 +99,97 @@ class LatexBlockBlot extends BlockEmbed {
   }
 }
 
-Quill.register(LatexBlockBlot, true);
+class FileMarkerBlot extends BlockEmbed {
+  static blotName = "file-marker";
+  static tagName = "DIV";
+  static className = "ql-file-marker";
+
+  static create(value) {
+    const node = super.create();
+    node.setAttribute("data-file", value.file || "");
+    node.setAttribute("data-type", value.type || "start");
+    node.contentEditable = "false";
+    
+    if (value.type === "start") {
+      Object.assign(node.style, {
+        padding: "4px 8px",
+        background: "#e0f2fe", // light blue
+        color: "#0369a1",
+        fontSize: "12px",
+        fontWeight: "600",
+        borderLeft: "3px solid #0ea5e9",
+        marginTop: "16px",
+        marginBottom: "8px",
+        userSelect: "none",
+        fontFamily: "Inter, sans-serif"
+      });
+      let decodedFile = value.file;
+      try { decodedFile = decodeURIComponent(escape(atob(value.file))); } catch(e) {}
+      node.textContent = `📄 File: ${decodedFile}`;
+    } else {
+      Object.assign(node.style, {
+        height: "0px", margin: "0", padding: "0", border: "0", overflow: "hidden"
+      });
+    }
+    return node;
+  }
+
+  static value(node) {
+    return {
+      file: node.getAttribute("data-file") || "",
+      type: node.getAttribute("data-type") || "start",
+    };
+  }
+}
+
+class EnvMarkerBlot extends BlockEmbed {
+  static blotName = "env-marker";
+  static tagName = "DIV";
+  static className = "ql-env-marker";
+
+  static create(value) {
+    const node = super.create();
+    node.setAttribute("data-env", value.env || "");
+    node.setAttribute("data-type", value.type || "start");
+    node.contentEditable = "false";
+    
+    if (value.type === "start") {
+      Object.assign(node.style, {
+        padding: "2px 8px",
+        background: "#f3f4f6", // gray-100
+        color: "#4b5563", // gray-600
+        fontSize: "11px",
+        fontWeight: "bold",
+        textTransform: "uppercase",
+        borderRadius: "4px",
+        display: "inline-block",
+        marginBottom: "8px",
+        marginTop: "12px",
+        userSelect: "none",
+        fontFamily: "Inter, sans-serif"
+      });
+      let decodedEnv = value.env;
+      try { decodedEnv = decodeURIComponent(escape(atob(value.env))); } catch(e) {}
+      node.textContent = `[ ${decodedEnv} ]`;
+    } else {
+      Object.assign(node.style, {
+        height: "0px", margin: "0", padding: "0", border: "0", overflow: "hidden"
+      });
+    }
+    return node;
+  }
+
+  static value(node) {
+    return {
+      env: node.getAttribute("data-env") || "",
+      type: node.getAttribute("data-type") || "start",
+    };
+  }
+}
+
+Quill.register(LatexBlockBlot);
+Quill.register(FileMarkerBlot);
+Quill.register(EnvMarkerBlot);
 
 // ==========================================
 // INLINE BLOTS (Citations, Footnotes, Refs)
@@ -195,5 +285,5 @@ class PageBreakBlot extends BlockEmbed {
 
 Quill.register(PageBreakBlot, true);
 
-export { LatexBlockBlot, LatexInlineBlot, PageBreakBlot };
+export { LatexBlockBlot, LatexInlineBlot, PageBreakBlot, FileMarkerBlot, EnvMarkerBlot };
 

@@ -790,7 +790,9 @@ export const sectionsToLatex = (sections) => {
 };
 
 // ============ 3. LATEX TO RICH TEXT (PURE BODY CONVERSION) ============
-export const latexToRichText = (latexBody) => {
+// fileMap: optional object mapping file names to their content
+//   e.g. { "abstract.tex": { content: "..." } } or { "abstract.tex": "..." }
+export const latexToRichText = (latexBody, fileMap = {}) => {
   if (!latexBody) return "";
 
   // 1. SPLIT PREAMBLE, BODY, POSTAMBLE
@@ -810,6 +812,21 @@ export const latexToRichText = (latexBody) => {
   if (innerPreamble.trim()) {
     preamble = (preamble + "\n" + innerPreamble).trim();
   }
+
+  // 2b. INLINE \input{} file contents
+  // Replace \input{filename} with the actual file content wrapped in a marker
+  body = body.replace(/\\input\{([^}]+)\}/g, (match, inputName) => {
+    const fileContent = resolveFileContent(inputName, fileMap);
+    if (fileContent !== null) {
+      const canonName = canonicalFileName(inputName);
+      // Wrap in a marker div so richTextToLatex can write content back to the right file
+      const encodedFile = btoa(unescape(encodeURIComponent(canonName)));
+      const startMarker = `<div class="ql-file-marker" data-file="${encodedFile}" data-type="start"></div>`;
+      const endMarker = `<div class="ql-file-marker" data-file="${encodedFile}" data-type="end"></div>`;
+      return `${startMarker}\n${fileContent}\n${endMarker}`;
+    }
+    return match; // Keep literal if file not found
+  });
 
   // 3. PROCESS REMAINING BODY
   let processed = stripLatexComments(body);
@@ -860,46 +877,67 @@ export const latexToRichText = (latexBody) => {
   );
   processed = processed.replace(/\\vspace\{[^}]+\}/g, "");
 
-  // Handle Special Environments
-  const envRegex = new RegExp(
-    `\\\\begin\\{(${SPECIAL_ENVS_PATTERN})\\}([\\s\\S]*?)\\\\end\\{\\1\\}`,
-    "gi",
-  );
-  processed = processed.replace(
-    envRegex,
-    (match, envName, content) =>
-      `\n\n<h3><strong>${envName}</strong></h3>\n<p>${content.trim()}</p>\n`,
-  );
-
-  // Handle Sections
-  processed = processed
-    .replace(/\\section\{([^}]*)\}/g, "<h2><strong>$1</strong></h2>")
-    .replace(/\\subsection\{([^}]*)\}/g, "<h3><strong>$1</strong></h3>")
-    .replace(/\\subsubsection\{([^}]*)\}/g, "<h4><strong>$1</strong></h4>")
-    .replace(/\\section\*\{([^}]*)\}/g, "<h2><strong>$1</strong></h2>")
-    .replace(/\\subsection\*\{([^}]*)\}/g, "<h3><strong>$1</strong></h3>")
-    .replace(/\\subsubsection\*\{([^}]*)\}/g, "<h4><strong>$1</strong></h4>");
-
-  // Handle Lists
+  // Handle Lists & Bibliography FIRST (before they get swallowed by EnvMarkerBlot)
   processed = processed
     .replace(
       /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
       (match, content) =>
-        `<ul>${content
-          .split(/\\item\s+/)
-          .filter((i) => i.trim())
+        `\n<ul>\n${content
+          .split("\\item")
+          .slice(1)
           .map((i) => `<li>${i.trim()}</li>`)
-          .join("")}</ul>`,
+          .join("")}\n</ul>\n`,
     )
     .replace(
       /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
       (match, content) =>
-        `<ol>${content
-          .split(/\\item\s+/)
-          .filter((i) => i.trim())
+        `\n<ol>\n${content
+          .split("\\item")
+          .slice(1)
           .map((i) => `<li>${i.trim()}</li>`)
-          .join("")}</ol>`,
+          .join("")}\n</ol>\n`,
+    )
+    .replace(
+      /\\begin\{thebibliography\}(?:\{[^}]*\})?([\s\S]*?)\\end\{thebibliography\}/g,
+      (match, content) => {
+        const parts = content.split(/\\bibitem(?:\{([^}]+)\})?/);
+        let items = "";
+        for (let i = 1; i < parts.length; i += 2) {
+          const key = parts[i] || "";
+          const text = (parts[i + 1] || "").trim();
+          items += `<li><strong>[${key}]</strong> ${text}</li>\n`;
+        }
+        const encodedEnv = btoa(unescape(encodeURIComponent("thebibliography")));
+        const startMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="start"></div>`;
+        const endMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="end"></div>`;
+        return `\n${startMarker}\n<ul>\n${items}</ul>\n${endMarker}\n`;
+      }
     );
+
+  // Handle Special Environments — protect with EnvMarkerBlot
+  const envRegex = new RegExp(
+    `\\\\begin\\{(${SPECIAL_ENVS_PATTERN})\\}(?:\\{[^}]*\\})?([\\s\\S]*?)\\\\end\\{\\1\\}`,
+    "gi",
+  );
+  processed = processed.replace(
+    envRegex,
+    (match, envName, content) => {
+      const encodedEnv = btoa(unescape(encodeURIComponent(envName)));
+      const startMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="start"></div>`;
+      const endMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="end"></div>`;
+      return `\n${startMarker}\n<p>${content.trim()}</p>\n${endMarker}\n`;
+    }
+  );
+
+  // Handle Sections — remapped: section→H1, subsection→H2, subsubsection→H3
+  // Track numbered vs unnumbered via data-numbered attribute
+  processed = processed
+    .replace(/\\section\{([^}]*)\}/g, '<h1 data-numbered="true"><strong>$1</strong></h1>')
+    .replace(/\\subsection\{([^}]*)\}/g, '<h2 data-numbered="true"><strong>$1</strong></h2>')
+    .replace(/\\subsubsection\{([^}]*)\}/g, '<h3 data-numbered="true"><strong>$1</strong></h3>')
+    .replace(/\\section\*\{([^}]*)\}/g, '<h1 data-numbered="false"><strong>$1</strong></h1>')
+    .replace(/\\subsection\*\{([^}]*)\}/g, '<h2 data-numbered="false"><strong>$1</strong></h2>')
+    .replace(/\\subsubsection\*\{([^}]*)\}/g, '<h3 data-numbered="false"><strong>$1</strong></h3>');
 
   // Advanced Academic Formats & Inserts
   processed = processed
@@ -923,6 +961,13 @@ export const latexToRichText = (latexBody) => {
     .replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '<a href="$1">$2</a>')
     .replace(/\\url\{([^}]+)\}/g, '<a href="$1">$1</a>')
     .replace(/\\today/g, "[Date: Today]");
+
+  // Convert __INPUT_START/END__ markers to HTML data-input-file divs
+  processed = processed.replace(
+    /__INPUT_START:([^_]+)__([\s\S]*?)__INPUT_END:\1__/g,
+    (match, fileName, content) =>
+      `<div data-input-file="${fileName}">${content}</div>`,
+  );
 
   const paragraphs = processed
     .split(/\n\n+/)
@@ -1042,6 +1087,37 @@ export const richTextToLatex = (richText) => {
   // Advanced formatting classes
   latex = latex.replace(/<span[^>]*class="ql-smallcaps"[^>]*>([\s\S]*?)<\/span>/gi, "\\textsc{$1}");
 
+  // 1. EXTRACT FILE UPDATES
+  // We map the FileMarkerBlots to temporary __FILEINPUT_START__ and __FILEINPUT_END__ tags so we can regex them
+  const fileUpdates = {};
+  latex = latex.replace(
+    /<div[^>]*class="ql-file-marker"[^>]*data-file="([^"]+)"[^>]*data-type="start"[^>]*>.*?<\/div>/gi,
+    (match, enc) => {
+      try { return `__FILEINPUT_START:${decodeURIComponent(escape(atob(enc)))}__\n`; } catch (e) { return ""; }
+    }
+  );
+  latex = latex.replace(
+    /<div[^>]*class="ql-file-marker"[^>]*data-file="([^"]+)"[^>]*data-type="end"[^>]*>.*?<\/div>/gi,
+    (match, enc) => {
+      try { return `\n__FILEINPUT_END:${decodeURIComponent(escape(atob(enc)))}__\n`; } catch (e) { return ""; }
+    }
+  );
+  
+  // 2. PROTECTED ENVIRONMENTS
+  // Restore EnvMarkerBlots back to \begin{...} and \end{...}
+  latex = latex.replace(
+    /<div[^>]*class="ql-env-marker"[^>]*data-env="([^"]+)"[^>]*data-type="start"[^>]*>.*?<\/div>/gi,
+    (match, enc) => {
+      try { return `\n\n\\begin{${decodeURIComponent(escape(atob(enc)))}}\n`; } catch (e) { return "\n\n"; }
+    }
+  );
+  latex = latex.replace(
+    /<div[^>]*class="ql-env-marker"[^>]*data-env="([^"]+)"[^>]*data-type="end"[^>]*>.*?<\/div>/gi,
+    (match, enc) => {
+      try { return `\n\\end{${decodeURIComponent(escape(atob(enc)))}}\n\n`; } catch (e) { return "\n\n"; }
+    }
+  );
+
   // Basic HTML to LaTeX conversions
   latex = latex
     .replace(/<br\s*\/?>/gi, "\n")
@@ -1050,25 +1126,50 @@ export const richTextToLatex = (richText) => {
     .replace(/<\/p>/gi, "\n")
     .replace(/\[Date: Today\]/g, "\\today");
 
-  // Restore Special Environment Headers -> \begin{...}
+  // Legacy: Restore old Special Environment Headers -> \begin{...}
+  // (In case users paste old HTML or we missed some data-attributes)
+  latex = latex.replace(
+    /<h[1-3][^>]*data-env="([^"]+)"[^>]*>\s*(?:<strong>|<b>)?\s*[^<]*\s*(?:<\/strong>|<\/b>)?\s*<\/h[1-3]>/gi,
+    (match, envName) => `\n\n\\begin{${envName}}\n`,
+  );
+
+  // Also handle legacy format (h3 without data-env but with special env name)
   latex = latex.replace(
     new RegExp(
-      `<h3[^>]*>\\s*(?:<strong>|<b>)?\\s*(${SPECIAL_ENVS_PATTERN})\\s*(?:<\\/strong>|<\\/b>)?\\s*<\\/h3>`,
+      `<h[1-4][^>]*>\\s*(?:<strong>|<b>)?\\s*(${SPECIAL_ENVS_PATTERN})\\s*(?:<\\/strong>|<\\/b>)?\\s*<\\/h[1-4]>`,
       "gi",
     ),
     (match, envName) => `\n\n\\begin{${envName}}\n`,
   );
 
-  // Restore Sections
+  // Restore Sections — remapped: H1→section, H2→subsection, H3→subsubsection
+  // Handle data-numbered attribute for starred variants
   latex = latex
     .replace(
-      /<h2[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
+      /<h1[^>]*data-numbered="false"[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h1>/gi,
+      "\n\n\\section*{$1}\n\n",
+    )
+    .replace(
+      /<h1[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h1>/gi,
       "\n\n\\section{$1}\n\n",
     )
     .replace(
-      /<h3[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
+      /<h2[^>]*data-numbered="false"[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
+      "\n\n\\subsection*{$1}\n\n",
+    )
+    .replace(
+      /<h2[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
       "\n\n\\subsection{$1}\n\n",
     )
+    .replace(
+      /<h3[^>]*data-numbered="false"[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
+      "\n\n\\subsubsection*{$1}\n\n",
+    )
+    .replace(
+      /<h3[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
+      "\n\n\\subsubsection{$1}\n\n",
+    )
+    // Catch any remaining h4 (legacy)
     .replace(
       /<h4[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h4>/gi,
       "\n\n\\subsubsection{$1}\n\n",
@@ -1127,7 +1228,27 @@ export const richTextToLatex = (richText) => {
     .replace(/<div[^>]*>([^<]*)<\/div>/gi, "$1\n")
     .replace(/<[^>]+>/g, "");
 
+  // Clean empty lines, ensuring we don't have excessive double spacing
   latex = latex.replace(/\n{3,}/g, "\n\n").trim();
+
+  // POST-PROCESS THEBIBLIOGRAPHY
+  // EnvMarkerBlot turns back into \begin{thebibliography}. The list inside turns into \begin{itemize}...
+  // We need to fix this back to \bibitem format
+  latex = latex.replace(
+    /\\begin\{thebibliography\}([\s\S]*?)\\end\{thebibliography\}/g,
+    (match, innerContent) => {
+      // Strip the erroneously generated itemize or enumerate wrapper
+      let fixed = innerContent.replace(/\\begin\{(?:itemize|enumerate)\}|\\end\{(?:itemize|enumerate)\}/g, "");
+      // Convert \item \textbf{[Key]} Text => \bibitem{Key} Text
+      fixed = fixed.replace(/\\item\s*\\textbf\{\[([^\]]+)\]\}\s*/g, "\n\\bibitem{$1} ");
+      // Fallback: If bolding was lost, just \item [Key]
+      fixed = fixed.replace(/\\item\s*\[([^\]]+)\]\s*/g, "\n\\bibitem{$1} ");
+      // Fallback: If all formatting and key brackets were lost, just change \item back to \bibitem{}
+      fixed = fixed.replace(/\\item\s+/g, "\n\\bibitem{} ");
+
+      return `\\begin{thebibliography}{10}\n${fixed.trim()}\n\\end{thebibliography}`;
+    }
+  );
 
   // RESTORE EQUATIONS AT THE END
   equations.forEach((eq, i) => {
@@ -1148,13 +1269,25 @@ export const richTextToLatex = (richText) => {
     latex = latex.replace(new RegExp(`__INLINEBLOCK${i}__`, "g"), macro);
   });
 
+  // EXTRACT FILE UPDATES — convert __FILEINPUT__ markers to \input{} and collect file content
+  latex = latex.replace(
+    /__FILEINPUT_START:([^_]+)__([\s\S]*?)__FILEINPUT_END:\1__/g,
+    (match, fileName, content) => {
+      // The content between markers is the converted LaTeX for this file
+      fileUpdates[fileName] = content.trim();
+      // In main.tex, replace with the \input{} directive
+      const inputName = fileName.replace(/\.tex$/, "");
+      return `\\input{${inputName}}`;
+    }
+  );
+
   // Combine
   let finalLatex = "";
   if (restoredPreamble) finalLatex += restoredPreamble + "\n";
   finalLatex += latex;
   if (restoredPostamble) finalLatex += "\n" + restoredPostamble;
 
-  return finalLatex;
+  return { latex: finalLatex, fileUpdates };
 };
 
 // ============ 5. SECTION <-> RICH TEXT WRAPPERS ============

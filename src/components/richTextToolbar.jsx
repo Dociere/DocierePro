@@ -11,9 +11,11 @@ export const RichTextToolbar = ({ id }) => (
 
       .ql-picker.ql-customFormat .ql-picker-item[data-value="bold"]::before { content: 'Bold'; }
       .ql-picker.ql-customFormat .ql-picker-item[data-value="italic"]::before { content: 'Italic'; }
-      .ql-picker.ql-customFormat .ql-picker-item[data-value="h1"]::before { content: 'Header 1'; }
-      .ql-picker.ql-customFormat .ql-picker-item[data-value="h2"]::before { content: 'Header 2'; }
-      .ql-picker.ql-customFormat .ql-picker-item[data-value="h3"]::before { content: 'Header 3'; }
+      .ql-picker.ql-customFormat .ql-picker-item[data-value="underline"]::before { content: 'Underline'; }
+      .ql-picker.ql-customFormat .ql-picker-item[data-value="strike"]::before { content: 'Strikethrough'; }
+      .ql-picker.ql-customFormat .ql-picker-item[data-value="h1"]::before { content: 'Section (H1)'; }
+      .ql-picker.ql-customFormat .ql-picker-item[data-value="h2"]::before { content: 'Subsection (H2)'; }
+      .ql-picker.ql-customFormat .ql-picker-item[data-value="h3"]::before { content: 'Subsubsection (H3)'; }
       .ql-picker.ql-customFormat .ql-picker-item[data-value="list-ordered"]::before { content: 'Numbered List'; }
       .ql-picker.ql-customFormat .ql-picker-item[data-value="list-bullet"]::before { content: 'Bulleted List'; }
       .ql-picker.ql-customFormat .ql-picker-item[data-value="indent"]::before { content: 'Indent'; }
@@ -21,7 +23,8 @@ export const RichTextToolbar = ({ id }) => (
       .ql-picker.ql-customFormat .ql-picker-item[data-value="quote"]::before { content: 'Quotation'; }
       .ql-picker.ql-customFormat .ql-picker-item[data-value="sup"]::before { content: 'Superscript'; }
       .ql-picker.ql-customFormat .ql-picker-item[data-value="sub"]::before { content: 'Subscript'; }
-      .ql-picker.ql-customFormat .ql-picker-item[data-value="code"]::before { content: 'Code'; }
+      .ql-picker.ql-customFormat .ql-picker-item[data-value="code"]::before { content: 'Code Block'; }
+      .ql-picker.ql-customFormat .ql-picker-item[data-value="clean"]::before { content: 'Clear Formatting'; }
 
       .ql-picker.ql-customInsert .ql-picker-item[data-value="table"]::before { content: 'Table'; }
       .ql-picker.ql-customInsert .ql-picker-item[data-value="image"]::before { content: 'Image'; }
@@ -32,14 +35,16 @@ export const RichTextToolbar = ({ id }) => (
       .ql-picker.ql-customInsert .ql-picker-item[data-value="pagebreak"]::before { content: 'Page Break'; }
     `}</style>
     <span className="ql-formats flex items-center border-r pr-2 mr-2">
-      <select className="ql-customFormat custom-select-richtext" defaultValue="">
+      <select className="ql-customFormat custom-select-richtext" defaultValue="" title="Format Text">
         <option value="" disabled hidden>Format</option>
         <option value="bold">Bold</option>
         <option value="italic">Italic</option>
+        <option value="underline">Underline</option>
+        <option value="strike">Strikethrough</option>
         <option disabled>──────────</option>
-        <option value="h1">Header 1</option>
-        <option value="h2">Header 2</option>
-        <option value="h3">Header 3</option>
+        <option value="h1">Section (H1)</option>
+        <option value="h2">Subsection (H2)</option>
+        <option value="h3">Subsubsection (H3)</option>
         <option disabled>──────────</option>
         <option value="list-ordered">Numbered List</option>
         <option value="list-bullet">Bulleted List</option>
@@ -49,12 +54,14 @@ export const RichTextToolbar = ({ id }) => (
         <option disabled>──────────</option>
         <option value="sup">Superscript</option>
         <option value="sub">Subscript</option>
-        <option value="code">Code</option>
+        <option value="code">Code Block</option>
+        <option disabled>──────────</option>
+        <option value="clean">Clear Formatting</option>
       </select>
     </span>
     
     <span className="ql-formats flex items-center border-r pr-2 mr-2">
-      <select className="ql-customInsert custom-select-richtext" defaultValue="">
+      <select className="ql-customInsert custom-select-richtext" defaultValue="" title="Insert Elements">
         <option value="" disabled hidden>Insert</option>
         <option value="table">Table</option>
         <option value="image">Image</option>
@@ -68,39 +75,48 @@ export const RichTextToolbar = ({ id }) => (
     </span>
 
     <span className="ql-formats">
-      <button className="ql-bold"></button>
-      <button className="ql-italic"></button>
+      <button className="ql-bold" title="Bold"></button>
+      <button className="ql-italic" title="Italic"></button>
+      <button className="ql-underline" title="Underline"></button>
+      <button className="ql-strike" title="Strikethrough"></button>
     </span>
     
     <span className="ql-formats">
-      <button className="ql-header" value="1"></button>
-      <button className="ql-header" value="2"></button>
-      <button className="ql-header" value="3"></button>
+      <button className="ql-header" value="1" title="Section (H1)"></button>
+      <button className="ql-header" value="2" title="Subsection (H2)"></button>
+      <button className="ql-header" value="3" title="Subsubsection (H3)"></button>
     </span>
 
     <span className="ql-formats">
-      <button className="ql-script" value="super"></button>
-      <button className="ql-script" value="sub"></button>
+      <button className="ql-script" value="super" title="Superscript"></button>
+      <button className="ql-script" value="sub" title="Subscript"></button>
     </span>
 
     <span className="ql-formats">
-      <button className="ql-blockquote"></button>
-      <button className="ql-code-block"></button>
+      <button className="ql-blockquote" title="Quotation"></button>
+      <button className="ql-code-block" title="Code Block"></button>
     </span>
 
     <span className="ql-formats">
-      <button className="ql-list" value="ordered"></button>
-      <button className="ql-list" value="bullet"></button>
+      <button className="ql-list" value="ordered" title="Numbered List"></button>
+      <button className="ql-list" value="bullet" title="Bulleted List"></button>
     </span>
 
     <span className="ql-formats">
-      <button className="ql-table"></button>
-      <button className="ql-image"></button>
-      <button className="ql-formula"></button>
+      <button className="ql-table" title="Insert Table"></button>
+      <button className="ql-image" title="Insert Image"></button>
+      <button className="ql-formula" title="Insert Equation"></button>
     </span>
 
     <span className="ql-formats">
-      <button className="ql-clean"></button>
+      <button className="ql-citation" title="Insert Citation"></button>
+      <button className="ql-footnote" title="Insert Footnote"></button>
+      <button className="ql-ref" title="Insert Cross-Reference"></button>
+      <button className="ql-pagebreak" title="Insert Page Break"></button>
+    </span>
+
+    <span className="ql-formats">
+      <button className="ql-clean" title="Clear Formatting"></button>
     </span>
   </div>
 );
@@ -113,6 +129,8 @@ export const getRichTextHandlers = () => ({
     switch (value) {
       case "bold": quill.format("bold", !format.bold, "user"); break;
       case "italic": quill.format("italic", !format.italic, "user"); break;
+      case "underline": quill.format("underline", !format.underline, "user"); break;
+      case "strike": quill.format("strike", !format.strike, "user"); break;
       case "h1": quill.format("header", 1, "user"); break;
       case "h2": quill.format("header", 2, "user"); break;
       case "h3": quill.format("header", 3, "user"); break;
@@ -124,37 +142,24 @@ export const getRichTextHandlers = () => ({
       case "sup": quill.format("script", "super", "user"); break;
       case "sub": quill.format("script", "sub", "user"); break;
       case "code": quill.format("code-block", !format["code-block"], "user"); break;
+      case "clean": quill.removeFormat(quill.getSelection()?.index || 0, quill.getSelection()?.length || 0, "user"); break;
     }
-    // reset select by closing the picker programmatically if possible
-    try {
-      if (document.activeElement) document.activeElement.blur();
-    } catch(e) {}
+    // reset picker
+    try { if (document.activeElement) document.activeElement.blur(); } catch(e) {}
   },
   customInsert: function (value) {
     if (!value) return;
     const quill = this.quill;
     
     const dispatchInsert = (type) => {
-       const cursorPosition = quill.getSelection()?.index || 0;
+       const cursorPosition = quill.savedCursorPosition ?? quill.getSelection()?.index ?? 0;
        
        if (type === 'footnote') {
-         const text = prompt("Enter footnote text:");
-         if (text) {
-           quill.insertEmbed(cursorPosition, "latex-inline", { type: "footnote", value: text }, "user");
-           quill.setSelection(cursorPosition + 1);
-         }
+         document.dispatchEvent(new CustomEvent("trigger-open-sidebar", { detail: { panelClass: 'footnote', quill } }));
        } else if (type === 'citation') {
-         const text = prompt("Enter citation key (e.g. Smith2024):");
-         if (text) {
-           quill.insertEmbed(cursorPosition, "latex-inline", { type: "citation", value: text }, "user");
-           quill.setSelection(cursorPosition + 1);
-         }
+         document.dispatchEvent(new CustomEvent("trigger-open-sidebar", { detail: { panelClass: 'citation', quill } }));
        } else if (type === 'ref') {
-         const text = prompt("Enter reference label:");
-         if (text) {
-           quill.insertEmbed(cursorPosition, "latex-inline", { type: "ref", value: text }, "user");
-           quill.setSelection(cursorPosition + 1);
-         }
+         document.dispatchEvent(new CustomEvent("trigger-open-sidebar", { detail: { panelClass: 'crossref', quill } }));
        } else if (type === 'pagebreak') {
          quill.insertEmbed(cursorPosition, "page-break", true, "user");
          quill.setSelection(cursorPosition + 1);
@@ -169,43 +174,10 @@ export const getRichTextHandlers = () => ({
     
     dispatchInsert(value);
 
-    dispatchInsert(value);
-
-    // reset select by closing the picker programmatically if possible
-    try {
-      if (document.activeElement) document.activeElement.blur();
-    } catch(e) {}
+    // reset picker
+    try { if (document.activeElement) document.activeElement.blur(); } catch(e) {}
   },
   // the individual button handlers:
-  footnote: function () {
-    const text = prompt("Enter footnote text:");
-    if (text) {
-      const cursorPosition = this.quill.getSelection()?.index || 0;
-      this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "footnote", value: text }, "user");
-      this.quill.setSelection(cursorPosition + 1);
-    }
-  },
-  citation: function () {
-    const text = prompt("Enter citation key (e.g. Smith2024):");
-    if (text) {
-      const cursorPosition = this.quill.getSelection()?.index || 0;
-      this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "citation", value: text }, "user");
-      this.quill.setSelection(cursorPosition + 1);
-    }
-  },
-  ref: function () {
-    const text = prompt("Enter reference label (e.g. fig:1):");
-    if (text) {
-      const cursorPosition = this.quill.getSelection()?.index || 0;
-      this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "ref", value: text }, "user");
-      this.quill.setSelection(cursorPosition + 1);
-    }
-  },
-  pagebreak: function () {
-    const cursorPosition = this.quill.getSelection()?.index || 0;
-    this.quill.insertEmbed(cursorPosition, "page-break", true, "user");
-    this.quill.setSelection(cursorPosition + 1);
-  },
   table: function () {
     document.dispatchEvent(new CustomEvent("trigger-insert-table", { detail: { quill: this.quill } }));
   },
@@ -214,5 +186,29 @@ export const getRichTextHandlers = () => ({
   },
   formula: function () {
     document.dispatchEvent(new CustomEvent("trigger-insert-math", { detail: { quill: this.quill } }));
+  },
+  citation: function () {
+    document.dispatchEvent(new CustomEvent("trigger-insert-citation", { detail: { quill: this.quill } }));
+  },
+  footnote: function () {
+    const text = prompt("Enter footnote text:");
+    if (text) {
+      const cursorPosition = this.quill.savedCursorPosition ?? this.quill.getSelection()?.index ?? 0;
+      this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "footnote", value: text }, "user");
+      this.quill.setSelection(cursorPosition + 1);
+    }
+  },
+  ref: function () {
+    const text = prompt("Enter reference label:");
+    if (text) {
+      const cursorPosition = this.quill.savedCursorPosition ?? this.quill.getSelection()?.index ?? 0;
+      this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "ref", value: text }, "user");
+      this.quill.setSelection(cursorPosition + 1);
+    }
+  },
+  pagebreak: function () {
+    const cursorPosition = this.quill.savedCursorPosition ?? this.quill.getSelection()?.index ?? 0;
+    this.quill.insertEmbed(cursorPosition, "page-break", true, "user");
+    this.quill.setSelection(cursorPosition + 1);
   }
 });
