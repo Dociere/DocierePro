@@ -19,6 +19,22 @@ const RichTextEditorPanel = ({
   const [highlightRange, setHighlightRange] = useState(null);
 
   useEffect(() => {
+    if (!quillRef.current) return;
+    const editor = quillRef.current.getEditor();
+    
+    // Track cursor so toolbar buttons know where to insert
+    // even after the editor loses focus when the button is clicked
+    const handleSelectionChange = (range) => {
+      if (range) {
+        editor.savedCursorPosition = range.index;
+      }
+    };
+    
+    editor.on("selection-change", handleSelectionChange);
+    return () => editor.off("selection-change", handleSelectionChange);
+  }, []);
+
+  useEffect(() => {
     // If we have a highlight request and the editor is ready
     if (highlightLine && quillRef.current) {
       const editor = quillRef.current.getEditor();

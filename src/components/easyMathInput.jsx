@@ -793,7 +793,7 @@ const EasyMathInput = ({ onClose, onInsert }) => {
                     {onInsert && (
                       <button
                         onClick={() => onInsert(getWrappedCode(latexCode))}
-                        className="p-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors border border-transparent shadow-sm flex items-center gap-1 font-medium text-xs px-3"
+                        className="p-2 text-white bg-black hover:bg-gray-800 rounded-lg transition-colors border border-transparent shadow-sm flex items-center gap-1 font-medium text-xs px-3"
                         title="Insert into Document"
                       >
                         <TbArrowUp size={16} /> Insert
