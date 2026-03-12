@@ -7,7 +7,7 @@ let mainWindow = null;
 
 function startBackend() {
   const isDev = !app.isPackaged;
-  const userDataPath = app.getPath("userData"); // get it here in main process
+  const userDataPath = app.getPath("userData");
 
   if (isDev) {
     backendProcess = spawn("npm", ["start"], {
@@ -23,12 +23,14 @@ function startBackend() {
       "server.js",
     );
     backendProcess = spawn("node", [backendPath], {
-      cwd: path.join(process.resourcesPath, "app.asar.unpacked"),
+      // cwd: path.join(process.resourcesPath, "app.asar.unpacked"),
+      cwd: userDataPath,
       stdio: "inherit",
       env: {
         ...process.env,
         USER_DATA_PATH: userDataPath,
-        RESOURCES_PATH: process.resourcesPath,
+        // RESOURCES_PATH: process.resourcesPath,
+        RESOURCES_PATH: userDataPath,
       },
     });
   }
@@ -38,7 +40,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(__dirname, "../public/dociereLogo9.png"),
+    icon: path.join(__dirname, "../public/dociereLogo6.png"),
     frame: false,
     webPreferences: {
       nodeIntegration: false,
@@ -72,10 +74,45 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  startBackend();
+// app.whenReady().then(() => {
+//   startBackend();
 
-  // Wait a bit for backend to start before opening window
+//   // Wait a bit for backend to start before opening window
+//   setTimeout(createWindow, 2000);
+// });
+
+app.whenReady().then(async () => {
+  const fs = require("fs-extra");
+  const userDataPath = app.getPath("userData");
+
+  // The code/server.js is in app.asar.unpacked
+  const unpackedPath = path.join(process.resourcesPath, "app.asar.unpacked");
+  // TinyTex is directly in resources
+  const resourcesPath = process.resourcesPath;
+
+  if (app.isPackaged) {
+    // 1. Handle folders from extraResources (Directly in resources)
+    const extraFolders = ["TinyTex"];
+    for (const folder of extraFolders) {
+      const dest = path.join(userDataPath, folder);
+      const src = path.join(resourcesPath, folder);
+      if (!fs.existsSync(dest) && fs.existsSync(src)) {
+        await fs.copy(src, dest);
+      }
+    }
+
+    // 2. Handle folders from asarUnpack (Inside app.asar.unpacked)
+    const asarFolders = ["projects", "templates", "settings"];
+    for (const folder of asarFolders) {
+      const dest = path.join(userDataPath, folder);
+      const src = path.join(unpackedPath, folder);
+      if (!fs.existsSync(dest) && fs.existsSync(src)) {
+        await fs.copy(src, dest);
+      }
+    }
+  }
+
+  startBackend();
   setTimeout(createWindow, 2000);
 });
 
