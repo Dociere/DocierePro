@@ -6,7 +6,7 @@ const SettingsContext = createContext();
 
 const DEFAULT_SETTINGS = {
   appearance: {
-    theme: "dark",
+    theme: "light",
     customThemes: {
       dark: {
         background: "#232323",
