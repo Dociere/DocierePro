@@ -16,7 +16,10 @@ import util from "util";
 import crypto from "crypto";
 dotenv.config();
 
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef", "utf8"); // 32 bytes
+const ENCRYPTION_KEY = Buffer.from(
+  process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef",
+  "utf8",
+); // 32 bytes
 const IV_LENGTH = 16;
 
 function encrypt(text) {
@@ -61,7 +64,7 @@ const __dirname = dirname(__filename);
 // const isDev = !app.isPackaged;
 // const isDev = __dirname.includes("app.asar") === false;
 
-const isDev = !process.env.USER_DATA_PATH; // if not set, we're in dev
+const isDev = !process.env.USER_DATA_PATH;
 const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
 
 async function getActiveAIConfig() {
@@ -73,7 +76,9 @@ async function getActiveAIConfig() {
       if (settings.app && settings.app.aiConfigs) {
         const active = settings.app.aiConfigs.find((c) => c.active);
         if (active) {
-          console.log(`✅ Found active AI config: ${active.name} (${active.provider})`);
+          console.log(
+            `✅ Found active AI config: ${active.name} (${active.provider})`,
+          );
           const config = { ...active };
           if (config.provider === "gemini" && config.apiKey) {
             console.log(`🔐 Decrypting API key for ${active.name}`);
@@ -81,7 +86,9 @@ async function getActiveAIConfig() {
           }
           return config;
         } else {
-          console.log("⚠️ No active AI configuration found in settings.app.aiConfigs");
+          console.log(
+            "⚠️ No active AI configuration found in settings.app.aiConfigs",
+          );
         }
       } else {
         console.log("⚠️ settings.app.aiConfigs is missing");
@@ -132,6 +139,9 @@ const TEMPLATES_DIR = join(baseDir, "templates");
 });
 
 const getPdflatexPath = () => {
+  const effectiveResourcesPath =
+    process.env.RESOURCES_PATH || process.resourcesPath;
+
   const tinyTexBaseDir = isDev
     ? path.join(
         __dirname,
@@ -143,7 +153,13 @@ const getPdflatexPath = () => {
             ? "mac"
             : "linux",
       )
-    : path.join(process.resourcesPath, "TinyTex");
+    : effectiveResourcesPath
+      ? path.join(effectiveResourcesPath, "TinyTex")
+      : (() => {
+          throw new Error(
+            "CRITICAL: RESOURCES_PATH is missing in production! IGNORE if in developement mode",
+          );
+        })();
 
   let binaryName = "pdflatex";
   let archFolder = "";
@@ -535,8 +551,10 @@ app.post("/api/edit", async (req, res) => {
     );
 
     const aiConfig = await getActiveAIConfig();
-    console.log(`📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || 'default'}`);
-    
+    console.log(
+      `📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || "default"}`,
+    );
+
     const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/edit-latex`, {
       prompt,
       latexContent,
@@ -893,7 +911,8 @@ app.post("/api/projects/create", async (req, res) => {
               authorDetails: "", // Placeholder as authorDetails is not in scope
               aiConfig,
             },
-          );if (aiResponse.data.success && aiResponse.data.latexContent) {
+          );
+          if (aiResponse.data.success && aiResponse.data.latexContent) {
             mainContent = aiResponse.data.latexContent;
             console.log("✅ AI-generated blank document content received");
           }
@@ -2402,7 +2421,7 @@ app.patch("/api/settings", async (req, res) => {
   try {
     const { settings } = req.body;
     const settingsDir = path.join(SETTINGS_DIR, "config.json");
-    
+
     // Load existing settings to compare and avoid overwriting keys with masks
     let existingSettings = {};
     if (await fs.pathExists(settingsDir)) {
@@ -2415,8 +2434,13 @@ app.patch("/api/settings", async (req, res) => {
         if (config.provider === "gemini") {
           // If the frontend sends the mask, restore the existing encrypted key
           if (config.apiKey === "********") {
-            const existingConfig = existingSettings.app?.aiConfigs?.find(c => c.id === config.id);
-            return { ...config, apiKey: existingConfig ? existingConfig.apiKey : "" };
+            const existingConfig = existingSettings.app?.aiConfigs?.find(
+              (c) => c.id === config.id,
+            );
+            return {
+              ...config,
+              apiKey: existingConfig ? existingConfig.apiKey : "",
+            };
           }
           // If it's a new or changed key (no ':' separator), encrypt it
           if (config.apiKey && !config.apiKey.includes(":")) {
@@ -2622,16 +2646,20 @@ async function startServer() {
       console.log("✨ All routes from both servers merged successfully!");
       console.log("=".repeat(60));
 
+      const pdflatexPath = getPdflatexPath();
+      console.log("pdflatexPath = ", pdflatexPath);
+
       // const testPdfLatex = spawn("pdflatex", ["--version"]);
       const testPdfLatex = spawn(
-        path.join(
-          baseDir,
-          "resources",
-          "TinyTex",
-          "bin",
-          "x86_64-linux",
-          "pdflatex",
-        ),
+        // path.join(
+        //   baseDir,
+        //   "resources",
+        //   "TinyTex",
+        //   "bin",
+        //   "x86_64-linux",
+        //   "pdflatex",
+        // ),
+        pdflatexPath,
         ["--version"],
       );
       testPdfLatex.on("close", (code) => {

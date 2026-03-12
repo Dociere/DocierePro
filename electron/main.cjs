@@ -25,7 +25,11 @@ function startBackend() {
     backendProcess = spawn("node", [backendPath], {
       cwd: path.join(process.resourcesPath, "app.asar.unpacked"),
       stdio: "inherit",
-      env: { ...process.env, USER_DATA_PATH: userDataPath }, // pass it here
+      env: {
+        ...process.env,
+        USER_DATA_PATH: userDataPath,
+        RESOURCES_PATH: process.resourcesPath,
+      },
     });
   }
 }

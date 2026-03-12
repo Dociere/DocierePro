@@ -10,8 +10,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "electron:dev": "concurrently \"npm run dev\" \"npm run start\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "npm run build && electron-builder",
+    "electron:build": "npm run build && electron-builderd",
     "electron:crossbuild": "npm run build && electron-builder -wl",
+    "electron:winbuild": "npm run build && electron-builder -w",
     "preview": "vite preview"
   },
   "build": {
