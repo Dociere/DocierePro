@@ -110,7 +110,7 @@ const StartingPage = () => {
         </div>
         <SearchBar data={projectData} />
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
-          {(projectData || []).slice(0, 5).map((project) => (
+          {(projectData || []).slice(0, 5)?.map((project) => (
             <Link to={`/canvas?project=${project.id}`}>
               <TemplateCards title={project.title} />
             </Link>
