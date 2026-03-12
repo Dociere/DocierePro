@@ -1,0 +1,26 @@
+# name: Build Cross-Platform
+# on: [push]
+
+# jobs:
+#   release:
+#     runs-on: ${{ matrix.os }}
+#     strategy:
+#       matrix:
+#         os: [ubuntu-latest, windows-latest, macos-latest]
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Install Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 20
+
+#       - name: Install Dependencies
+#         run: npm install
+
+#       - name: Build and Distribute
+#         run: npm run electron:crossbuild # Adjust this to build only for the current OS
+#         env:
+#           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
