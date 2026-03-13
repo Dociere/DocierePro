@@ -16,7 +16,10 @@ import util from "util";
 import crypto from "crypto";
 dotenv.config();
 
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef", "utf8"); // 32 bytes
+const ENCRYPTION_KEY = Buffer.from(
+  process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef",
+  "utf8",
+); // 32 bytes
 const IV_LENGTH = 16;
 
 function encrypt(text) {
@@ -73,7 +76,9 @@ async function getActiveAIConfig() {
       if (settings.app && settings.app.aiConfigs) {
         const active = settings.app.aiConfigs.find((c) => c.active);
         if (active) {
-          console.log(`✅ Found active AI config: ${active.name} (${active.provider})`);
+          console.log(
+            `✅ Found active AI config: ${active.name} (${active.provider})`,
+          );
           const config = { ...active };
           if (config.provider === "gemini" && config.apiKey) {
             console.log(`🔐 Decrypting API key for ${active.name}`);
@@ -81,7 +86,9 @@ async function getActiveAIConfig() {
           }
           return config;
         } else {
-          console.log("⚠️ No active AI configuration found in settings.app.aiConfigs");
+          console.log(
+            "⚠️ No active AI configuration found in settings.app.aiConfigs",
+          );
         }
       } else {
         console.log("⚠️ settings.app.aiConfigs is missing");
@@ -544,8 +551,10 @@ app.post("/api/edit", async (req, res) => {
     );
 
     const aiConfig = await getActiveAIConfig();
-    console.log(`📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || 'default'}`);
-    
+    console.log(
+      `📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || "default"}`,
+    );
+
     const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/edit-latex`, {
       prompt,
       latexContent,
@@ -2412,7 +2421,7 @@ app.patch("/api/settings", async (req, res) => {
   try {
     const { settings } = req.body;
     const settingsDir = path.join(SETTINGS_DIR, "config.json");
-    
+
     // Load existing settings to compare and avoid overwriting keys with masks
     let existingSettings = {};
     if (await fs.pathExists(settingsDir)) {
@@ -2425,8 +2434,13 @@ app.patch("/api/settings", async (req, res) => {
         if (config.provider === "gemini") {
           // If the frontend sends the mask, restore the existing encrypted key
           if (config.apiKey === "********") {
-            const existingConfig = existingSettings.app?.aiConfigs?.find(c => c.id === config.id);
-            return { ...config, apiKey: existingConfig ? existingConfig.apiKey : "" };
+            const existingConfig = existingSettings.app?.aiConfigs?.find(
+              (c) => c.id === config.id,
+            );
+            return {
+              ...config,
+              apiKey: existingConfig ? existingConfig.apiKey : "",
+            };
           }
           // If it's a new or changed key (no ':' separator), encrypt it
           if (config.apiKey && !config.apiKey.includes(":")) {

@@ -13,7 +13,8 @@
     "electron:build": "npm run build && electron-builder",
     "electron:crossbuild": "npm run build && electron-builder -mwl",
     "electron:winbuild": "npm run build && electron-builder -w",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup-tex": "node scripts/setup-tinytex.js"
   },
   "build": {
     "appId": "com.docierepro.app",
@@ -23,10 +24,8 @@
       "output": "release"
     },
     "asarUnpack": [
-      "server.js",
       "routes/**/*",
       "node_modules/**/*",
-      "renderStrategies.js",
       "projects/*",
       "templates/*",
       "settings/*"
@@ -53,7 +52,7 @@
     },
     "linux": {
       "target": "AppImage",
-      "icon": "build/icon.png"
+      "icon": "public/dociereLogo6.png"
     },
     "extraResources": [
       {
@@ -61,19 +60,8 @@
         "to": "app.asar.unpacked/server.js"
       },
       {
-        "from": "routes",
-        "to": "app.asar.unpacked/routes"
-      },
-      {
         "from": "renderStrategies.js",
         "to": "app.asar.unpacked/renderStrategies.js"
-      },
-      {
-        "from": "resources/TinyTex/${os}",
-        "to": "TinyTex",
-        "filter": [
-          "**/*"
-        ]
       }
     ]
   },
@@ -82,6 +70,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@monaco-editor/react": "^4.7.0",
+    "adm-zip": "^0.5.16",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -99,6 +88,7 @@
     "react-quill-new": "^3.6.0",
     "react-router-dom": "^7.9.2",
     "sharp": "^0.34.4",
+    "tar": "^7.5.11",
     "uuid": "^13.0.0",
     "y-indexeddb": "^9.0.12",
     "y-monaco": "^0.1.6",
