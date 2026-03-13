@@ -15,6 +15,11 @@ const archFolder =
       : "x86_64-linux";
 const binaryName = platform === "win32" ? "pdflatex.exe" : "pdflatex";
 
+async function runSetupTinyTex(userDataPath, onProgress) {
+  const { setupTinyTex } = await import("../scripts/setup-tinytex.js");
+  await setupTinyTex(userDataPath, onProgress);
+}
+
 function startBackend() {
   const isDev = !app.isPackaged;
   const userDataPath = app.getPath("userData");
@@ -85,14 +90,13 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
   } else {
     // mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
     const filePath = path.join(__dirname, "../dist/index.html");
     console.log("Loading file:", filePath);
     console.log("File exists:", require("fs").existsSync(filePath));
     mainWindow.loadFile(filePath);
-    mainWindow.webContents.openDevTools();
   }
 
   mainWindow.setMenu(null);
@@ -105,61 +109,6 @@ function createWindow() {
   });
 }
 
-// app.whenReady().then(async () => {
-//   const fs = require("fs-extra");
-//   const userDataPath = app.getPath("userData");
-
-//   const pdflatexPath = path.join(
-//     userDataPath,
-//     "resources",
-//     "TinyTex",
-//     platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
-//     "bin",
-//     archFolder,
-//     binaryName,
-//   );
-
-//   const isFirstRun = !require("fs").existsSync(pdflatexPath);
-
-//   // The code/server.js is in app.asar.unpacked
-//   const unpackedPath = path.join(process.resourcesPath, "app.asar.unpacked");
-//   // TinyTex is directly in resources
-//   const resourcesPath = process.resourcesPath;
-
-//   if (app.isPackaged) {
-//     // Handle folders from extraResources (Directly in resources)
-//     //The below code was removed since we changed the plan of bundling TinyTex with the application
-
-//     // const extraFolders = ["TinyTex"];
-//     // for (const folder of extraFolders) {
-//     //   const dest = path.join(userDataPath, folder);
-//     //   const src = path.join(resourcesPath, folder);
-//     //   if (!fs.existsSync(dest) && fs.existsSync(src)) {
-//     //     await fs.copy(src, dest);
-//     //   }
-//     // }
-
-//     // Handle folders from asarUnpack (Inside app.asar.unpacked)
-//     const asarFolders = ["projects", "templates", "settings"];
-//     for (const folder of asarFolders) {
-//       const dest = path.join(userDataPath, folder);
-//       const src = path.join(unpackedPath, folder);
-//       if (!fs.existsSync(dest) && fs.existsSync(src)) {
-//         await fs.copy(src, dest);
-//       }
-//     }
-
-//     //FIXME: Add Splash Screen
-//     // createSplashWindow(isFirstRun);
-
-//     //Setup TinyTex in the background
-//     await setupTinyTex(userDataPath);
-//   }
-
-//   startBackend();
-//   setTimeout(createWindow, 2000);
-// });
-
 function createSplashWindow(isFirstRun) {
   splashWindow = new BrowserWindow({
     width: 500,
@@ -169,10 +118,11 @@ function createSplashWindow(isFirstRun) {
     alwaysOnTop: true,
     webPreferences: {
       nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 
-  // Pass the flag to the HTML file
   const splashPath = path.join(__dirname, "../public/splash.html");
   splashWindow.loadURL(`file://${splashPath}?firstRun=${isFirstRun}`);
 }
@@ -181,9 +131,10 @@ app.whenReady().then(async () => {
   const fs = require("fs-extra");
   const userDataPath = app.getPath("userData");
   const isDev = !app.isPackaged;
+  const checkDir = isDev ? process.cwd() : userDataPath;
 
   const pdflatexPath = path.join(
-    userDataPath,
+    checkDir,
     "resources",
     "TinyTex",
     platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
@@ -193,14 +144,13 @@ app.whenReady().then(async () => {
   );
 
   const isFirstRun = !require("fs").existsSync(pdflatexPath);
+  createSplashWindow(isFirstRun);
 
   // 1. ALWAYS ensure essential folders exist in userDataPath (Dev & Prod)
   const unpackedPath = isDev
     ? process.cwd()
     : path.join(process.resourcesPath, "app.asar.unpacked");
   const asarFolders = ["projects", "templates", "settings"];
-
-  createSplashWindow(isFirstRun);
 
   for (const folder of asarFolders) {
     const dest = path.join(userDataPath, folder);
@@ -211,9 +161,15 @@ app.whenReady().then(async () => {
   }
 
   // 2. ONLY run the heavy LaTeX setup if packaged (or if you want to test it in Dev)
-  if (!isDev) {
-    await setupTinyTex(userDataPath);
-  }
+  // if (!isDev) {
+  //   await setupTinyTex(userDataPath);
+  // }
+
+  await runSetupTinyTex(userDataPath, (msg) => {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.webContents.send("setup-progress", msg);
+    }
+  });
   startBackend();
   createWindow();
 

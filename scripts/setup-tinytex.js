@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import fs from "fs-extra";
@@ -9,7 +9,7 @@ import admZip from "adm-zip";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function setupTinyTex(userDataPath) {
+export async function setupTinyTex(userDataPath, onProgress = () => {}) {
   const isDev = !process.env.userDataPath;
   const platform = process.platform;
   const baseDir = isDev ? process.cwd() : userDataPath;
@@ -44,6 +44,7 @@ async function setupTinyTex(userDataPath) {
 
     const url = urls[platform];
     console.log(`Downloading TinyTeX-0 for ${platform}...`);
+    onProgress(`Downloading TinyTeX-0...`);
 
     const response = await axios({ url, responseType: "stream" });
     const tempFile = path.join(__dirname, `tinytex_temp${path.extname(url)}`);
@@ -54,6 +55,7 @@ async function setupTinyTex(userDataPath) {
 
     fs.ensureDirSync(destDir);
     console.log("Extracting...");
+    onProgress("Extracting TinyTeX...");
     if (platform === "win32") {
       const zip = new admZip(tempFile);
       zip.extractAllTo(destDir, true);
@@ -79,7 +81,6 @@ async function setupTinyTex(userDataPath) {
     "xcolor",
     "graphics",
     "tools",
-    "amssymb",
     "etoolbox",
     "hyperref",
     "microtype",
@@ -87,7 +88,7 @@ async function setupTinyTex(userDataPath) {
     "enumitem",
     "setspace",
     "titlesec",
-    "tikz",
+    "pgf",
     "float",
     "caption",
     "booktabs",
@@ -104,39 +105,60 @@ async function setupTinyTex(userDataPath) {
     "biber",
     "parskip",
     "mathtools",
-    "bm",
     "physics",
     "mhchem",
     "babel",
     "fontspec",
-    "lmodern",
-    "tabularx",
+    "lm",
     "multirow",
-    "array",
     "tocloft",
-    "multicol",
     "pdflscape",
     "pgfplots",
     "pdfpages",
     "fancyvrb",
     "csquotes",
     "latexmk",
+    "algorithms",
+    "cite",
   ];
+
+  const runCommand = (cmd, args) => {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(cmd, args);
+      proc.stdout.on("data", (data) => {
+        const txt = data.toString();
+        const match =
+          txt.match(/install:\s+([a-zA-Z0-9_-]+)/i) ||
+          txt.match(/installing\s+([a-zA-Z0-9_-]+)/i);
+        if (match) {
+          onProgress(`Installing ${match[1]}...`);
+        }
+      });
+      proc.stderr.on("data", (data) => console.error(data.toString()));
+      proc.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`Command failed with exit code ${code}`));
+      });
+    });
+  };
 
   try {
     console.log("Checking for tlmgr updates...");
-    execSync(`"${tlmgrPath}" update --self`);
+    onProgress("Checking for updates...");
+    await runCommand(tlmgrPath, ["update", "--self"]);
   } catch (error) {
     console.log("tlmgr is already up to date or update skipped.");
   }
 
   try {
     console.log("Installing essential LaTeX packages...");
-    execSync(`"${tlmgrPath}" install ${essentials.join(" ")}`);
+    onProgress("Preparing to install packages...");
+    await runCommand(tlmgrPath, ["install", ...essentials]);
   } catch (error) {
-    console.log("There was an error when installing LaTeX packages");
+    console.log("There was an error when installing LaTeX packages", error);
   }
   console.log("✅ TinyTex Setup Complete!");
+  onProgress("✅ Setup Complete!");
 }
 
-setupTinyTex().catch(console.error);
+// setupTinyTex().catch(console.error);

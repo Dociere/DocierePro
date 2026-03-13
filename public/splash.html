@@ -138,6 +138,12 @@
           tagline.innerText = "Setting up LaTeX...";
           subtext.innerText =
             "Installing required packages (may take a minute)";
+
+          if (window.electronAPI && window.electronAPI.onSetupProgress) {
+            window.electronAPI.onSetupProgress((msg) => {
+              subtext.innerText = msg;
+            });
+          }
         } else {
           tagline.innerText = "Opening your workspace";
           subtext.innerText = "Loading project environment";
