@@ -12,4 +12,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("window-is-maximized", () => callback()),
   onUnmaximize: (callback) =>
     ipcRenderer.on("window-is-unmaximized", () => callback()),
+  onSetupProgress: (callback) =>
+    ipcRenderer.on("setup-progress", (event, msg) => callback(msg)),
 });
