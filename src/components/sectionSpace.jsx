@@ -74,7 +74,7 @@ const Toast = ({ message, isVisible }) => {
   );
 };
 
-const SectionSpace = () => {
+const SectionSpace = ({ width = 256, onDragStart }) => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const { currentProject, activeFile, compilationStatus, compilationMessage } =
     projectDetails;
@@ -657,12 +657,22 @@ const SectionSpace = () => {
 
   return (
     <div
-      className={`fixed top-7 left-10 h-[calc(100vh-2.75rem)] w-64 border-r transition-colors duration-300 z-30 ${
+      className={`fixed top-7 left-10 h-[calc(100vh-2.75rem)] border-r transition-colors duration-300 z-30 ${
         isDark
           ? "bg-[#252525] border-[#404040] text-[#e5e5e5]"
           : "bg-[#F9F9F9] border-[#CFCFCF] text-[#585858]"
       }`}
+      style={{ width: width }}
     >
+      {/* Resize drag handle on right edge */}
+      {onDragStart && (
+        <div
+          onMouseDown={onDragStart}
+          className="absolute top-0 -right-2 w-4 h-full cursor-col-resize z-[100] group flex justify-center"
+        >
+          <div className="w-1 h-full group-hover:bg-blue-400 group-hover:opacity-40 transition-opacity" />
+        </div>
+      )}
       <div className="flex flex-col h-full">
         {/* Header */}
         <div

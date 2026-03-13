@@ -94,13 +94,47 @@ const PdfViewer = ({
     link.click();
   };
 
+  const viewerRef = useRef(null);
+  const scrollStep = 100;
+
+  const scrollLeft = () => {
+    if (viewerRef.current) {
+      viewerRef.current.scrollBy({ left: -scrollStep, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (viewerRef.current) {
+      viewerRef.current.scrollBy({ left: scrollStep, behavior: "smooth" });
+    }
+  };
+
   useEffect(() => {
     const page = pageRefs.current[pageNumber - 1];
     page?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [pageNumber]);
 
+  // Reset Zoom: listen for custom event from menu
+  useEffect(() => {
+    const handleReset = () => setScale(1);
+    window.addEventListener("resetPdfZoom", handleReset);
+    return () => window.removeEventListener("resetPdfZoom", handleReset);
+  }, []);
+
+  // Zoom In / Zoom Out: listen for custom events from menu
+  useEffect(() => {
+    const handleZoomIn = () => setScale((prev) => Math.min(3, parseFloat((prev + 0.1).toFixed(2))));
+    const handleZoomOut = () => setScale((prev) => Math.max(0.5, parseFloat((prev - 0.1).toFixed(2))));
+    window.addEventListener("pdfZoomIn", handleZoomIn);
+    window.addEventListener("pdfZoomOut", handleZoomOut);
+    return () => {
+      window.removeEventListener("pdfZoomIn", handleZoomIn);
+      window.removeEventListener("pdfZoomOut", handleZoomOut);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* Toolbar - Compile button always visible, rest only when PDF exists */}
       <div
         className="flex items-center justify-between px-4 py-1 border-b font-poppins h-8"
@@ -253,7 +287,8 @@ const PdfViewer = ({
       </div>
       {/* PDF Viewer */}
       <div
-        className="flex-1 overflow-auto pb-4"
+        ref={viewerRef}
+        className="flex-1 pb-4"
         style={{
           overflowX: "auto",
           overflowY: "auto",
@@ -263,7 +298,16 @@ const PdfViewer = ({
         }}
       >
         {pdfUrl ? (
-          <div className="flex flex-col items-center gap-4 min-w-min">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              minWidth: "max-content",
+              minHeight: "100%",
+              padding: "20px",
+            }}
+          >
             <Document
               file={pdfUrl}
               onLoadSuccess={onDocumentLoadSuccess}
@@ -278,13 +322,14 @@ const PdfViewer = ({
                   ref={(el) => (pageRefs.current[index] = el)}
                   onClick={(e) => handlePageClick(e, index)}
                   className="cursor-text"
+                  style={{ display: "inline-block", marginBottom: "16px" }}
                 >
                   <Page
                     pageNumber={index + 1}
                     scale={scale}
                     renderTextLayer
                     renderAnnotationLayer
-                    className="shadow-lg mb-4 border-2 border-gray-200 rounded-xl overflow-hidden"
+                    className="shadow-lg border-2 border-gray-200 rounded-xl overflow-hidden"
                   />
                 </div>
               ))}
@@ -296,6 +341,42 @@ const PdfViewer = ({
           </div>
         )}
       </div>
+
+      {/* Horizontal Scroll Arrows */}
+      {pdfUrl && (
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-4 z-10">
+          <button
+            onClick={scrollLeft}
+            className="w-8 h-8 flex items-center justify-center rounded-full shadow-lg border bg-white hover:bg-gray-100 transition-all text-lg font-black"
+            style={{
+              borderColor:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .border,
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text1,
+            }}
+            title="Scroll Left"
+          >
+            &larr;
+          </button>
+          <button
+            onClick={scrollRight}
+            className="w-8 h-8 flex items-center justify-center rounded-full shadow-lg border bg-white hover:bg-gray-100 transition-all text-lg font-black"
+            style={{
+              borderColor:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .border,
+              color:
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .text1,
+            }}
+            title="Scroll Right"
+          >
+            &rarr;
+          </button>
+        </div>
+      )}
     </div>
   );
 };

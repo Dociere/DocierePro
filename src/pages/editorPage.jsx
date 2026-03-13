@@ -44,7 +44,7 @@ import axios from "axios";
 
 const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
-  const { isSectionSpaceOpen, isAIChatOpen, setIsAIChatOpen } =
+  const { isSectionSpaceOpen, isAIChatOpen, setIsAIChatOpen, isDistractionFree, sectionSpaceWidth = 256 } =
     useOutletContext();
   const [searchParams] = useSearchParams();
   const [remoteProject, setRemoteProject] = useState(null);
@@ -53,6 +53,47 @@ const EditorPage = () => {
   const { user, isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
   const [isLoading, setIsLoading] = useState(false);
+  const [isPdfFullscreen, setIsPdfFullscreen] = useState(false);
+  const [splitPos, setSplitPos] = useState(50); // percentage for left panel
+  const isDragging = useRef(false);
+  const containerRef = useRef(null);
+
+  const handleDragStart = (e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const onMouseMove = (moveEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newPos = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+      setSplitPos(Math.min(80, Math.max(20, newPos)));
+    };
+
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  // Ctrl+P: Toggle PDF Preview fullscreen
+  useEffect(() => {
+    const handleKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+        e.preventDefault();
+        setIsPdfFullscreen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);
@@ -858,19 +899,31 @@ const EditorPage = () => {
     );
   }
 
+  // Sidebar is 40px wide (w-10). Section space is dynamic.
+  const leftOffset = isDistractionFree
+    ? 0
+    : isSectionSpaceOpen
+    ? 40 + sectionSpaceWidth
+    : 40;
+
   return (
     <div
-      className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-7 ${
-        isSectionSpaceOpen ? "ml-64" : "ml-0"
-      }`}
+      ref={containerRef}
+      className={`flex flex-row h-screen overflow-hidden fixed inset-0 pt-7`}
       style={{
+        marginLeft: isDistractionFree ? 0 : leftOffset,
+        paddingTop: isDistractionFree ? 0 : undefined,
         background:
           settings.appearance.customThemes[settings.appearance.theme].primary,
       }}
     >
       <LeaveSession projectId={projectDetails.currentProject?.id} />
-      {/* Left side of the screen */}
-      <div className="flex-1 flex flex-shrink min-w-[40vw] flex-col border-r overflow-hidden ml-10 pb-[3.2vh]">
+      {/* Left side of the screen — hidden when PDF is fullscreen */}
+      {!isPdfFullscreen && (
+        <div
+          className="flex flex-col border-r overflow-hidden pb-[3.2vh] flex-shrink-0"
+          style={{ width: `${splitPos}%` }}
+        >
         <div
           className="flex justify-between border-b border-[#CFCFCF] flex-shrink-0 sticky top-0 z-10 items-center h-8"
           style={{
@@ -1132,17 +1185,32 @@ const EditorPage = () => {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Drag Divider — hidden when PDF is fullscreen */}
+      {!isPdfFullscreen && (
+      <div
+        onMouseDown={handleDragStart}
+        className="w-1 flex-shrink-0 cursor-col-resize relative group z-20"
+        style={{ background: settings.appearance.customThemes[settings.appearance.theme].border }}
+      >
+        {/* Visible handle indicator on hover */}
+        <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-400 group-hover:opacity-30 transition-opacity" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-0.5 h-6 bg-blue-500 rounded-full" />
+        </div>
+      </div>
+      )}
 
       {/* Right side of the screen */}
       <div
-        className="flex-1 -ml-[1px] flex flex-shrink min-w-[40vw] flex-col border-r overflow-hidden"
+        className="flex flex-col overflow-hidden"
         style={{
-          borderColor:
-            settings.appearance.customThemes[settings.appearance.theme].border,
+          flex: isPdfFullscreen ? "1 1 auto" : "1 1 0%",
         }}
       >
         {activeRightView === "preview" && (
-          <div className="flex-1 overflow-hidden relative">
+          <div className="flex-1 overflow-auto relative">
             <PdfViewer
               pdfUrl={projectDetails.pdfUrl}
               pdfFileName={projectDetails.pdfFileName}

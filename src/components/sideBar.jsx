@@ -483,7 +483,6 @@ const DynamicSideBar = ({
         <VersionManager onClose={() => setIsVersionModalOpen(false)} />
       )}
 
-      {isSectionSpaceOpen && <SectionSpace />}
 
       {/* Auth Modal for Share */}
       {showAuthModal && (

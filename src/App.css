@@ -129,6 +129,7 @@
 /* Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -387,4 +388,22 @@
 
 .animate-slide {
   animation: slide 1.2s infinite ease-in-out;
+}
+
+/* =========================================
+   Enhanced Cursor Visibility
+   ========================================= */
+
+/* Monaco Editor Caret (Insertion Point) */
+.monaco-editor .cursor {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+/* Mouse I-Beam Cursor (Selection) */
+/* Custom SVG cursor that has both black and white elements to be visible on any background */
+.textLayer, 
+.monaco-editor .contentWidgets,
+.monaco-editor .view-lines,
+.ql-editor {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="20" viewBox="0 0 12 20"><path d="M6 2v16M3 2h6M3 18h6" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M6 2v16M3 2h6M3 18h6" stroke="black" stroke-width="1" stroke-linecap="round" fill="none"/></svg>') 6 10, text !important;
 }

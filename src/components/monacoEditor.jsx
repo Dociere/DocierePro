@@ -430,6 +430,8 @@ const MonacoEditorPanel = ({
             folding: true,
             brackets: "always",
             glyphMargin: true,
+            cursorWidth: 3,
+            cursorSmoothCaretAnimation: "on",
             readOnly: readOnly,
           }}
         />
