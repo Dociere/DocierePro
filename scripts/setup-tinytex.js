@@ -47,7 +47,11 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
     onProgress(`Downloading TinyTeX-0...`);
 
     const response = await axios({ url, responseType: "stream" });
-    const tempFile = path.join(__dirname, `tinytex_temp${path.extname(url)}`);
+    // const tempFile = path.join(__dirname, `tinytex_temp${path.extname(url)}`);
+    const tempFile = path.join(
+      userDataPath,
+      `tinytex_temp${path.extname(url)}`,
+    );
     const writer = fs.createWriteStream(tempFile);
     response.data.pipe(writer);
 

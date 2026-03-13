@@ -8,7 +8,7 @@ const SearchBar = ({ data }) => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  const searchData = data.map((item) => ({
+  const searchData = data?.map((item) => ({
     name: item.title,
     path: `/canvas?project=${item.id}`,
   }));
@@ -127,7 +127,7 @@ const SearchBar = ({ data }) => {
 
       {isActive && filteredResults.length > 0 && (
         <div className="absolute z-20 mt-2 w-full bg-white border rounded-sm shadow-lg max-h-60 overflow-y-auto">
-          {filteredResults.map((result, index) => (
+          {filteredResults?.map((result, index) => (
             <div
               key={index}
               onMouseDown={() => handleResultClick(result.path)} // Use onMouseDown to handle click before blur

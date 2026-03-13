@@ -136,7 +136,7 @@ const StartingPage = () => {
               </h2>
               <SearchBar data={projectData} />
               <div className="flex flex-row mt-10 gap-8 flex-wrap">
-                {(projectData || []).map((project) => (
+                {(projectData || [])?.map((project) => (
                   <Link key={project.id} to={`/canvas?project=${project.id}`}>
                     <TemplateCards title={project.title} />
                   </Link>

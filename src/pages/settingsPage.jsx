@@ -55,7 +55,7 @@ const SettingsPage = () => {
     const currentConfigs = settings.app?.aiConfigs || [];
     const updatedConfigs = [
       ...currentConfigs,
-      { ...newConfig, id: configId, active: currentConfigs.length === 0 }
+      { ...newConfig, id: configId, active: currentConfigs.length === 0 },
     ];
     handleSettingChange("app", "aiConfigs", updatedConfigs);
     setIsAddingConfig(false);
@@ -71,9 +71,12 @@ const SettingsPage = () => {
 
   const handleDeleteConfig = (id) => {
     const currentConfigs = settings.app?.aiConfigs || [];
-    const updatedConfigs = currentConfigs.filter(c => c.id !== id);
+    const updatedConfigs = currentConfigs.filter((c) => c.id !== id);
     // If we deleted the active one, pick the first one remaining as active
-    if (updatedConfigs.length > 0 && currentConfigs.find(c => c.id === id)?.active) {
+    if (
+      updatedConfigs.length > 0 &&
+      currentConfigs.find((c) => c.id === id)?.active
+    ) {
       updatedConfigs[0].active = true;
     }
     handleSettingChange("app", "aiConfigs", updatedConfigs);
@@ -81,9 +84,9 @@ const SettingsPage = () => {
 
   const handleToggleActive = (id) => {
     const currentConfigs = settings.app?.aiConfigs || [];
-    const updatedConfigs = currentConfigs.map(c => ({
+    const updatedConfigs = currentConfigs?.map((c) => ({
       ...c,
-      active: c.id === id
+      active: c.id === id,
     }));
     handleSettingChange("app", "aiConfigs", updatedConfigs);
   };
@@ -139,7 +142,7 @@ const SettingsPage = () => {
           <div
             className={`flex gap-2 border-b mb-6 ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}
           >
-            {tabs.map((tab) => (
+            {tabs?.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -269,10 +272,12 @@ const SettingsPage = () => {
             {activeTab === "configuration" && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
-                  <h2 className={`text-2xl font-playfair font-semibold ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                  <h2
+                    className={`text-2xl font-playfair font-semibold ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                  >
                     Configurations
                   </h2>
-                  <button 
+                  <button
                     onClick={() => setIsAddingConfig(true)}
                     className="px-4 py-2 bg-[#AB2D2D] text-white rounded-md font-inter text-sm hover:bg-[#8a2424] transition-colors flex items-center gap-2"
                   >
@@ -282,36 +287,52 @@ const SettingsPage = () => {
 
                 {/* Config Form Modal-like inline section */}
                 {isAddingConfig && (
-                  <div className={`p-6 rounded-lg border-2 border-dashed ${isDark ? "bg-[#1a1a1a] border-[#404040]" : "bg-[#f9f9f9] border-[#CFCFCF]"}`}>
-                    <h3 className={`text-lg font-inter font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                  <div
+                    className={`p-6 rounded-lg border-2 border-dashed ${isDark ? "bg-[#1a1a1a] border-[#404040]" : "bg-[#f9f9f9] border-[#CFCFCF]"}`}
+                  >
+                    <h3
+                      className={`text-lg font-inter font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                    >
                       New AI Configuration
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                        <label
+                          className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                        >
                           Config Name
                         </label>
-                        <input 
+                        <input
                           type="text"
                           value={newConfig.name}
-                          onChange={(e) => setNewConfig({...newConfig, name: e.target.value})}
+                          onChange={(e) =>
+                            setNewConfig({ ...newConfig, name: e.target.value })
+                          }
                           placeholder="e.g. My Gemini Pro"
                           className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                        <label
+                          className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                        >
                           AI Provider
                         </label>
-                        <select 
+                        <select
                           value={newConfig.provider}
                           onChange={(e) => {
                             const provider = e.target.value;
                             setNewConfig({
-                              ...newConfig, 
+                              ...newConfig,
                               provider,
-                              model: provider === "gemini" ? "gemini-2.0-flash" : "qwen2.5-coder:7b",
-                              url: provider === "ollama" ? "http://localhost:11434/api/generate" : ""
+                              model:
+                                provider === "gemini"
+                                  ? "gemini-2.0-flash"
+                                  : "qwen2.5-coder:7b",
+                              url:
+                                provider === "ollama"
+                                  ? "http://localhost:11434/api/generate"
+                                  : "",
                             });
                           }}
                           className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
@@ -321,33 +342,51 @@ const SettingsPage = () => {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                        <label
+                          className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                        >
                           Model Name
                         </label>
-                        <input 
+                        <input
                           type="text"
                           value={newConfig.model}
-                          onChange={(e) => setNewConfig({...newConfig, model: e.target.value})}
-                          placeholder={newConfig.provider === "gemini" ? "gemini-2.0-flash" : "qwen2.5-coder:7b"}
+                          onChange={(e) =>
+                            setNewConfig({
+                              ...newConfig,
+                              model: e.target.value,
+                            })
+                          }
+                          placeholder={
+                            newConfig.provider === "gemini"
+                              ? "gemini-2.0-flash"
+                              : "qwen2.5-coder:7b"
+                          }
                           className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
                         />
                       </div>
-                      
+
                       {newConfig.provider === "gemini" ? (
                         <div className="space-y-2">
-                          <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                          <label
+                            className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                          >
                             API Token
                           </label>
                           <div className="relative">
-                            <input 
+                            <input
                               type={showToken ? "text" : "password"}
                               value={newConfig.apiKey}
-                              onChange={(e) => setNewConfig({...newConfig, apiKey: e.target.value})}
+                              onChange={(e) =>
+                                setNewConfig({
+                                  ...newConfig,
+                                  apiKey: e.target.value,
+                                })
+                              }
                               placeholder="Enter Gemini API Key"
                               className={`w-full px-4 py-2 pr-16 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
                             />
                             {isAuthenticated && (
-                              <button 
+                              <button
                                 onClick={() => setShowToken(!showToken)}
                                 className={`absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-[10px] font-bold uppercase ${isDark ? "text-[#a0a0a0] hover:text-[#e5e5e5]" : "text-[#7D7D7D] hover:text-[#212121]"}`}
                               >
@@ -358,13 +397,20 @@ const SettingsPage = () => {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <label className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
+                          <label
+                            className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                          >
                             Ollama URL
                           </label>
-                          <input 
+                          <input
                             type="text"
                             value={newConfig.url}
-                            onChange={(e) => setNewConfig({...newConfig, url: e.target.value})}
+                            onChange={(e) =>
+                              setNewConfig({
+                                ...newConfig,
+                                url: e.target.value,
+                              })
+                            }
                             placeholder="http://localhost:11434/api/generate"
                             className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
                           />
@@ -372,14 +418,14 @@ const SettingsPage = () => {
                       )}
                     </div>
                     <div className="flex gap-3 mt-6">
-                      <button 
+                      <button
                         onClick={handleAddConfig}
                         disabled={!newConfig.name}
                         className={`px-6 py-2 bg-green-600 text-white rounded-md font-inter text-sm hover:bg-green-700 transition-colors disabled:opacity-50`}
                       >
                         Save Configuration
                       </button>
-                      <button 
+                      <button
                         onClick={() => setIsAddingConfig(false)}
                         className={`px-6 py-2 border rounded-md font-inter text-sm ${isDark ? "border-[#404040] text-[#a0a0a0] hover:bg-[#2d2d2d]" : "border-[#CFCFCF] text-[#7D7D7D] hover:bg-[#f3f4f6]"}`}
                       >
@@ -392,37 +438,52 @@ const SettingsPage = () => {
                 {/* Config List */}
                 <div className="space-y-4">
                   {(settings.app?.aiConfigs || []).length === 0 ? (
-                    <div className={`p-12 text-center border-2 border-dashed rounded-lg ${isDark ? "border-[#404040] text-[#a0a0a0]" : "border-[#CFCFCF] text-[#7D7D7D]"}`}>
-                      <p className="text-sm">No AI configurations found. Add one to get started!</p>
+                    <div
+                      className={`p-12 text-center border-2 border-dashed rounded-lg ${isDark ? "border-[#404040] text-[#a0a0a0]" : "border-[#CFCFCF] text-[#7D7D7D]"}`}
+                    >
+                      <p className="text-sm">
+                        No AI configurations found. Add one to get started!
+                      </p>
                     </div>
                   ) : (
-                    settings.app.aiConfigs.map((config) => (
-                      <div 
+                    settings.app.aiConfigs?.map((config) => (
+                      <div
                         key={config.id}
                         className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${config.active ? "border-[#AB2D2D] bg-[#AB2D2D]/5" : isDark ? "border-[#404040] bg-[#1a1a1a]" : "border-[#CFCFCF] bg-white"}`}
                       >
-                        <input 
+                        <input
                           type="radio"
                           checked={config.active}
                           onChange={() => handleToggleActive(config.id)}
                           className="w-5 h-5 accent-[#AB2D2D] cursor-pointer"
                         />
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-sm font-bold truncate ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                            <span
+                              className={`text-sm font-bold truncate ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                            >
                               {config.name}
                             </span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${config.provider === 'gemini' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                              {config.provider === 'gemini' ? 'Google Gemini' : 'Ollama'}
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${config.provider === "gemini" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}
+                            >
+                              {config.provider === "gemini"
+                                ? "Google Gemini"
+                                : "Ollama"}
                             </span>
                           </div>
-                          <div className={`text-xs font-mono truncate ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}>
-                            {config.model} | {config.provider === 'gemini' ? '********' : config.url}
+                          <div
+                            className={`text-xs font-mono truncate ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                          >
+                            {config.model} |{" "}
+                            {config.provider === "gemini"
+                              ? "********"
+                              : config.url}
                           </div>
                         </div>
 
-                        <button 
+                        <button
                           onClick={() => handleDeleteConfig(config.id)}
                           className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-[#333] text-[#a0a0a0]" : "hover:bg-red-50 text-[#7D7D7D] hover:text-red-600"}`}
                           title="Delete Configuration"
@@ -435,18 +496,20 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Separator */}
-                <div className={`border-t pt-6 ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}>
+                <div
+                  className={`border-t pt-6 ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}
+                >
                   {/* Hosting Method */}
                   <div className="space-y-2">
-                  <label
-                    className={`block text-sm font-inter font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
-                  >
-                    Hosting Method
+                    <label
+                      className={`block text-sm font-inter font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                    >
+                      Hosting Method
                     </label>
-                  <p
-                    className={`text-xs mb-2 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
-                  >
-                    Choose how you want to host your documents
+                    <p
+                      className={`text-xs mb-2 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                    >
+                      Choose how you want to host your documents
                     </p>
                     <div className="space-y-3">
                       <label className="flex items-center space-x-3 cursor-pointer">
@@ -458,7 +521,9 @@ const SettingsPage = () => {
                           defaultChecked
                         />
                         <div>
-                          <span className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                          <span
+                            className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                          >
                             Local Machine (Self-hosted)
                           </span>
                         </div>
@@ -472,7 +537,9 @@ const SettingsPage = () => {
                           defaultChecked
                         />
                         <div>
-                          <span className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}>
+                          <span
+                            className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                          >
                             Remote Machine (Cloud-based Hosting)
                           </span>
                         </div>

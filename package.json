@@ -28,11 +28,14 @@
       "node_modules/**/*",
       "projects/*",
       "templates/*",
-      "settings/*"
+      "settings/*",
+      "package.json"
     ],
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "scripts/**/*",
+      "public/**/*",
       "node_modules/**/*",
       "package.json"
     ],
