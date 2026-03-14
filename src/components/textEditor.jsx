@@ -102,7 +102,7 @@ const RichTextEditorPanel = ({
     }
   };
 
-  // Clear highlight when user types
+  // Clear highlight and handle changes
   const handleChange = (content, delta, source, editor) => {
     // Only process user-initiated changes, not our formatting changes
     if (source === "user") {
@@ -115,6 +115,21 @@ const RichTextEditorPanel = ({
       onChange(content);
     }
   };
+
+  // Clear undo history on first non-empty content load to prevent Ctrl+Z wiping
+  const initialValueLoaded = useRef(false);
+  useEffect(() => {
+    if (!initialValueLoaded.current && value && quillRef.current) {
+      setTimeout(() => {
+        if (quillRef.current) {
+          const editor = quillRef.current.getEditor();
+          editor.getModule("history").clear();
+          initialValueLoaded.current = true;
+          console.log("📜 Quill history cleared after initial load");
+        }
+      }, 500); // Small delay to ensure Quill processed the initial value prop
+    }
+  }, [value]);
 
   const docStyles = `
     .ql-editor {

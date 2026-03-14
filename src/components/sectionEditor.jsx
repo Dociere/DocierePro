@@ -30,7 +30,12 @@ const SECTION_QUILL_MODULES = {
         const text = prompt("Enter footnote text:");
         if (text) {
           const cursorPosition = this.quill.getSelection()?.index || 0;
-          this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "footnote", value: text }, "user");
+          this.quill.insertEmbed(
+            cursorPosition,
+            "latex-inline",
+            { type: "footnote", value: text },
+            "user",
+          );
           this.quill.setSelection(cursorPosition + 1);
         }
       },
@@ -38,7 +43,12 @@ const SECTION_QUILL_MODULES = {
         const text = prompt("Enter citation key (e.g. Smith2024):");
         if (text) {
           const cursorPosition = this.quill.getSelection()?.index || 0;
-          this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "citation", value: text }, "user");
+          this.quill.insertEmbed(
+            cursorPosition,
+            "latex-inline",
+            { type: "citation", value: text },
+            "user",
+          );
           this.quill.setSelection(cursorPosition + 1);
         }
       },
@@ -46,7 +56,12 @@ const SECTION_QUILL_MODULES = {
         const text = prompt("Enter reference label (e.g. fig:1):");
         if (text) {
           const cursorPosition = this.quill.getSelection()?.index || 0;
-          this.quill.insertEmbed(cursorPosition, "latex-inline", { type: "ref", value: text }, "user");
+          this.quill.insertEmbed(
+            cursorPosition,
+            "latex-inline",
+            { type: "ref", value: text },
+            "user",
+          );
           this.quill.setSelection(cursorPosition + 1);
         }
       },
@@ -63,8 +78,12 @@ const SECTION_QUILL_MODULES = {
         document.dispatchEvent(new CustomEvent("trigger-insert-image"));
       },
       formula: function () {
-        document.dispatchEvent(new CustomEvent("trigger-insert-math", { detail: { quill: this.quill } }));
-      }
+        document.dispatchEvent(
+          new CustomEvent("trigger-insert-math", {
+            detail: { quill: this.quill },
+          }),
+        );
+      },
     },
   },
   clipboard: {
@@ -326,26 +345,26 @@ const SectionEditor = ({
       console.warn("⚠️ SyncTeX: No sections available");
       return;
     }
-    
+
     // Build a flat list of all sections with their line ranges
     // This is more accurate than cumulative counting during recursion
-    
+
     const preambleLines = (preamble || "").split("\n").length;
     let currentLine = preambleLines;
-    
+
     // Flatten all sections and calculate their line ranges
     const flattenSections = (sectionList, result = []) => {
       for (const sec of sectionList) {
         // Skip preamble/postamble
         if (sec.type === "preamble" || sec.type === "postamble") continue;
-        
+
         // Calculate header/wrapper lines based on section type
         // - Environments (abstract, IEEEkeywords, etc.) have \begin{...} AND \end{...} = 2 lines
         // - Regular sections (\section{...}) = 1 line
         // - Also account for blank line before each section
         let wrapperLines = 1; // Default for \section{...}
         let blankLinesBefore = 1; // Usually 1 blank line before sections
-        
+
         if (sec.subtype === "env") {
           // \begin{env} + \end{env} = 2 lines
           wrapperLines = 2;
@@ -353,12 +372,13 @@ const SectionEditor = ({
           // Tables have more complex structure
           wrapperLines = 2;
         }
-        
+
         const contentLines = (sec.content || "").split("\n").length;
-        
+
         const startLine = currentLine + blankLinesBefore;
-        const endLine = currentLine + blankLinesBefore + wrapperLines + contentLines;
-        
+        const endLine =
+          currentLine + blankLinesBefore + wrapperLines + contentLines;
+
         result.push({
           id: sec.id,
           name: sec.name,
@@ -367,9 +387,9 @@ const SectionEditor = ({
           startLine,
           endLine,
         });
-        
+
         currentLine = endLine;
-        
+
         // Process children BEFORE moving to next sibling
         // (children appear in the LaTeX right after their parent content)
         if (sec.children && sec.children.length > 0) {
@@ -378,36 +398,46 @@ const SectionEditor = ({
       }
       return result;
     };
-    
+
     const allSections = flattenSections(sections);
-    
+
     console.log(`🔎 SyncTeX: Looking for line ${globalLineNumber}`);
-    console.log(`📊 Section line ranges:`, allSections.map(s => 
-      `${s.name || s.type}: ${s.startLine}-${s.endLine}`
-    ));
-    
+    console.log(
+      `📊 Section line ranges:`,
+      allSections.map(
+        (s) => `${s.name || s.type}: ${s.startLine}-${s.endLine}`,
+      ),
+    );
+
     // Find the section that contains this line
     const matchedSection = allSections.find(
-      sec => globalLineNumber >= sec.startLine && globalLineNumber <= sec.endLine
+      (sec) =>
+        globalLineNumber >= sec.startLine && globalLineNumber <= sec.endLine,
     );
-    
+
     if (matchedSection) {
       console.log(
         `📍 SyncTeX: Found section "${matchedSection.name}" (lines ${matchedSection.startLine}-${matchedSection.endLine})`,
       );
-      setSyncHighlight({ sectionId: matchedSection.id, line: globalLineNumber });
+      setSyncHighlight({
+        sectionId: matchedSection.id,
+        line: globalLineNumber,
+      });
       setFocusedSectionId(matchedSection.id);
     } else {
       // If no exact match, find the closest section before the line
       const closestSection = allSections
-        .filter(sec => sec.startLine <= globalLineNumber)
+        .filter((sec) => sec.startLine <= globalLineNumber)
         .pop();
-        
+
       if (closestSection) {
         console.log(
           `📍 SyncTeX: Closest section "${closestSection.name}" (line ${globalLineNumber} is after line ${closestSection.endLine})`,
         );
-        setSyncHighlight({ sectionId: closestSection.id, line: globalLineNumber });
+        setSyncHighlight({
+          sectionId: closestSection.id,
+          line: globalLineNumber,
+        });
         setFocusedSectionId(closestSection.id);
       } else {
         console.warn("⚠️ SyncTeX: Could not map line to a specific section");
@@ -418,7 +448,7 @@ const SectionEditor = ({
   useEffect(() => {
     if (globalHighlightLine && sections && sections.length > 0) {
       handlePdfLineJump(globalHighlightLine); // Internal logic to map line -> section
-      
+
       // Clear the global highlight line so it doesn't re-trigger when sections update
       // creating a "sticky" highlight effect
       if (onHighlightClear) {
@@ -594,6 +624,7 @@ const RecursiveSection = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [isVisualMode, setIsVisualMode] = useState(false);
   const [richTextValue, setRichTextValue] = useState("");
+  const updateTimeoutRef = useRef(null);
 
   const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -628,18 +659,24 @@ const RecursiveSection = ({
   const [editingTableData, setEditingTableData] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [editingImageData, setEditingImageData] = useState(null);
-  
-  const sanitizedId = useMemo(() => String(section.id).replace(/\./g, '-'), [section.id]);
 
-  const sectionQuillModules = useMemo(() => ({
-    toolbar: {
-      container: `#richtext-toolbar-${sanitizedId}`,
-      handlers: getRichTextHandlers()
-    },
-    clipboard: {
-      matchVisual: false
-    }
-  }), [sanitizedId]);
+  const sanitizedId = useMemo(
+    () => String(section.id).replace(/\./g, "-"),
+    [section.id],
+  );
+
+  const sectionQuillModules = useMemo(
+    () => ({
+      toolbar: {
+        container: `#richtext-toolbar-${sanitizedId}`,
+        handlers: getRichTextHandlers(),
+      },
+      clipboard: {
+        matchVisual: false,
+      },
+    }),
+    [sanitizedId],
+  );
 
   // Ref for Monaco editor to insert at cursor
   const monacoRef = useRef(null);
@@ -654,8 +691,13 @@ const RecursiveSection = ({
     if (isHighlightedSection) {
       // Scroll section into view when highlighted by SyncTeX
       if (sectionRef.current) {
-        sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log(`📍 SyncTeX: Scrolling to section "${section.name || 'Untitled'}"`);
+        sectionRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        console.log(
+          `📍 SyncTeX: Scrolling to section "${section.name || "Untitled"}"`,
+        );
       }
     }
   }, [isHighlightedSection]);
@@ -852,10 +894,12 @@ const RecursiveSection = ({
   const cardBorder = isFocused ? "border-gray-400" : "border-gray-200";
 
   // Visual feedback for SyncTeX highlight
-  const highlightBorder = isHighlightedSection ? 'ring-2 ring-yellow-400 ring-offset-2' : '';
+  const highlightBorder = isHighlightedSection
+    ? "ring-2 ring-yellow-400 ring-offset-2"
+    : "";
 
   return (
-    <div 
+    <div
       ref={sectionRef}
       id={`section-${section.id}`}
       className={`relative mb-4 transition-all duration-200 ${highlightBorder}`}
@@ -976,7 +1020,9 @@ const RecursiveSection = ({
                   </label>
                   <input
                     value={section.name}
-                    onChange={(e) => onUpdate({ ...section, name: e.target.value })}
+                    onChange={(e) =>
+                      onUpdate({ ...section, name: e.target.value })
+                    }
                     placeholder="Unnamed Section"
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
                     autoFocus
@@ -989,11 +1035,15 @@ const RecursiveSection = ({
                     }}
                   />
                 </div>
-                
+
                 {/* Numbered/Unnumbered Toggle - Only for section/subsection/subsubsection */}
-                {["section", "subsection", "subsubsection"].includes(section.type) && (
+                {["section", "subsection", "subsubsection"].includes(
+                  section.type,
+                ) && (
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-gray-600">Numbering:</span>
+                    <span className="text-xs font-semibold text-gray-600">
+                      Numbering:
+                    </span>
                     <div className="flex gap-1">
                       <button
                         type="button"
@@ -1027,7 +1077,7 @@ const RecursiveSection = ({
                   </div>
                 )}
               </div>
-              
+
               {/* Done button */}
               <div className="flex justify-end mt-3">
                 <button
@@ -1048,11 +1098,26 @@ const RecursiveSection = ({
               <div className="flex items-center gap-2">
                 <span>{section.name}</span>
                 {section.subtype === "starred" && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-500">unnumbered</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-500">
+                    unnumbered
+                  </span>
                 )}
-                {(section.source === "file" && section.fileName || section.contentFileName) && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded text-blue-600 flex items-center gap-1" title={`Sourced from ${section.fileName || section.contentFileName}`}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {((section.source === "file" && section.fileName) ||
+                  section.contentFileName) && (
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded text-blue-600 flex items-center gap-1"
+                    title={`Sourced from ${section.fileName || section.contentFileName}`}
+                  >
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                       <polyline points="14 2 14 8 20 8" />
                     </svg>
@@ -1067,7 +1132,14 @@ const RecursiveSection = ({
                   className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
                   title="Edit section name"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
@@ -1094,34 +1166,40 @@ const RecursiveSection = ({
                   setIsVisualMode(!isVisualMode);
                 }}
                 className="flex items-center bg-gray-100 rounded-full p-0.5 border border-gray-200 cursor-pointer w-24 relative h-6 transition-all"
-                title={isVisualMode ? "Switch to Code View" : "Switch to Visual View"}
+                title={
+                  isVisualMode ? "Switch to Code View" : "Switch to Visual View"
+                }
               >
-                <div 
+                <div
                   className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] bg-white rounded-full shadow-sm transition-all duration-200 ${
                     isVisualMode ? "left-[calc(50%)]" : "left-0.5"
                   }`}
                 />
-                <span className={`flex-1 text-[10px] font-semibold text-center z-10 transition-colors ${
-                  !isVisualMode ? "text-gray-800" : "text-gray-400"
-                }`}>
+                <span
+                  className={`flex-1 text-[10px] font-semibold text-center z-10 transition-colors ${
+                    !isVisualMode ? "text-gray-800" : "text-gray-400"
+                  }`}
+                >
                   Code
                 </span>
-                <span className={`flex-1 text-[10px] font-semibold text-center z-10 transition-colors ${
-                  isVisualMode ? "text-gray-800" : "text-gray-400"
-                }`}>
+                <span
+                  className={`flex-1 text-[10px] font-semibold text-center z-10 transition-colors ${
+                    isVisualMode ? "text-gray-800" : "text-gray-400"
+                  }`}
+                >
                   Visual
                 </span>
               </button>
             </div>
           )}
-          
+
           {/* Removed Visual / Code mode toggle from here - moved up */}
 
           <div className="relative group/resize">
             <style>{sectionEditorStyles}</style>
 
             {/* Resizable Container */}
-            <div 
+            <div
               className="resize-y overflow-hidden border border-gray-200 rounded w-full bg-white relative flex flex-col h-[300px] min-h-[300px]"
               onClick={(e) => e.stopPropagation()}
             >
@@ -1135,11 +1213,15 @@ const RecursiveSection = ({
                     onChange={(content, delta, source) => {
                       if (source === "user") {
                         setRichTextValue(content);
-                        // Live-sync back to LaTeX
-                        const latex = richTextToSection
-                          ? richTextToSection(content)
-                          : latexUtility.richTextToLatex(content);
-                        onUpdate({ ...section, content: latex });
+                        // Live-sync back to LaTeX (Debounced)
+                        if (updateTimeoutRef.current)
+                          clearTimeout(updateTimeoutRef.current);
+                        updateTimeoutRef.current = setTimeout(() => {
+                          const latex = richTextToSection
+                            ? richTextToSection(content)
+                            : latexUtility.richTextToLatex(content);
+                          onUpdate({ ...section, content: latex });
+                        }, 500);
                       }
                     }}
                     modules={sectionQuillModules}
@@ -1152,9 +1234,15 @@ const RecursiveSection = ({
                   <MonacoEditorPanel
                     monacoEditorRef={monacoRef}
                     value={section.content || ""}
-                    handleLatexChange={(val) =>
-                      onUpdate({ ...section, content: val })
-                    }
+                    handleLatexChange={(val) => {
+                      // Use a debounced update for the parent state
+                      // to avoid fighting with the undo buffer or causing rapid re-renders
+                      if (updateTimeoutRef.current)
+                        clearTimeout(updateTimeoutRef.current);
+                      updateTimeoutRef.current = setTimeout(() => {
+                        onUpdate({ ...section, content: val });
+                      }, 400);
+                    }}
                     highlightLine={lineToHighlight}
                     onHighlightClear={onHighlightClear}
                     projectId={projectId}
@@ -1182,9 +1270,26 @@ const RecursiveSection = ({
 
               {/* Resize Handle Overlay */}
               <div className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 pointer-events-none group-hover/resize:pointer-events-auto z-10">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-40 group-hover/resize:opacity-100 transition-opacity">
-                  <path d="M8 2L2 8" stroke="#718096" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M8 6L6 8" stroke="#718096" strokeWidth="1.5" strokeLinecap="round"/>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="opacity-40 group-hover/resize:opacity-100 transition-opacity"
+                >
+                  <path
+                    d="M8 2L2 8"
+                    stroke="#718096"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M8 6L6 8"
+                    stroke="#718096"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </div>
             </div>

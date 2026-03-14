@@ -1,30 +1,74 @@
 import React from "react";
 
-// ============ CONSTANTS ============
-// NOTE: table, wraptable, figure are NOT included - they stay within parent sections
-const SPECIAL_ENVS_PATTERN =
-  "abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix";
+/**
+ * latexUtility.jsx - Core conversion engine for LaTeX editor.
+ * Rewritten from scratch for predictability, systematic parsing, and robust round-trips.
+ */
 
-// Matches the start of any Section OR Special Environment
-const SECTION_REGEX = new RegExp(
-  `(\\\\(?:section|subsection|subsubsection)\\*?\\{[^}]*\\}|\\\\begin\\{(?:${SPECIAL_ENVS_PATTERN})\\})`,
+// ============ CONSTANTS ============
+
+const SPECIAL_ENVS = [
+  "abstract",
+  "IEEEkeywords",
+  "keywords",
+  "acknowledgements",
+  "acknowledgments",
+  "thebibliography",
+  "appendix",
+];
+
+const SPECIAL_ENVS_PATTERN = SPECIAL_ENVS.join("|");
+
+// Matches start of section or special env — used for detecting body start
+const BODY_START_REGEX = new RegExp(
+  `(\\\\(?:section|subsection|subsubsection)\\*?\\{[^}]*\\}|\\\\begin\\{(?:${SPECIAL_ENVS_PATTERN})\\}(?:\\{[^}]*\\})?)`,
   "i",
 );
-const SPECIAL_ENVS_REGEX = new RegExp(SPECIAL_ENVS_PATTERN, "i");
-// ============ LATEX SPECIAL CHARACTERS ============
-const escapeLatexSpecialChars = (text) => {
+
+// ============ SECTION 1: CORE HELPERS ============
+
+export const isMainFile = (fileName) => {
+  if (!fileName) return true;
+  const normalized = fileName.replace(/\\/g, "/").toLowerCase();
+  return normalized === "main.tex" || normalized.endsWith("/main.tex");
+};
+
+export const resolveFileContent = (inputName, fileMap) => {
+  if (!fileMap || !inputName) return null;
+  const variations = [
+    inputName,
+    inputName + ".tex",
+    inputName.endsWith(".tex") ? inputName.slice(0, -4) : null,
+  ].filter(Boolean);
+
+  for (const v of variations) {
+    const entry = fileMap[v];
+    if (entry) {
+      return typeof entry === "string" ? entry : entry.content || "";
+    }
+  }
+  return null;
+};
+
+export const canonicalFileName = (inputName) => {
+  if (!inputName) return "";
+  return inputName.endsWith(".tex") ? inputName : inputName + ".tex";
+};
+
+export const stripLatexComments = (text) => {
   if (!text) return text;
-  if (containsLatexCommands(text)) return text;
-  const mathExpressions = [];
-  let processed = text
-    .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
-      mathExpressions.push(match);
-      return `__MATH${mathExpressions.length - 1}__`;
+  return text
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+      return !trimmed.startsWith("%") || trimmed.startsWith("\\%");
     })
-    .replace(/\$([^$]+)\$/g, (match) => {
-      mathExpressions.push(match);
-      return `__MATH${mathExpressions.length - 1}__`;
-    });
+    .join("\n");
+};
+
+export const escapeLatexSpecialChars = (text) => {
+  if (!text) return text;
+  if (/\\[a-zA-Z]+|\\begin\{|\\end\{|\$|%/.test(text)) return text;
 
   const escapeMap = {
     "&": "\\&",
@@ -38,17 +82,10 @@ const escapeLatexSpecialChars = (text) => {
     "^": "\\textasciicircum{}",
     "\\": "\\textbackslash{}",
   };
-  processed = processed.replace(
-    /[&%$#_{}~^\\]/g,
-    (char) => escapeMap[char] || char,
-  );
-  mathExpressions.forEach((expr, i) => {
-    processed = processed.replace(`__MATH${i}__`, expr);
-  });
-  return processed;
+  return text.replace(/[&%$#_{}~^\\]/g, (char) => escapeMap[char] || char);
 };
 
-const unescapeLatexSpecialChars = (text) => {
+export const unescapeLatexSpecialChars = (text) => {
   if (!text) return text;
   return text
     .replace(/\\textbackslash\{\}/g, "\\")
@@ -63,170 +100,82 @@ const unescapeLatexSpecialChars = (text) => {
     .replace(/\\&/g, "&");
 };
 
-const stripLatexComments = (text) => {
-  if (!text) return text;
-  return text
-    .split("\n")
-    .filter((line) => {
-      const trimmed = line.trim();
-      return !trimmed.startsWith("%") || trimmed.startsWith("\\%");
-    })
-    .join("\n");
-};
+// ============ SECTION 2: SPLITTING LOGIC ============
 
-const containsLatexCommands = (text) => {
-  if (!text) return false;
-  const latexPatterns = [/\\[a-zA-Z]+/, /\\begin\{/, /\\end\{/, /\\\\/, /\$\$/];
-  return latexPatterns.some((pattern) => pattern.test(text));
-};
-
-// ============ HELPER: EXTRACT BODY ============
-// Restored to full functionality
-export const extractLatexBody = (latex) => {
-  if (!latex) return "";
-  const beginDocIndex = latex.indexOf("\\begin{document}");
-  if (beginDocIndex === -1) return latex;
-
-  const afterBeginDoc = latex.substring(
-    beginDocIndex + "\\begin{document}".length,
-  );
-  const endDocIndex = afterBeginDoc.lastIndexOf("\\end{document}");
-
-  if (endDocIndex === -1) return afterBeginDoc;
-
-  let content = afterBeginDoc.substring(0, endDocIndex);
-
-  // Optional: remove maketitle if it exists at the start
-  content = content.replace(/^\s*\\maketitle\s*/, "").trim();
-
-  return content;
-};
-
-// Restored to full functionality
-export const reconstructLatexDocument = (originalLatex, newBodyContent) => {
-  if (!originalLatex) return newBodyContent;
-
-  // 1. Find where the "Real Body" started in the ORIGINAL file.
-  // We use the same SECTION_REGEX to find the first Section, Abstract, or Keyword block.
-  // Everything BEFORE this match is considered "Extended Preamble" (includes \documentclass, \title, \maketitle, etc.)
-
-  const match = originalLatex.match(SECTION_REGEX);
-  let extendedPreamble = "";
-
-  if (match) {
-    // We found a section/abstract. Everything before it is preserved.
-    extendedPreamble = originalLatex.substring(0, match.index);
-  } else {
-    // Fallback: If original had no sections, try splitting at \begin{document}
-    const beginIndex = originalLatex.indexOf("\\begin{document}");
-    if (beginIndex !== -1) {
-      // Include \begin{document} in the preamble part
-      extendedPreamble = originalLatex.substring(
-        0,
-        beginIndex + "\\begin{document}".length,
-      );
-    } else {
-      // If the file is totally empty or weird, just use empty string
-      extendedPreamble = "";
-    }
-  }
-
-  // 2. Get Postamble (everything from \end{document} onwards)
-  const endDocIndex = originalLatex.lastIndexOf("\\end{document}");
-  let postamble = "";
-  if (endDocIndex !== -1) {
-    postamble = originalLatex.substring(endDocIndex);
-  } else {
-    postamble = "\n\\end{document}";
-  }
-
-  // 3. Merge: Original Preamble + New Edited Body + Original Postamble
-  return `${extendedPreamble.trim()}\n\n${newBodyContent.trim()}\n\n${postamble}`;
-};
-
-// ============ NEW HELPER: SPLIT LATEX INTO PARTS ============
 export const splitLatex = (latexDoc) => {
   if (!latexDoc) return { preamble: "", body: "", postamble: "" };
 
-  const beginIndex = latexDoc.indexOf("\\begin{document}");
-  if (beginIndex === -1) {
+  const beginTag = "\\begin{document}";
+  const endTag = "\\end{document}";
+
+  const beginIdx = latexDoc.indexOf(beginTag);
+  if (beginIdx === -1) {
     return { preamble: "", body: latexDoc, postamble: "" };
   }
 
-  // Default split point: right after \begin{document}
-  let splitPoint = beginIndex + "\\begin{document}".length;
+  let preambleLineEnd = beginIdx + beginTag.length;
+  const remaining = latexDoc.substring(preambleLineEnd);
 
-  // --- NEW LOGIC: AGGRESSIVE PREAMBLE CAPTURE ---
-  // We look for \maketitle. If it exists, EVERYTHING up to it is considered Preamble.
-  // This handles \title, \author, \markboth, \IEEEpubid, etc.
-
-  const afterBegin = latexDoc.substring(splitPoint);
-  const makeTitleRegex = /\\maketitle\s*/;
-  const makeTitleMatch = afterBegin.match(makeTitleRegex);
-
-  if (makeTitleMatch) {
-    // Move the split point to AFTER \maketitle
-    // splitPoint + index of match + length of match
-    splitPoint += makeTitleMatch.index + makeTitleMatch[0].length;
+  const firstBodyMatch = remaining.match(BODY_START_REGEX);
+  if (firstBodyMatch) {
+    preambleLineEnd += firstBodyMatch.index;
+  } else {
+    const makeTitleMatch = remaining.match(/^(\s*\\maketitle)/i);
+    if (makeTitleMatch) {
+      preambleLineEnd += makeTitleMatch[1].length;
+    }
   }
 
-  let preamble = latexDoc.substring(0, splitPoint);
-  let rest = latexDoc.substring(splitPoint);
-
-  // Calculate where Body ends
-  const endIndex = rest.lastIndexOf("\\end{document}");
-
-  if (endIndex === -1) {
-    return { preamble, body: rest, postamble: "" };
+  const endIdx = latexDoc.lastIndexOf(endTag);
+  if (endIdx === -1) {
+    return {
+      preamble: latexDoc.substring(0, preambleLineEnd),
+      body: latexDoc.substring(preambleLineEnd),
+      postamble: "",
+    };
   }
 
   return {
-    preamble: preamble,
-    body: rest.substring(0, endIndex),
-    postamble: rest.substring(endIndex),
+    preamble: latexDoc.substring(0, preambleLineEnd),
+    body: latexDoc.substring(preambleLineEnd, endIdx),
+    postamble: latexDoc.substring(endIdx),
   };
 };
 
-// ============ HELPER: Parse inline content into section blocks ============
-// Shared logic used by both main doc parsing and file-reference parsing
-const parseBodyIntoBlocks = (body) => {
-  const BODY_SECTION_REGEX =
-    /(\\(?:section|subsection|subsubsection)\*?\{[^}]*\}|\\begin\{(?:abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix)\})/i;
+// ============ SECTION 3: SECTION VIEW CONVERSION ============
 
-  const parts = body.split(BODY_SECTION_REGEX);
+const parseBodyIntoBlocks = (content) => {
+  const parts = content.split(BODY_START_REGEX);
+  const leadingContent = parts[0] || "";
   const blocks = [];
-  const leadingContent = (parts[0] || "").trim();
-
-  let currentSection = null;
-  let currentSubsection = null;
 
   for (let i = 1; i < parts.length; i += 2) {
     const delimiter = parts[i];
-    let content = (parts[i + 1] || "").trim();
+    let blockContent = parts[i + 1] || "";
 
     let type = "section";
-    let name = "Untitled";
     let subtype = "standard";
+    let name = "Untitled";
     let envTag = null;
+    let envArg = null;
 
     if (delimiter.startsWith("\\begin")) {
-      const match = delimiter.match(/\\begin\{([^}]+)\}/);
+      const match = delimiter.match(/\\begin\{([^}]+)\}(\{[^}]*\})?/i);
       if (match) {
         envTag = match[1];
-        if (envTag === "table" || envTag === "wraptable") {
-          type = "section";
-          subtype = "table";
-          name = "Table Block";
-          content = delimiter + content;
-        } else {
-          name = envTag.charAt(0).toUpperCase() + envTag.slice(1);
-          type = "section";
-          subtype = "env";
+        envArg = match[2] || null;
+        subtype = "env";
+        name = envTag.charAt(0).toUpperCase() + envTag.slice(1);
+
+        const endTag = `\\end{${envTag}}`;
+        const endIdx = blockContent.lastIndexOf(endTag);
+        if (endIdx !== -1) {
+          blockContent = blockContent.substring(0, endIdx);
         }
       }
     } else {
       const match = delimiter.match(
-        /\\(section|subsection|subsubsection)(\*)?\{([^}]*)\}/,
+        /\\(section|subsection|subsubsection)(\*)?\{([^}]*)\}/i,
       );
       if (match) {
         type = match[1];
@@ -235,341 +184,102 @@ const parseBodyIntoBlocks = (body) => {
       }
     }
 
-    const newBlock = {
-      id: Date.now() + Math.random(),
-      type: type,
+    blocks.push({
+      id: Math.random().toString(36).substr(2, 9),
+      type,
+      subtype,
+      name,
+      content: blockContent.trim(),
+      envTag,
+      envArg,
       source: "inline",
-      subtype: subtype,
-      envTag: envTag,
-      name: name,
-      content: content,
+      fileName: null,
+      contentFileName: null,
       children: [],
-    };
-
-    if (type === "section") {
-      currentSection = newBlock;
-      currentSubsection = null;
-      blocks.push(newBlock);
-    } else if (type === "subsection") {
-      if (currentSection) {
-        currentSection.children.push(newBlock);
-        currentSubsection = newBlock;
-      } else {
-        blocks.push(newBlock);
-        currentSubsection = newBlock;
-      }
-    } else if (type === "subsubsection") {
-      if (currentSubsection) {
-        currentSubsection.children.push(newBlock);
-      } else if (currentSection) {
-        currentSection.children.push(newBlock);
-      } else {
-        blocks.push(newBlock);
-      }
-    }
+    });
   }
 
   return { blocks, leadingContent };
 };
 
-// ============ HELPER: Resolve a file name from the fileMap ============
-const resolveFileContent = (inputName, fileMap) => {
-  if (!fileMap || typeof fileMap !== "object") return null;
-
-  // Try exact match first (e.g., "abstract.tex")
-  if (fileMap[inputName]) {
-    const entry = fileMap[inputName];
-    return typeof entry === "string" ? entry : entry?.content || null;
-  }
-
-  // Try with .tex extension (e.g., "abstract" -> "abstract.tex")
-  const withTex = inputName.endsWith(".tex") ? inputName : inputName + ".tex";
-  if (fileMap[withTex]) {
-    const entry = fileMap[withTex];
-    return typeof entry === "string" ? entry : entry?.content || null;
-  }
-
-  return null;
-};
-
-// ============ HELPER: Get canonical file name (with .tex) ============
-const canonicalFileName = (inputName) => {
-  return inputName.endsWith(".tex") ? inputName : inputName + ".tex";
-};
-
-// ============ 1. LATEX TO SECTIONS (Uses Split) ============
-// fileMap: optional object mapping file names to their content
-//   e.g. { "abstract.tex": { content: "..." }, "intro.tex": { content: "..." } }
-//   or   { "abstract.tex": "...", "intro.tex": "..." }
 export const latexToSections = (latexDoc, fileMap = {}) => {
-  if (!latexDoc) return [];
-  const root = [];
-
   const { preamble, body, postamble } = splitLatex(latexDoc);
+  const sections = [];
 
-  // ---- Phase 1: Split body on \input{} directives AND section commands ----
-  // We process the body line-by-line to detect \input{} directives
-  // and separate them from inline content
-  const INPUT_REGEX = /^\s*\\input\{([^}]+)\}\s*$/;
+  sections.push({
+    id: "preamble-block",
+    type: "preamble",
+    subtype: "standard",
+    name: "Document Configuration",
+    content: preamble,
+    children: [],
+  });
 
-  const bodyLines = body.split("\n");
-  const segments = []; // Array of { type: "inline"|"input", content|fileName }
-  let currentInlineLines = [];
+  const lines = body.split("\n");
+  const segments = [];
+  let buffer = [];
+  let inSpecialEnv = false;
 
-  const flushInline = () => {
-    if (currentInlineLines.length > 0) {
-      const inlineContent = currentInlineLines.join("\n");
-      if (inlineContent.trim()) {
-        segments.push({ type: "inline", content: inlineContent });
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (
+      new RegExp(`\\\\begin\\{(?:${SPECIAL_ENVS_PATTERN})\\}`, "i").test(
+        trimmed,
+      )
+    ) {
+      inSpecialEnv = true;
+    }
+    if (
+      new RegExp(`\\\\end\\{(?:${SPECIAL_ENVS_PATTERN})\\}`, "i").test(trimmed)
+    ) {
+      inSpecialEnv = false;
+    }
+
+    const inputMatch = trimmed.match(/^\\input\{([^}]+)\}$/i);
+    if (!inSpecialEnv && inputMatch) {
+      if (buffer.length > 0) {
+        segments.push({ type: "inline", content: buffer.join("\n") });
+        buffer = [];
       }
-      currentInlineLines = [];
-    }
-  };
-
-  for (const line of bodyLines) {
-    const inputMatch = line.match(INPUT_REGEX);
-    if (inputMatch) {
-      flushInline();
-      segments.push({ type: "input", fileName: inputMatch[1] });
+      segments.push({
+        type: "input",
+        rawName: inputMatch[1],
+        fileName: canonicalFileName(inputMatch[1]),
+      });
     } else {
-      currentInlineLines.push(line);
+      buffer.push(line);
     }
-  }
-  flushInline();
+  });
+  if (buffer.length > 0)
+    segments.push({ type: "inline", content: buffer.join("\n") });
 
-  // ---- Phase 2: Build the section tree ----
-  // The first inline segment (before any section/input) is the inner preamble
-  let innerPreambleHandled = false;
   let currentSection = null;
   let currentSubsection = null;
 
-  // Use index-based loop to enable peek-ahead for merging env blocks with \input{}
-  for (let si = 0; si < segments.length; si++) {
-    const segment = segments[si];
-    if (segment.type === "input") {
-      // ---- FILE-REFERENCE BLOCK ----
-      const rawName = segment.fileName;
-      const fileName = canonicalFileName(rawName);
-      const fileContent = resolveFileContent(rawName, fileMap);
+  segments.forEach((seg) => {
+    if (seg.type === "inline") {
+      const { blocks, leadingContent } = parseBodyIntoBlocks(seg.content);
 
-      if (fileContent !== null && fileContent.trim()) {
-        // Parse the file content for sections/subsections
-        const { blocks, leadingContent } = parseBodyIntoBlocks(fileContent);
-
-        if (blocks.length > 0) {
-          // File contains section structure — create file-reference blocks
-          for (const block of blocks) {
-            block.source = "file";
-            block.fileName = fileName;
-            // Mark children as belonging to this file too
-            const markChildren = (node) => {
-              node.source = "file";
-              node.fileName = fileName;
-              if (node.children) node.children.forEach(markChildren);
-            };
-            markChildren(block);
-
-            if (block.type === "section") {
-              currentSection = block;
-              currentSubsection = null;
-              root.push(block);
-            } else if (block.type === "subsection") {
-              if (currentSection) {
-                currentSection.children.push(block);
-                currentSubsection = block;
-              } else {
-                root.push(block);
-                currentSubsection = block;
-              }
-            } else {
-              root.push(block);
-            }
-          }
-
-          // If there's leading content before sections in the file,
-          // prepend it to the first block's content
-          if (leadingContent && blocks.length > 0) {
-            blocks[0].content = leadingContent + "\n" + blocks[0].content;
-          }
+      if (leadingContent.trim()) {
+        if (!currentSection) {
+          sections[0].content += "\n" + leadingContent;
         } else {
-          // File has NO section structure — this is content injection
-          // Inject into the current section if one exists
-          if (currentSection) {
-            // Append file content to the current section's content
-            currentSection.content = (currentSection.content + "\n" + fileContent.trim()).trim();
-            // Track that this content came from a file (for round-trip serialization)
-            currentSection.contentFileName = fileName;
-          } else {
-            // No current section — create a standalone block as fallback
-            // (e.g., \input{test} at the very top with no preceding section)
-            const displayName = rawName
-              .replace(/\.tex$/, "")
-              .replace(/[_-]/g, " ")
-              .replace(/\b\w/g, (c) => c.toUpperCase());
-
-            const fileBlock = {
-              id: Date.now() + Math.random(),
-              type: "section",
-              source: "file",
-              fileName: fileName,
-              subtype: "standard",
-              envTag: null,
-              name: displayName,
-              content: fileContent.trim(),
-              children: [],
-            };
-
-            currentSection = fileBlock;
-            currentSubsection = null;
-            root.push(fileBlock);
-          }
-        }
-      } else {
-        // File not found or empty — create block with empty content
-        // If a preceding env block already adopted this file, skip creating a duplicate
-        if (currentSection && currentSection.contentFileName === fileName) {
-          // Already merged — skip
-          continue;
-        }
-
-        const displayName = rawName
-          .replace(/\.tex$/, "")
-          .replace(/[_-]/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase());
-
-        // If a preceding env block (like \begin{abstract}) is waiting for content,
-        // merge this empty file into it rather than creating a duplicate block
-        if (currentSection && currentSection._pendingEnvMerge) {
-          currentSection.content = "";
-          currentSection.contentFileName = fileName;
-          currentSection.source = "file";
-          currentSection.fileName = fileName;
-          delete currentSection._pendingEnvMerge;
-          continue;
-        }
-
-        const placeholderBlock = {
-          id: Date.now() + Math.random(),
-          type: "section",
-          source: "file",
-          fileName: fileName,
-          subtype: "standard",
-          envTag: null,
-          name: displayName,
-          content: "",
-          children: [],
-        };
-
-        currentSection = placeholderBlock;
-        currentSubsection = null;
-        root.push(placeholderBlock);
-      }
-    } else {
-      // ---- INLINE CONTENT ----
-      // Strip \end{envTag} lines that belong to a preceding env block
-      // (e.g. \end{abstract} after \begin{abstract}...\input{abstract})
-      let cleanedContent = segment.content;
-      if (currentSection && currentSection.envTag) {
-        const endPattern = new RegExp(
-          `\\\\end\\{${currentSection.envTag}\\}\\s*`, "i"
-        );
-        cleanedContent = cleanedContent.replace(endPattern, "").trim();
-      }
-
-      const { blocks, leadingContent: rawLeading } = parseBodyIntoBlocks(cleanedContent);
-      const leadingContent = rawLeading;
-
-      // Handle inner preamble (content before any section)
-      if (!innerPreambleHandled) {
-        const preambleText = leadingContent || "";
-        const fullPreambleContent = (preamble + "\n" + preambleText).trim();
-
-        root.push({
-          id: "preamble-block",
-          type: "preamble",
-          name: "Document Configuration",
-          content: fullPreambleContent,
-          children: [],
-        });
-        innerPreambleHandled = true;
-      } else if (leadingContent) {
-        // Content between sections that doesn't belong to any section
-        // Append to the last section if one exists
-        if (currentSection) {
-          currentSection.content = (currentSection.content + "\n" + leadingContent).trim();
+          currentSection.content += "\n" + leadingContent;
         }
       }
 
-      for (const block of blocks) {
-        block.source = "inline";
-
-        // Check if this block (section, env, etc.) has empty content and is
-        // immediately followed by \input{} — if so, merge the file content
-        // into this block to prevent duplicate cells.
-        // Pattern: \section{Intro}\n\input{sections/intro} or \begin{abstract}\n\input{abstract}
-        // Also handles \begin{thebibliography}{1}\n\input{references} where {1} is an env argument
-        let effectivelyEmpty = !block.content || !block.content.trim();
-
-        // For env blocks, check if "content" is just a LaTeX argument like {1} or {99}
-        // These are part of the env header, not real content
-        if (!effectivelyEmpty && block.subtype === "env" && block.content) {
-          const argMatch = block.content.trim().match(/^\{[^}]*\}$/);
-          if (argMatch) {
-            block.envArg = block.content.trim(); // Store the argument separately
-            block.content = ""; // Clear the content so it's treated as empty
-            effectivelyEmpty = true;
-          }
-        }
-
-        if (effectivelyEmpty) {
-          const nextSeg = segments[si + 1];
-          if (nextSeg && nextSeg.type === "input") {
-            const nextFileName = canonicalFileName(nextSeg.fileName);
-            let nextFileContent = resolveFileContent(nextSeg.fileName, fileMap);
-
-            // For env blocks, strip any structural \begin{} / \end{} / args
-            // that may have leaked into the file from previous saves
-            if (nextFileContent && block.subtype === "env" && block.envTag) {
-              const tag = block.envTag;
-              nextFileContent = nextFileContent
-                .replace(new RegExp(`\\\\begin\\{${tag}\\}(\\{[^}]*\\})?\\s*`, "gi"), "")
-                .replace(new RegExp(`\\\\end\\{${tag}\\}\\s*`, "gi"), "")
-                .trim();
-            }
-
-            // Check if the file has no section structure (raw content injection)
-            if (nextFileContent === null || !nextFileContent.trim()) {
-              // Empty or missing file — merge into this block
-              block.content = nextFileContent || "";
-              block.contentFileName = nextFileName;
-              block.source = "file";
-              block.fileName = nextFileName;
-              si++; // Skip the \input{} segment
-            } else {
-              const { blocks: fileBlocks } = parseBodyIntoBlocks(nextFileContent);
-              if (fileBlocks.length === 0) {
-                // Raw content — merge into this block
-                block.content = nextFileContent.trim();
-                block.contentFileName = nextFileName;
-                block.source = "file";
-                block.fileName = nextFileName;
-                si++; // Skip the \input{} segment
-              }
-            }
-          }
-        }
-
+      blocks.forEach((block) => {
         if (block.type === "section") {
+          sections.push(block);
           currentSection = block;
           currentSubsection = null;
-          root.push(block);
         } else if (block.type === "subsection") {
           if (currentSection) {
             currentSection.children.push(block);
             currentSubsection = block;
           } else {
-            root.push(block);
-            currentSubsection = block;
+            sections.push(block);
+            currentSection = block;
           }
         } else if (block.type === "subsubsection") {
           if (currentSubsection) {
@@ -577,750 +287,699 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
           } else if (currentSection) {
             currentSection.children.push(block);
           } else {
-            root.push(block);
+            sections.push(block);
           }
         }
+
+        if (
+          block.subtype === "env" &&
+          block.content.trim().match(/^\\input\{([^}]+)\}$/i)
+        ) {
+          const inputMatch = block.content
+            .trim()
+            .match(/^\\input\{([^}]+)\}$/i);
+          const fName = canonicalFileName(inputMatch[1]);
+          const fContent = resolveFileContent(fName, fileMap);
+          if (fContent !== null) {
+            block.content = fContent;
+            block.contentFileName = fName;
+            block.source = "file";
+            block.fileName = fName;
+          }
+        }
+      });
+    } else {
+      const fileContent = resolveFileContent(seg.rawName, fileMap);
+      if (fileContent === null) {
+        const placeholder = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: "section",
+          subtype: "standard",
+          name: seg.rawName,
+          content: "",
+          source: "file",
+          fileName: seg.fileName,
+          children: [],
+        };
+        sections.push(placeholder);
+        currentSection = placeholder;
+        currentSubsection = null;
+      } else {
+        const { blocks, leadingContent } = parseBodyIntoBlocks(fileContent);
+
+        if (
+          currentSection &&
+          !currentSection.fileName &&
+          currentSection.content.trim() === ""
+        ) {
+          currentSection.content = leadingContent.trim();
+          currentSection.source = "file";
+          currentSection.fileName = seg.fileName;
+        } else if (leadingContent.trim() && currentSection) {
+          currentSection.content += "\n" + leadingContent;
+        }
+
+        blocks.forEach((block) => {
+          block.source = "file";
+          block.fileName = seg.fileName;
+
+          if (block.type === "section") {
+            sections.push(block);
+            currentSection = block;
+            currentSubsection = null;
+          } else if (block.type === "subsection") {
+            if (currentSection) {
+              currentSection.children.push(block);
+              currentSubsection = block;
+            } else {
+              sections.push(block);
+              currentSection = block;
+            }
+          } else if (block.type === "subsubsection") {
+            if (currentSubsection) {
+              currentSubsection.children.push(block);
+            } else if (currentSection) {
+              currentSection.children.push(block);
+            } else {
+              sections.push(block);
+            }
+          }
+        });
       }
     }
-  }
+  });
 
-  // If no segments produced a preamble block (e.g., body is all \input{} lines)
-  if (!innerPreambleHandled) {
-    root.unshift({
-      id: "preamble-block",
-      type: "preamble",
-      name: "Document Configuration",
-      content: preamble.trim(),
-      children: [],
-    });
-  }
+  sections.push({
+    id: "postamble-block",
+    type: "postamble",
+    subtype: "standard",
+    name: "End Document",
+    content: postamble,
+    children: [],
+  });
 
-  if (postamble) {
-    root.push({
-      id: "postamble-block",
-      type: "postamble",
-      name: "End Document",
-      content: postamble,
-      children: [],
-    });
-  }
-
-  return root;
+  return sections;
 };
 
-// ============ HELPER: Serialize a node and its children to inline LaTeX ============
-const serializeNodeInline = (node) => {
-  let result = "";
-  let header = "";
-
-  if (node.subtype === "table") {
-    header = "";
-  } else if (node.subtype === "env") {
-    const tag = node.envTag || node.name.toLowerCase();
-    const envArgStr = node.envArg || "";
-    header = `\\begin{${tag}}${envArgStr}`;
-  } else if (node.subtype === "starred") {
-    header = `\\${node.type}*{${node.name}}`;
-  } else {
-    header = `\\${node.type}{${node.name}}`;
-  }
-
-  if (header) result += header + "\n";
-  if (node.content) result += node.content;
-
-  if (node.children && node.children.length > 0) {
-    for (const child of node.children) {
-      const childResult = serializeNodeInline(child);
-      // Add spacing before child content
-      if (result.length > 0 && !result.endsWith("\n\n")) {
-        if (result.endsWith("\n")) result += "\n";
-        else result += "\n\n";
-      }
-      result += childResult;
-    }
-  }
-
-  return result;
-};
-
-// ============ 2. SECTIONS TO LATEX ============
-// Returns { latex: string, fileUpdates: { "filename.tex": "content" } }
 export const sectionsToLatex = (sections) => {
   let latex = "";
-  let postambleContent = "";
-  const fileUpdates = {};
-
-  // Track which files we've already emitted an \input for
-  // (multiple sections can belong to the same file)
+  let fileUpdates = {};
   const emittedFiles = new Set();
 
-  const processNode = (node, isTopLevel = false) => {
-    if (node.type === "postamble") {
-      postambleContent = "\n" + node.content;
-      return;
-    }
-
-    if (node.type === "preamble") {
-      latex += node.content + "\n\n";
-      return;
-    }
-
-    // ---- FILE-REFERENCE BLOCK ----
-    if (node.source === "file" && node.fileName && isTopLevel) {
-      const fileName = node.fileName;
-
-      // For env blocks (abstract, thebibliography, etc.), emit the wrapper
-      // in main.tex and only save raw content to the file
-      if (node.subtype === "env") {
-        const tag = node.envTag || node.name.toLowerCase();
-        // Save only raw content to the external file
-        const rawContent = node.content || "";
-        if (fileUpdates[fileName]) {
-          fileUpdates[fileName] += "\n\n" + rawContent;
-        } else {
-          fileUpdates[fileName] = rawContent;
-        }
-
-        // Emit \begin{env} + \input{} + \end{env} in main.tex
-        if (!emittedFiles.has(fileName)) {
-          if (latex.length > 0 && !latex.endsWith("\n\n")) {
-            if (latex.endsWith("\n")) latex += "\n";
-            else latex += "\n\n";
-          }
-          const inputName = fileName.replace(/\.tex$/, "");
-          const envArgStr = node.envArg || "";
-          latex += `\\begin{${tag}}${envArgStr}\n\\input{${inputName}}\n\\end{${tag}}\n`;
-          emittedFiles.add(fileName);
-        }
-      } else {
-        // For regular section blocks, emit \section{} + \input{} in main.tex
-        // and only save raw content to the file
-        let header = "";
-        if (node.subtype === "starred") {
-          header = `\\${node.type}*{${node.name}}`;
-        } else {
-          header = `\\${node.type}{${node.name}}`;
-        }
-
-        // Save only raw content (without header) to the external file
-        const rawContent = node.content || "";
-        // Also serialize children content for the file
-        let childContent = "";
-        if (node.children && node.children.length > 0) {
-          for (const child of node.children) {
-            childContent += "\n\n" + serializeNodeInline(child);
-          }
-        }
-        const fullFileContent = (rawContent + childContent).trim();
-
-        if (fileUpdates[fileName]) {
-          fileUpdates[fileName] += "\n\n" + fullFileContent;
-        } else {
-          fileUpdates[fileName] = fullFileContent;
-        }
-
-        // Emit header + \input{} in main.tex only once per file
-        if (!emittedFiles.has(fileName)) {
-          if (latex.length > 0 && !latex.endsWith("\n\n")) {
-            if (latex.endsWith("\n")) latex += "\n";
-            else latex += "\n\n";
-          }
-          const inputName = fileName.replace(/\.tex$/, "");
-          latex += `${header}\n\\input{${inputName}}\n`;
-          emittedFiles.add(fileName);
-        }
-      }
-      return;
-    }
-
-    // ---- INLINE BLOCK with possible contentFileName ----
-    let header = "";
-    if (node.subtype === "table") {
-      header = "";
-    } else if (node.subtype === "env") {
-      const tag = node.envTag || node.name.toLowerCase();
-      const envArgStr = node.envArg || "";
-      header = `\\begin{${tag}}${envArgStr}`;
-    } else if (node.subtype === "starred") {
-      header = `\\${node.type}*{${node.name}}`;
+  const serializeNodeInline = (node) => {
+    let res = "";
+    if (node.subtype === "env") {
+      res += `\\begin{${node.envTag}}${node.envArg || ""}\n`;
     } else {
-      header = `\\${node.type}{${node.name}}`;
+      const star = node.subtype === "starred" ? "*" : "";
+      res += `\\${node.type}${star}{${node.name}}\n`;
+    }
+    res += node.content + "\n";
+    node.children.forEach((c) => {
+      res += serializeNodeInline(c);
+    });
+    if (node.subtype === "env") res += `\\end{${node.envTag}}\n`;
+    return res;
+  };
+
+  const processNode = (node, isTopLevel = false) => {
+    if (node.type === "preamble") {
+      latex += node.content + "\n";
+      return;
+    }
+    if (node.type === "postamble") {
+      latex += "\n" + node.content;
+      return;
     }
 
-    // Add double newline before section headers (if not at very start)
-    if (latex.length > 0 && !latex.endsWith("\n\n")) {
-      if (latex.endsWith("\n")) latex += "\n";
-      else latex += "\n\n";
+    let header = "";
+    if (node.subtype === "env") {
+      header = `\\begin{${node.envTag}}${node.envArg || ""}\n`;
+    } else {
+      const star = node.subtype === "starred" ? "*" : "";
+      header = `\\${node.type}${star}{${node.name}}\n`;
     }
 
-    latex += header;
-    if (header) latex += "\n";
-
-    // If this section's content came from an \input{} file, emit \input{}
-    // and save the content to fileUpdates instead of inlining it
-    if (node.contentFileName) {
-      const fileName = node.contentFileName;
-      const inputName = fileName.replace(/\.tex$/, "");
-      latex += `\\input{${inputName}}`;
-      // If this is an env block, emit \\end{tag} in main.tex
-      if (node.subtype === "env") {
-        const tag = node.envTag || node.name.toLowerCase();
-        latex += `\n\\end{${tag}}`;
+    if (node.source === "file" && node.fileName && isTopLevel) {
+      if (!emittedFiles.has(node.fileName)) {
+        if (node.contentFileName) {
+          latex +=
+            header +
+            `\\input{${node.fileName.replace(".tex", "")}}\n\\end{${node.envTag}}\n\n`;
+          fileUpdates[node.fileName] = node.content;
+        } else {
+          latex += header + `\\input{${node.fileName.replace(".tex", "")}}\n\n`;
+          let content = node.content + "\n";
+          node.children.forEach((c) => {
+            content += serializeNodeInline(c);
+          });
+          fileUpdates[node.fileName] = content.trim();
+        }
+        emittedFiles.add(node.fileName);
       }
-      // Save the section content to the file
-      fileUpdates[fileName] = node.content || "";
-    } else if (node.content && node.type !== "preamble") {
-      latex += node.content;
-    }
-
-    if (node.children && node.children.length > 0) {
-      node.children.forEach((child) => processNode(child, false));
+    } else {
+      latex += header + node.content + "\n\n";
+      node.children.forEach((c) => processNode(c, false));
+      if (node.subtype === "env") latex += `\\end{${node.envTag}}\n\n`;
     }
   };
 
-  sections.forEach((node) => processNode(node, true));
+  sections.forEach((n) => processNode(n, true));
 
-  latex +=
-    postambleContent ||
-    (latex.includes("\\documentclass") && !latex.includes("\\end{document}")
-      ? "\n\\end{document}"
-      : "");
+  latex = latex.replace(/\n{3,}/g, "\n\n");
 
-  return { latex, fileUpdates };
+  return { latex: latex.trim() + "\n", fileUpdates };
 };
 
-// ============ 3. LATEX TO RICH TEXT (PURE BODY CONVERSION) ============
-// fileMap: optional object mapping file names to their content
-//   e.g. { "abstract.tex": { content: "..." } } or { "abstract.tex": "..." }
-export const latexToRichText = (latexBody, fileMap = {}) => {
-  if (!latexBody) return "";
+// ============ SECTION 4: RICH TEXT CONVERSION ============
 
-  // 1. SPLIT PREAMBLE, BODY, POSTAMBLE
-  let { preamble, body, postamble } = splitLatex(latexBody);
+export const latexToRichText = (latexBody, fileMap = {}, options = {}) => {
+  const { isFragment = false } = options;
 
-  // 2. EXTRACT "INNER PREAMBLE" (The Fix)
-  // Find where the first real section or abstract starts
-  const match = body.match(SECTION_REGEX);
-  let innerPreamble = "";
+  let preamble = "";
+  let body = latexBody;
+  let postamble = "";
 
-  if (match) {
-    innerPreamble = body.substring(0, match.index);
-    body = body.substring(match.index); // Body is now clean content only
+  if (!isFragment) {
+    const split = splitLatex(latexBody);
+    preamble = split.preamble;
+    body = split.body;
+    postamble = split.postamble;
   }
 
-  // Hide the inner preamble (Title, Author, etc.) inside the main preamble
-  if (innerPreamble.trim()) {
-    preamble = (preamble + "\n" + innerPreamble).trim();
-  }
+  let html = "";
+  if (!isFragment) {
+    const encodedPreamble = btoa(unescape(encodeURIComponent(preamble)));
+    html = `<div class="ql-latex-preamble" data-preamble="${encodedPreamble}" style="display:none"></div>\n`;
 
-  // 2b. INLINE \input{} file contents
-  // Replace \input{filename} with the actual file content wrapped in a marker
-  body = body.replace(/\\input\{([^}]+)\}/g, (match, inputName) => {
-    const fileContent = resolveFileContent(inputName, fileMap);
-    if (fileContent !== null) {
-      const canonName = canonicalFileName(inputName);
-      // Wrap in a marker div so richTextToLatex can write content back to the right file
-      const encodedFile = btoa(unescape(encodeURIComponent(canonName)));
-      const startMarker = `<div class="ql-file-marker" data-file="${encodedFile}" data-type="start"></div>`;
-      const endMarker = `<div class="ql-file-marker" data-file="${encodedFile}" data-type="end"></div>`;
-      return `${startMarker}\n${fileContent}\n${endMarker}`;
+    const firstMatch = body.match(BODY_START_REGEX);
+    if (firstMatch) {
+      const innerPreamble = body.substring(0, firstMatch.index);
+      if (innerPreamble.trim()) {
+        const combinedPreamble = preamble + "\n" + innerPreamble;
+        const reEncoded = btoa(unescape(encodeURIComponent(combinedPreamble)));
+        html = `<div class="ql-latex-preamble" data-preamble="${reEncoded}" style="display:none"></div>\n`;
+        body = body.substring(firstMatch.index);
+      }
     }
-    return match; // Keep literal if file not found
-  });
+  }
 
-  // 3. PROCESS REMAINING BODY
-  let processed = stripLatexComments(body);
+  let processed = body;
+  const placeholders = [];
 
-  // Convert tables and figures to protected Quill blot blocks
-  processed = processed.replace(
-    /\\begin\{table\}(?:\[.*?\])?([\s\S]*?)\\end\{table\}/g,
-    (match) => {
-      const encoded = btoa(unescape(encodeURIComponent(match)));
-      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="table"></div>`;
-    },
-  );
-
-  processed = processed.replace(
-    /\\begin\{figure\}(?:\[.*?\])?([\s\S]*?)\\end\{figure\}/g,
-    (match) => {
-      const encoded = btoa(unescape(encodeURIComponent(match)));
-      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="figure"></div>`;
-    },
-  );
-
-  // Convert equations to protected Quill blot blocks
-  const equations = [];
-  processed = processed
-    .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
-      const encoded = btoa(unescape(encodeURIComponent(match)));
-      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
-    })
-    .replace(/\$([^$\n]+)\$/g, (match) => {
-      const encoded = btoa(unescape(encodeURIComponent(match)));
-      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
-    })
-    .replace(
-      /\\begin\{equation\*?\}([\s\S]*?)\\end\{equation\*?\}/g,
-      (match) => {
-        const encoded = btoa(unescape(encodeURIComponent(match)));
-        return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
-      },
-    )
-    .replace(/\\begin\{align\*?\}([\s\S]*?)\\end\{align\*?\}/g, (match) => {
-      const encoded = btoa(unescape(encodeURIComponent(match)));
-      return `<div class="ql-latex-block" data-latex="${encoded}" data-type="equation"></div>`;
+  const protect = (regex, type) => {
+    processed = processed.replace(regex, (match) => {
+      const token = `__${type}_${placeholders.length}__`;
+      placeholders.push({ token, content: match, type });
+      return token;
     });
+  };
 
+  // 1. Protect multi-line blocks
+  protect(
+    /\\begin\{(?:table|wraptable|figure|equation|equation\*|align|align\*)\}[\s\S]*?\\end\{(?:table|wraptable|figure|equation|equation\*|align|align\*)\}/gi,
+    "BLOCK",
+  );
+  protect(/\$\$[\s\S]*?\$\$/g, "BLOCK");
+  protect(/\$[^$]+\$/g, "BLOCK");
+
+  // 2. Resolve \input
   processed = processed.replace(
-    /\\begin\{(flushleft|center|flushright)\}([\s\S]*?)\\end\{\1\}/gi,
-    "$2",
-  );
-  processed = processed.replace(/\\vspace\{[^}]+\}/g, "");
+    /^\\input\{([^}]+)\}$/gm,
+    (match, inputName) => {
+      const fName = canonicalFileName(inputName);
+      const content = resolveFileContent(fName, fileMap);
+      if (content === null) return match;
 
-  // Handle Lists & Bibliography FIRST (before they get swallowed by EnvMarkerBlot)
-  processed = processed
-    .replace(
-      /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
-      (match, content) =>
-        `\n<ul>\n${content
-          .split("\\item")
-          .slice(1)
-          .map((i) => `<li>${i.trim()}</li>`)
-          .join("")}\n</ul>\n`,
-    )
-    .replace(
-      /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
-      (match, content) =>
-        `\n<ol>\n${content
-          .split("\\item")
-          .slice(1)
-          .map((i) => `<li>${i.trim()}</li>`)
-          .join("")}\n</ol>\n`,
-    )
-    .replace(
-      /\\begin\{thebibliography\}(?:\{[^}]*\})?([\s\S]*?)\\end\{thebibliography\}/g,
-      (match, content) => {
-        const parts = content.split(/\\bibitem(?:\{([^}]+)\})?/);
-        let items = "";
-        for (let i = 1; i < parts.length; i += 2) {
-          const key = parts[i] || "";
-          const text = (parts[i + 1] || "").trim();
-          items += `<li><strong>[${key}]</strong> ${text}</li>\n`;
-        }
-        const encodedEnv = btoa(unescape(encodeURIComponent("thebibliography")));
-        const startMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="start"></div>`;
-        const endMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="end"></div>`;
-        return `\n${startMarker}\n<ul>\n${items}</ul>\n${endMarker}\n`;
-      }
-    );
-
-  // Handle Special Environments — protect with EnvMarkerBlot
-  const envRegex = new RegExp(
-    `\\\\begin\\{(${SPECIAL_ENVS_PATTERN})\\}(?:\\{[^}]*\\})?([\\s\\S]*?)\\\\end\\{\\1\\}`,
-    "gi",
-  );
-  processed = processed.replace(
-    envRegex,
-    (match, envName, content) => {
-      const encodedEnv = btoa(unescape(encodeURIComponent(envName)));
-      const startMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="start"></div>`;
-      const endMarker = `<div class="ql-env-marker" data-env="${encodedEnv}" data-type="end"></div>`;
-      return `\n${startMarker}\n<p>${content.trim()}</p>\n${endMarker}\n`;
-    }
-  );
-
-  // Handle Sections — remapped: section→H1, subsection→H2, subsubsection→H3
-  // Track numbered vs unnumbered via data-numbered attribute
-  processed = processed
-    .replace(/\\section\{([^}]*)\}/g, '<h1 data-numbered="true"><strong>$1</strong></h1>')
-    .replace(/\\subsection\{([^}]*)\}/g, '<h2 data-numbered="true"><strong>$1</strong></h2>')
-    .replace(/\\subsubsection\{([^}]*)\}/g, '<h3 data-numbered="true"><strong>$1</strong></h3>')
-    .replace(/\\section\*\{([^}]*)\}/g, '<h1 data-numbered="false"><strong>$1</strong></h1>')
-    .replace(/\\subsection\*\{([^}]*)\}/g, '<h2 data-numbered="false"><strong>$1</strong></h2>')
-    .replace(/\\subsubsection\*\{([^}]*)\}/g, '<h3 data-numbered="false"><strong>$1</strong></h3>');
-
-  // Advanced Academic Formats & Inserts
-  processed = processed
-    .replace(/\\cite\{([^}]+)\}/g, '<span class="ql-latex-inline" data-latex-type="citation" data-latex-value="$1"></span>')
-    .replace(/\\footnote\{([^}]+)\}/g, '<span class="ql-latex-inline" data-latex-type="footnote" data-latex-value="$1"></span>')
-    .replace(/\\ref\{([^}]+)\}/g, '<span class="ql-latex-inline" data-latex-type="ref" data-latex-value="$1"></span>')
-    .replace(/\\newpage/g, '<hr class="ql-pagebreak">')
-    .replace(/\\begin\{quote\}([\s\S]*?)\\end\{quote\}/g, "<blockquote>$1</blockquote>")
-    .replace(/\\textsc\{([^}]+)\}/g, '<span class="ql-smallcaps">$1</span>');
-
-  // Formatting
-  processed = processed
-    .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>")
-    .replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>")
-    .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>")
-    .replace(/\\texttt\{([^}]+)\}/g, "<code>$1</code>")
-    .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>")
-    .replace(/\\sout\{([^}]+)\}/g, "<s>$1</s>")
-    .replace(/\\textsuperscript\{([^}]+)\}/g, "<sup>$1</sup>")
-    .replace(/\\textsubscript\{([^}]+)\}/g, "<sub>$1</sub>")
-    .replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '<a href="$1">$2</a>')
-    .replace(/\\url\{([^}]+)\}/g, '<a href="$1">$1</a>')
-    .replace(/\\today/g, "[Date: Today]");
-
-  // Convert __INPUT_START/END__ markers to HTML data-input-file divs
-  processed = processed.replace(
-    /__INPUT_START:([^_]+)__([\s\S]*?)__INPUT_END:\1__/g,
-    (match, fileName, content) =>
-      `<div data-input-file="${fileName}">${content}</div>`,
-  );
-
-  const paragraphs = processed
-    .split(/\n\n+/)
-    .filter((p) => p.trim())
-    .map((p) => (p.trim().startsWith("<") ? p : `<p>${p}</p>`))
-    .join("\n\n");
-
-  let result = paragraphs;
-  equations.forEach((eq, i) => {
-    result = result.replace(`__EQ${i}__`, eq);
-  });
-
-  // 4. PACK HIDDEN DATA
-  let prefix = "";
-  let suffix = "";
-
-  if (preamble) {
-    const encoded = btoa(unescape(encodeURIComponent(preamble)));
-    prefix = ``;
-  }
-
-  if (postamble) {
-    const encoded = btoa(unescape(encodeURIComponent(postamble)));
-    suffix = ``;
-  }
-
-  return prefix + result + suffix;
-};
-
-export const richTextToLatex = (richText) => {
-  if (!richText) return "";
-
-  let latex = richText;
-  let restoredPreamble = "";
-  let restoredPostamble = "";
-
-  // 1. EXTRACT HIDDEN PREAMBLE
-  const preambleRegex = new RegExp("");
-  const preambleMatch = latex.match(preambleRegex);
-
-  if (preambleMatch) {
-    try {
-      restoredPreamble = decodeURIComponent(escape(atob(preambleMatch[1])));
-      latex = latex.replace(preambleMatch[0], "");
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  // 2. EXTRACT HIDDEN POSTAMBLE
-  const postambleRegex = new RegExp("");
-  const postambleMatch = latex.match(postambleRegex);
-
-  if (postambleMatch) {
-    try {
-      restoredPostamble = decodeURIComponent(escape(atob(postambleMatch[1])));
-      latex = latex.replace(postambleMatch[0], "");
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  // ====== KEY FIX: PRESERVE EQUATIONS FIRST ======
-  const equations = [];
-  latex = latex
-    .replace(/\$\$([^\$]*?)\$\$/g, (match) => {
-      equations.push(match);
-      return `__EQ${equations.length - 1}__`;
-    })
-    .replace(/\$([^$\n]+)\$/g, (match) => {
-      equations.push(match);
-      return `__EQ${equations.length - 1}__`;
-    });
-
-  // ====== EXTRACT LATEX BLOCK BLOTS (tables, figures) ======
-  const latexBlocks = [];
-
-  // Extract ql-latex-block blots (from Quill BlockEmbed)
-  latex = latex.replace(
-    /<div[^>]*class="ql-latex-block"[^>]*data-latex="([^"]*)"[^>]*>[\s\S]*?<\/div>(?:\s*<\/div>)*/gi,
-    (_, encoded) => {
-      try {
-        latexBlocks.push(decodeURIComponent(escape(atob(encoded))));
-      } catch {
-        latexBlocks.push("");
-      }
-      return `__LATEXBLOCK${latexBlocks.length - 1}__`;
+      const encodedFile = btoa(unescape(encodeURIComponent(fName)));
+      return `<span class="ql-file-marker" data-file="${encodedFile}" data-type="start">&#8203;</span>\n${content}\n<span class="ql-file-marker" data-type="end">&#8203;</span>\n`;
     },
   );
 
-  // Backward compat: also catch old-style <table data-latex="..."> format
-  latex = latex.replace(
-    /<table[^>]*data-latex="([^"]+)"[^>]*>[\s\S]*?<\/table>/gi,
-    (_, encoded) => {
-      try {
-        latexBlocks.push(decodeURIComponent(escape(atob(encoded))));
-      } catch {
-        latexBlocks.push("");
-      }
-      return `__LATEXBLOCK${latexBlocks.length - 1}__`;
-    },
+  // 3. Convert academic elements
+  processed = processed.replace(
+    /\\cite\{([^}]*)\}/g,
+    '<span class="ql-latex-inline" data-latex-type="citation" data-latex-value="$1"></span>',
   );
-
-  // Extract Academic Inline Blots BEFORE span stripping
-  const inlineBlocks = [];
-  latex = latex.replace(
-    /<span[^>]*data-latex-type="([^"]+)"[^>]*data-latex-value="([^"]+)"[^>]*>[\s\S]*?<\/span>/gi,
-    (_, type, val) => {
-      inlineBlocks.push({ type, val });
-      return `__INLINEBLOCK${inlineBlocks.length - 1}__`;
-    }
+  processed = processed.replace(
+    /\\footnote\{([^}]*)\}/g,
+    '<span class="ql-latex-inline" data-latex-type="footnote" data-latex-value="$1"></span>',
   );
-
-  // Page Breaks
-  latex = latex.replace(/<hr[^>]*class="ql-pagebreak"[^>]*\/?>/gi, "\\newpage\n\n");
-
-  // Advanced formatting classes
-  latex = latex.replace(/<span[^>]*class="ql-smallcaps"[^>]*>([\s\S]*?)<\/span>/gi, "\\textsc{$1}");
-
-  // 1. EXTRACT FILE UPDATES
-  // We map the FileMarkerBlots to temporary __FILEINPUT_START__ and __FILEINPUT_END__ tags so we can regex them
-  const fileUpdates = {};
-  latex = latex.replace(
-    /<div[^>]*class="ql-file-marker"[^>]*data-file="([^"]+)"[^>]*data-type="start"[^>]*>.*?<\/div>/gi,
-    (match, enc) => {
-      try { return `__FILEINPUT_START:${decodeURIComponent(escape(atob(enc)))}__\n`; } catch (e) { return ""; }
-    }
+  processed = processed.replace(
+    /\\ref\{([^}]*)\}/g,
+    '<span class="ql-latex-inline" data-latex-type="ref" data-latex-value="$1"></span>',
   );
-  latex = latex.replace(
-    /<div[^>]*class="ql-file-marker"[^>]*data-file="([^"]+)"[^>]*data-type="end"[^>]*>.*?<\/div>/gi,
-    (match, enc) => {
-      try { return `\n__FILEINPUT_END:${decodeURIComponent(escape(atob(enc)))}__\n`; } catch (e) { return ""; }
-    }
-  );
-  
-  // 2. PROTECTED ENVIRONMENTS
-  // Restore EnvMarkerBlots back to \begin{...} and \end{...}
-  latex = latex.replace(
-    /<div[^>]*class="ql-env-marker"[^>]*data-env="([^"]+)"[^>]*data-type="start"[^>]*>.*?<\/div>/gi,
-    (match, enc) => {
-      try { return `\n\n\\begin{${decodeURIComponent(escape(atob(enc)))}}\n`; } catch (e) { return "\n\n"; }
-    }
-  );
-  latex = latex.replace(
-    /<div[^>]*class="ql-env-marker"[^>]*data-env="([^"]+)"[^>]*data-type="end"[^>]*>.*?<\/div>/gi,
-    (match, enc) => {
-      try { return `\n\\end{${decodeURIComponent(escape(atob(enc)))}}\n\n`; } catch (e) { return "\n\n"; }
-    }
-  );
+  processed = processed.replace(/\\newpage/g, '<hr class="ql-pagebreak">');
 
-  // Basic HTML to LaTeX conversions
-  latex = latex
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p><p>/gi, "\n\n")
-    .replace(/<p>/gi, "")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/\[Date: Today\]/g, "\\today");
-
-  // Legacy: Restore old Special Environment Headers -> \begin{...}
-  // (In case users paste old HTML or we missed some data-attributes)
-  latex = latex.replace(
-    /<h[1-3][^>]*data-env="([^"]+)"[^>]*>\s*(?:<strong>|<b>)?\s*[^<]*\s*(?:<\/strong>|<\/b>)?\s*<\/h[1-3]>/gi,
-    (match, envName) => `\n\n\\begin{${envName}}\n`,
-  );
-
-  // Also handle legacy format (h3 without data-env but with special env name)
-  latex = latex.replace(
-    new RegExp(
-      `<h[1-4][^>]*>\\s*(?:<strong>|<b>)?\\s*(${SPECIAL_ENVS_PATTERN})\\s*(?:<\\/strong>|<\\/b>)?\\s*<\\/h[1-4]>`,
+  // 4. Special environments (abstract, etc.)
+  SPECIAL_ENVS.forEach((env) => {
+    const regex = new RegExp(
+      `\\\\begin\\{${env}\\}(\\{[^}]*\\})?([\\s\\S]*?)\\\\end\\{${env}\\}`,
       "gi",
-    ),
-    (match, envName) => `\n\n\\begin{${envName}}\n`,
-  );
-
-  // Restore Sections — remapped: H1→section, H2→subsection, H3→subsubsection
-  // Handle data-numbered attribute for starred variants
-  latex = latex
-    .replace(
-      /<h1[^>]*data-numbered="false"[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h1>/gi,
-      "\n\n\\section*{$1}\n\n",
-    )
-    .replace(
-      /<h1[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h1>/gi,
-      "\n\n\\section{$1}\n\n",
-    )
-    .replace(
-      /<h2[^>]*data-numbered="false"[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
-      "\n\n\\subsection*{$1}\n\n",
-    )
-    .replace(
-      /<h2[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h2>/gi,
-      "\n\n\\subsection{$1}\n\n",
-    )
-    .replace(
-      /<h3[^>]*data-numbered="false"[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
-      "\n\n\\subsubsection*{$1}\n\n",
-    )
-    .replace(
-      /<h3[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h3>/gi,
-      "\n\n\\subsubsection{$1}\n\n",
-    )
-    // Catch any remaining h4 (legacy)
-    .replace(
-      /<h4[^>]*>(?:<strong>)?([^<]+)(?:<\/strong>)?<\/h4>/gi,
-      "\n\n\\subsubsection{$1}\n\n",
     );
+    processed = processed.replace(regex, (match, arg, inner) => {
+      let content = inner.trim();
+      if (env.toLowerCase() === "thebibliography") {
+        content = content.replace(
+          /\\bibitem\{([^}]*)\}\s*([\s\S]*?)(?=\\bibitem|$)/g,
+          '<p class="ql-bibitem"><strong>[$1]</strong> $2</p>',
+        );
+      }
 
-  // AUTO-CLOSE ENVIRONMENTS
-  const closeEnvRegex = new RegExp(
-    `(\\\\begin\\{(${SPECIAL_ENVS_PATTERN})\\}[\\s\\S]*?)(?=\n\\s*\\\\(?:section|subsection|subsubsection|begin)|$)`,
-    "gi",
-  );
-  latex = latex.replace(closeEnvRegex, (match, content, envName) => {
-    if (content.includes(`\\end{${envName}}`)) return match;
-    return `${content.trim()}\n\\end{${envName}}\n`;
+      const envString = arg ? `${env}:${arg}` : env;
+      const encData = btoa(unescape(encodeURIComponent(envString)));
+
+      return `<span class="ql-env-marker" data-env="${encData}" data-type="start">&#8203;</span>\n${content}\n<span class="ql-env-marker" data-env="${encData}" data-type="end">&#8203;</span>\n`;
+    });
   });
 
-  // Lists and formatting
-  latex = latex
-    .replace(
-      /<ul[^>]*>([\s\S]*?)<\/ul>/gi,
-      (match, content) =>
-        `\n\\begin{itemize}\n${content
-          .split(/<li[^>]*>/)
-          .slice(1)
-          .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
-          .join("\n")}\n\\end{itemize}\n`,
-    )
-    .replace(
-      /<ol[^>]*>([\s\S]*?)<\/ol>/gi,
-      (match, content) =>
-        `\n\\begin{enumerate}\n${content
-          .split(/<li[^>]*>/)
-          .slice(1)
-          .map((i) => `\\item ${i.replace(/<\/li>/gi, "").trim()}`)
-          .join("\n")}\n\\end{enumerate}\n`,
+  // 5. Formatting
+  const formats = {
+    textbf: "strong",
+    textit: "em",
+    emph: "em",
+    texttt: "code",
+    underline: "u",
+    sout: "s",
+    textsuperscript: "sup",
+    textsubscript: "sub",
+  };
+  Object.entries(formats).forEach(([cmd, tag]) => {
+    processed = processed.replace(
+      new RegExp(`\\\\${cmd}\\{([^}]*)\\}`, "g"),
+      `<${tag}>$1</${tag}>`,
     );
+  });
 
-  latex = latex
-    .replace(/<strong[^>]*>([^<]+)<\/strong>/gi, "\\textbf{$1}")
-    .replace(/<b[^>]*>([^<]+)<\/b>/gi, "\\textbf{$1}")
-    .replace(/<em[^>]*>([^<]+)<\/em>/gi, "\\textit{$1}")
-    .replace(/<i[^>]*>([^<]+)<\/i>/gi, "\\textit{$1}")
-    .replace(/<code[^>]*>([^<]+)<\/code>/gi, "\\texttt{$1}")
-    .replace(/<u[^>]*>([^<]+)<\/u>/gi, "\\underline{$1}")
-    .replace(/<s[^>]*>([^<]+)<\/s>/gi, "\\sout{$1}")
-    .replace(/<del[^>]*>([^<]+)<\/del>/gi, "\\sout{$1}")
-    .replace(/<strike[^>]*>([^<]+)<\/strike>/gi, "\\sout{$1}")
-    .replace(/<sup[^>]*>([^<]+)<\/sup>/gi, "\\textsuperscript{$1}")
-    .replace(/<sub[^>]*>([^<]+)<\/sub>/gi, "\\textsubscript{$1}")
-    .replace(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/gi, "\\href{$1}{$2}");
+  processed = processed.replace(
+    /\\href\{([^}]*)\}\{([^}]*)\}/g,
+    '<a href="$1">$2</a>',
+  );
+  processed = processed.replace(/\\url\{([^}]*)\}/g, '<a href="$1">$1</a>');
 
-  // Strip any remaining HTML tags that slipped through converters
-  latex = latex
-    .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, "\n\\begin{quote}\n$1\n\\end{quote}\n")
-    .replace(/<pre[^>]*>([^<]*)<\/pre>/gi, "\n\\begin{verbatim}\n$1\n\\end{verbatim}\n")
-    .replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, "$1") // safe to strip now because data-latex-type spans were extracted
-    .replace(/<div[^>]*>([^<]*)<\/div>/gi, "$1\n")
-    .replace(/<[^>]+>/g, "");
-
-  // Clean empty lines, ensuring we don't have excessive double spacing
-  latex = latex.replace(/\n{3,}/g, "\n\n").trim();
-
-  // POST-PROCESS THEBIBLIOGRAPHY
-  // EnvMarkerBlot turns back into \begin{thebibliography}. The list inside turns into \begin{itemize}...
-  // We need to fix this back to \bibitem format
-  latex = latex.replace(
-    /\\begin\{thebibliography\}([\s\S]*?)\\end\{thebibliography\}/g,
-    (match, innerContent) => {
-      // Strip the erroneously generated itemize or enumerate wrapper
-      let fixed = innerContent.replace(/\\begin\{(?:itemize|enumerate)\}|\\end\{(?:itemize|enumerate)\}/g, "");
-      // Convert \item \textbf{[Key]} Text => \bibitem{Key} Text
-      fixed = fixed.replace(/\\item\s*\\textbf\{\[([^\]]+)\]\}\s*/g, "\n\\bibitem{$1} ");
-      // Fallback: If bolding was lost, just \item [Key]
-      fixed = fixed.replace(/\\item\s*\[([^\]]+)\]\s*/g, "\n\\bibitem{$1} ");
-      // Fallback: If all formatting and key brackets were lost, just change \item back to \bibitem{}
-      fixed = fixed.replace(/\\item\s+/g, "\n\\bibitem{} ");
-
-      return `\\begin{thebibliography}{10}\n${fixed.trim()}\n\\end{thebibliography}`;
-    }
+  // 6. Headings
+  processed = processed.replace(
+    /\\(section|subsection|subsubsection)(\*)?\{([^}]*)\}/gi,
+    (m, type, star, title) => {
+      const typeLower = type.toLowerCase();
+      const lvl =
+        typeLower === "section" ? 1 : typeLower === "subsection" ? 2 : 3;
+      return `<h${lvl}>${title}</h${lvl}>\n`;
+    },
   );
 
-  // RESTORE EQUATIONS AT THE END
-  equations.forEach((eq, i) => {
-    latex = latex.replace(new RegExp(`__EQ${i}__`, "g"), eq);
+  // 7. Restore placeholders
+  placeholders.forEach((p) => {
+    const encoded = btoa(unescape(encodeURIComponent(p.content)));
+    const type = p.content.includes("table")
+      ? "table"
+      : p.content.includes("figure")
+        ? "figure"
+        : "equation";
+    const blot = `<div class="ql-latex-block" data-latex="${encoded}" data-type="${type}"></div>`;
+    processed = processed.replace(p.token, blot);
   });
 
-  // RESTORE LATEX BLOCKS (tables, figures) AT THE END
-  latexBlocks.forEach((block, i) => {
-    latex = latex.replace(new RegExp(`__LATEXBLOCK${i}__`, "g"), block);
+  // 8. Stripping remaining commands
+  processed = processed.replace(
+    /\\(?:vspace|hspace|noindent|centering|raggedright|raggedleft|label|maketitle)\{[^}]*\}?/g,
+    "",
+  );
+  processed = processed.replace(/\\today/g, "[Date: Today]");
+  processed = stripLatexComments(processed);
+
+  // 9. Paragraph wraps
+  const parts = processed.split(/\n\n+/);
+  const bodyHtml = parts
+    .map((p) => {
+      const t = p.trim();
+      if (!t) return "";
+      if (/^(<h|<div|<ul|<ol|<hr)/.test(t) || t.startsWith("__")) return t;
+      return `<p>${t.replace(/\n/g, " ")}</p>`;
+    })
+    .join("\n");
+
+  if (!isFragment) {
+    const effectivePostamble = postamble.trim() || "\\end{document}";
+    const encodedPostamble = btoa(
+      unescape(encodeURIComponent(effectivePostamble)),
+    );
+    const postambleHtml = `\n<div class="ql-postamble-block" data-postamble="${encodedPostamble}"></div>`;
+    return html + bodyHtml + postambleHtml;
+  }
+
+  return html + bodyHtml;
+};
+
+export const richTextToLatex = (richTextHtml, options = {}) => {
+  const { isFragment = false } = options;
+  const fileUpdates = {};
+  let content = richTextHtml;
+
+  content = content.replace(/📄\s*File:[^\n<]+/g, "");
+  content = content.replace(/\[\s*\{\s*"env"\s*:[^\]]*\}\s*\]/gi, "");
+  content = content.replace(
+    /\[\s*(abstract|IEEEkeywords|keywords|acknowledgements|acknowledgments|thebibliography|appendix)(?::\{[^}]*\})?\s*\]/gi,
+    "",
+  );
+
+  let preamble = "";
+  if (!isFragment) {
+    content = content.replace(
+      /<div[^>]*class="ql-latex-preamble"[^>]*data-preamble="([^"]*)"[^>]*>[\s\S]*?<\/div>/gi,
+      (m, data) => {
+        try {
+          preamble = decodeURIComponent(escape(atob(data)));
+        } catch (e) {}
+        return "";
+      },
+    );
+  }
+
+  let postamble = "";
+  if (!isFragment) {
+    content = content.replace(
+      /<div[^>]*class="ql-postamble-block"[^>]*data-postamble="([^"]*)"[^>]*>[\s\S]*?<\/div>/gi,
+      (m, data) => {
+        try {
+          postamble = decodeURIComponent(escape(atob(data)));
+        } catch (e) {}
+        return "";
+      },
+    );
+  }
+
+  const latexBlocks = [];
+  content = content.replace(
+    /<div[^>]*class="ql-latex-block"[^>]*data-latex="([^"]*)"[^>]*>[\s\S]*?<\/div>/gi,
+    (m, data) => {
+      try {
+        const decoded = decodeURIComponent(escape(atob(data)));
+        const token = `__LATEXBLOCK_${latexBlocks.length}__`;
+        latexBlocks.push(decoded);
+        return token;
+      } catch (e) {
+        return "";
+      }
+    },
+  );
+
+  const inlineBlots = [];
+  content = content.replace(
+    /<span[^>]*class="ql-latex-inline"[^>]*data-latex-type="([^"]*)"[^>]*data-latex-value="([^"]*)"[^>]*>[\s\S]*?<\/span>/gi,
+    (m, type, val) => {
+      const token = `__INLINEBLOT_${inlineBlots.length}__`;
+      inlineBlots.push({ type, val });
+      return token;
+    },
+  );
+
+  const fileTokens = [];
+  content = content.replace(
+    /<[^>]+class="[^"]*ql-file-marker[^"]*"[^>]*data-file="([^"]*)"[^>]*data-type="start"[^>]*>/gi,
+    (m, file) => {
+      try {
+        const fName = decodeURIComponent(escape(atob(file)));
+        const token = `__FILESTART_${fileTokens.length}__`;
+        fileTokens.push({ fileName: fName });
+        return token;
+      } catch (e) {
+        return m;
+      }
+    },
+  );
+
+  let endIdx = 0;
+  content = content.replace(
+    /<[^>]+class="[^"]*ql-file-marker[^"]*"[^>]*data-type="end"[^>]*>/gi,
+    () => `__FILEEND_${endIdx++}__`,
+  );
+
+  content = content.replace(
+    /<[^>]+class="[^"]*ql-env-marker[^"]*"[^>]*data-env="([^"]*)"[^>]*data-type="start"[^>]*>/gi,
+    (m, data) => {
+      try {
+        const decoded = decodeURIComponent(escape(atob(data)));
+        let env = decoded;
+        let arg = "";
+
+        if (decoded.includes(":")) {
+          const parts = decoded.split(":");
+          env = parts[0];
+          arg = parts.slice(1).join(":"); // Capture {99}
+        }
+
+        return `\\begin{${env}}${arg}\n`;
+      } catch (e) {
+        return "";
+      }
+    },
+  );
+  content = content.replace(
+    /<[^>]+class="[^"]*ql-env-marker[^"]*"[^>]*data-env="([^"]*)"[^>]*data-type="end"[^>]*>/gi,
+    (m, data) => {
+      try {
+        const decoded = decodeURIComponent(escape(atob(data)));
+        let env = decoded;
+        if (decoded.includes(":")) {
+          env = decoded.split(":")[0];
+        }
+        return `\n\\end{${env}}\n`;
+      } catch (e) {
+        return "";
+      }
+    },
+  );
+
+  content = content.replace(
+    /<p[^>]*>\s*<strong>\s*\[([^\]]+)\]\s*<\/strong>\s*(.*?)<\/p>/gi,
+    "\\bibitem{$1} $2\n",
+  );
+
+  content = content.replace(/<h([1-3])[^>]*>(.*?)<\/h\1>/gi, (m, lvl, txt) => {
+    const cleanTxt = txt.replace(/<[^>]+>/g, "").trim();
+    const cmd =
+      lvl === "1" ? "section" : lvl === "2" ? "subsection" : "subsubsection";
+    return `\n\\${cmd}{${cleanTxt}}\n\n`;
   });
 
-  // RESTORE INLINE BLOCKS (citations, footnotes, refs) AT THE END
-  inlineBlocks.forEach((block, i) => {
-    let macro = "";
-    if (block.type === "citation") macro = `\\cite{${block.val}}`;
-    else if (block.type === "footnote") macro = `\\footnote{${block.val}}`;
-    else if (block.type === "ref") macro = `\\ref{${block.val}}`;
-    latex = latex.replace(new RegExp(`__INLINEBLOCK${i}__`, "g"), macro);
+  content = content.replace(/<strong>(.*?)<\/strong>/g, "\\textbf{$1}");
+  content = content.replace(/<em>(.*?)<\/em>/g, "\\textit{$1}");
+  content = content.replace(/<u>(.*?)<\/u>/g, "\\underline{$1}");
+  content = content.replace(/<s>(.*?)<\/s>/g, "\\sout{$1}");
+  content = content.replace(/<sup>(.*?)<\/sup>/g, "\\textsuperscript{$1}");
+  content = content.replace(/<sub>(.*?)<\/sub>/g, "\\textsubscript{$1}");
+  content = content.replace(/<code>(.*?)<\/code>/g, "\\texttt{$1}");
+  content = content.replace(/<a href="([^"]*)">(.*?)<\/a>/g, (m, url, txt) =>
+    url === txt ? `\\url{${url}}` : `\\href{${url}}{${txt}}`,
+  );
+
+  content = content.replace(
+    /<ul>(.*?)<\/ul>/gs,
+    (m, inner) =>
+      `\\begin{itemize}\n${inner.replace(/<li>(.*?)<\/li>/g, "\\item $1\n")}\\end{itemize}\n`,
+  );
+  content = content.replace(
+    /<ol>(.*?)<\/ol>/gs,
+    (m, inner) =>
+      `\\begin{enumerate}\n${inner.replace(/<li>(.*?)<\/li>/g, "\\item $1\n")}\\end{enumerate}\n`,
+  );
+
+  content = content.replace(/<p>(.*?)<\/p>/g, "$1\n\n");
+  content = content.replace(/<br\s*\/?>/g, "\n");
+  content = content.replace(/<hr class="ql-pagebreak">/g, "\\newpage\n\n");
+  content = content.replace(/<[^>]+>/g, ""); // Final strip
+
+  content = content.replace(/__LATEXBLOCK_(\d+)__/g, (_, i) => latexBlocks[i]);
+  content = content.replace(/__INLINEBLOT_(\d+)__/g, (_, i) => {
+    const b = inlineBlots[i];
+    if (b.type === "citation") return `\\cite{${b.val}}`;
+    if (b.type === "footnote") return `\\footnote{${b.val}}`;
+    if (b.type === "ref") return `\\ref{${b.val}}`;
+    return "";
   });
 
-  // EXTRACT FILE UPDATES — convert __FILEINPUT__ markers to \input{} and collect file content
-  latex = latex.replace(
-    /__FILEINPUT_START:([^_]+)__([\s\S]*?)__FILEINPUT_END:\1__/g,
-    (match, fileName, content) => {
-      // The content between markers is the converted LaTeX for this file
-      fileUpdates[fileName] = content.trim();
-      // In main.tex, replace with the \input{} directive
+  content = content.replace(
+    /__FILESTART_(\d+)__([\s\S]*?)__FILEEND_\1__/g,
+    (_, idx, fileBody) => {
+      const { fileName } = fileTokens[parseInt(idx)];
+      let cleanBody = fileBody.trim();
+
+      cleanBody = cleanBody.replace(/^\\begin\{[^}]+\}(\{[^}]*\})?\s*/i, "");
+      cleanBody = cleanBody.replace(/\s*\\end\{[^}]+\}\s*$/i, "");
+
+      fileUpdates[fileName] = cleanBody.trim();
       const inputName = fileName.replace(/\.tex$/, "");
-      return `\\input{${inputName}}`;
-    }
+      return `\\input{${inputName}}\n\n`;
+    },
   );
 
-  // Combine
-  let finalLatex = "";
-  if (restoredPreamble) finalLatex += restoredPreamble + "\n";
-  finalLatex += latex;
-  if (restoredPostamble) finalLatex += "\n" + restoredPostamble;
+  content = content.replace(
+    /\\begin\{thebibliography\}(\{[^}]*\})?(.*?)\\end\{thebibliography\}/gs,
+    (m, arg, inner) => {
+      const argStr = arg || "{1}";
+      let bib = inner.replace(/\\textbf\{\[([^\]]+)\]\}\s*/g, "\\bibitem{$1} ");
+      bib = bib
+        .replace(/\\begin\{(?:itemize|enumerate)\}/g, "")
+        .replace(/\\end\{(?:itemize|enumerate)\}/g, "")
+        .replace(/\\item\s*/g, "");
+      return `\\begin{thebibliography}${argStr}\n${bib.trim()}\n\\end{thebibliography}\n`;
+    },
+  );
 
-  return { latex: finalLatex, fileUpdates };
+  let finalLatex = isFragment
+    ? content.trim()
+    : (preamble ? preamble.trim() + "\n\n" : "") +
+      content.trim() +
+      (postamble ? "\n\n" + postamble.trim() : "");
+
+  finalLatex = finalLatex.replace(/\n{3,}/g, "\n\n");
+
+  return { latex: finalLatex, body: content.trim(), fileUpdates };
 };
 
-// ============ 5. SECTION <-> RICH TEXT WRAPPERS ============
+// ============ SECTION 5: FRAGMENT HELPERS ============
 
-// Converts a specific Section Node (from latexToSections) into Rich Text for the editor
+export const fileToSections = (
+  fileContent,
+  fileName,
+  sectionNameHint,
+  fileMap = {},
+) => {
+  const { blocks, leadingContent } = parseBodyIntoBlocks(fileContent || "");
+
+  const deriveDisplayName = (name) => {
+    return (name || "")
+      .replace(/.*\//, "")
+      .replace(/\.tex$/i, "")
+      .replace(/[_-]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  const displayName = sectionNameHint || deriveDisplayName(fileName);
+
+  const rootNode = {
+    id: "file-root-section",
+    type: "section",
+    subtype: "standard",
+    name: displayName,
+    content: leadingContent.trim(),
+    source: "file",
+    fileName: fileName,
+    children: [],
+  };
+
+  let currentSubsection = null;
+
+  blocks.forEach((block) => {
+    block.source = "file";
+    block.fileName = fileName;
+
+    if (block.type === "section") {
+      rootNode.children.push(block);
+      currentSubsection = null;
+    } else if (block.type === "subsection") {
+      rootNode.children.push(block);
+      currentSubsection = block;
+    } else if (block.type === "subsubsection") {
+      if (currentSubsection) {
+        currentSubsection.children.push(block);
+      } else {
+        rootNode.children.push(block);
+      }
+    }
+  });
+
+  return [rootNode];
+};
+
+export const sectionsToFile = (sections, activeFileName) => {
+  let content = "";
+  const fileUpdates = {};
+
+  const serializeNode = (node) => {
+    if (node.id === "file-root-section") {
+      if (node.content) content += node.content.trim() + "\n\n";
+      node.children.forEach(serializeNode);
+      return;
+    }
+
+    const star = node.subtype === "starred" ? "*" : "";
+    content += `\\${node.type}${star}{${node.name}}\n`;
+    if (node.content) content += node.content.trim() + "\n\n";
+    node.children.forEach(serializeNode);
+  };
+
+  sections.forEach(serializeNode);
+
+  content = content.replace(/\n{3,}/g, "\n\n");
+  fileUpdates[activeFileName] = content.trim();
+
+  return { latex: content.trim(), fileUpdates };
+};
+
+// ============ SECTION 6: BRIDGE FUNCTIONS ============
+
 export const sectionToRichText = (sectionNode) => {
-  if (!sectionNode) return "";
-
-  // If the node IS the environment (e.g. type="section", subtype="env", name="IEEEkeywords"),
-  // the content usually doesn't include the \begin{...} \end{...} tags if extracted correctly,
-  // OR it does include them depending on how `latexToSections` parsed it.
-
-  // Assuming `latexToSections` content INCLUDES the raw body but maybe NOT the wrapper commands for that specific section:
-  // We treat the content as pure body.
-
-  return latexToRichText(sectionNode.content);
+  let content = sectionNode.content || "";
+  if (sectionNode.subtype === "env" && sectionNode.envTag) {
+    const arg = sectionNode.envArg || "";
+    content = `\\begin{${sectionNode.envTag}}${arg}\n${content}\n\\end{${sectionNode.envTag}}`;
+  }
+  if (
+    sectionNode.envTag === "keywords" ||
+    sectionNode.envTag === "IEEEkeywords"
+  ) {
+    content = content.replace(/^Keywords:|^Index Terms:/i, "").trim();
+  }
+  // Added isFragment: true to prevent \end{document} injection
+  return latexToRichText(content, {}, { isFragment: true });
 };
 
-// Converts Rich Text back into the Content string for a Section Node
-export const richTextToSection = (richText) => {
-  return richTextToLatex(richText);
+export const richTextToSection = (richTextHtml) => {
+  // Added isFragment: true to prevent \end{document} injection
+  const { latex } = richTextToLatex(richTextHtml, { isFragment: true });
+  const { body } = splitLatex(latex);
+  return body
+    .replace(/\\begin\{[^}]*\}(\{[^}]*\})?|\\end\{[^}]*\}/g, "")
+    .trim();
 };
 
-export default {
-  extractLatexBody,
-  reconstructLatexDocument,
-  latexToRichText,
-  richTextToLatex,
+// ============ SECTION 6: LEGACY HELPERS ============
+
+export const extractLatexBody = (latex) => {
+  const { body } = splitLatex(latex);
+  return body;
+};
+
+export const reconstructLatexDocument = (originalLatex, newBodyContent) => {
+  const { preamble, postamble } = splitLatex(originalLatex);
+  return `${preamble.trim()}\n\n${newBodyContent.trim()}\n\n${postamble.trim()}`.replace(
+    /\n{3,}/g,
+    "\n\n",
+  );
+};
+
+// ============ EXPORTS ============
+
+const latexUtility = {
+  isMainFile,
+  splitLatex,
   latexToSections,
   sectionsToLatex,
+  fileToSections,
+  sectionsToFile,
+  latexToRichText,
+  richTextToLatex,
   sectionToRichText,
   richTextToSection,
-  splitLatex,
+  extractLatexBody,
+  reconstructLatexDocument,
   escapeLatexSpecialChars,
   unescapeLatexSpecialChars,
+  stripLatexComments,
+  resolveFileContent,
+  canonicalFileName,
 };
+
+export default latexUtility;
