@@ -10,7 +10,8 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "../assets/styles/pdfViewer.css";
 import { useSettings } from "../context/useSettings";
 
-pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+// pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+pdfjs.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.js";
 
 const PdfViewer = ({
   pdfUrl,
