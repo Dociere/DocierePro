@@ -109,7 +109,7 @@ class FileMarkerBlot extends BlockEmbed {
     node.setAttribute("data-file", value.file || "");
     node.setAttribute("data-type", value.type || "start");
     node.contentEditable = "false";
-    
+
     if (value.type === "start") {
       Object.assign(node.style, {
         padding: "4px 8px",
@@ -121,14 +121,20 @@ class FileMarkerBlot extends BlockEmbed {
         marginTop: "16px",
         marginBottom: "8px",
         userSelect: "none",
-        fontFamily: "Inter, sans-serif"
+        fontFamily: "Inter, sans-serif",
       });
       let decodedFile = value.file;
-      try { decodedFile = decodeURIComponent(escape(atob(value.file))); } catch(e) {}
+      try {
+        decodedFile = decodeURIComponent(escape(atob(value.file)));
+      } catch (e) {}
       node.textContent = `📄 File: ${decodedFile}`;
     } else {
       Object.assign(node.style, {
-        height: "0px", margin: "0", padding: "0", border: "0", overflow: "hidden"
+        height: "0px",
+        margin: "0",
+        padding: "0",
+        border: "0",
+        overflow: "hidden",
       });
     }
     return node;
@@ -152,7 +158,7 @@ class EnvMarkerBlot extends BlockEmbed {
     node.setAttribute("data-env", value.env || "");
     node.setAttribute("data-type", value.type || "start");
     node.contentEditable = "false";
-    
+
     if (value.type === "start") {
       Object.assign(node.style, {
         padding: "2px 8px",
@@ -166,14 +172,20 @@ class EnvMarkerBlot extends BlockEmbed {
         marginBottom: "8px",
         marginTop: "12px",
         userSelect: "none",
-        fontFamily: "Inter, sans-serif"
+        fontFamily: "Inter, sans-serif",
       });
       let decodedEnv = value.env;
-      try { decodedEnv = decodeURIComponent(escape(atob(value.env))); } catch(e) {}
+      try {
+        decodedEnv = decodeURIComponent(escape(atob(value.env)));
+      } catch (e) {}
       node.textContent = `[ ${decodedEnv} ]`;
     } else {
       Object.assign(node.style, {
-        height: "0px", margin: "0", padding: "0", border: "0", overflow: "hidden"
+        height: "0px",
+        margin: "0",
+        padding: "0",
+        border: "0",
+        overflow: "hidden",
       });
     }
     return node;
@@ -270,7 +282,7 @@ class PageBreakBlot extends BlockEmbed {
   static create() {
     const node = super.create();
     node.setAttribute("title", "Page Break (\\newpage)");
-    
+
     Object.assign(node.style, {
       margin: "24px 0",
       border: "none",
@@ -285,5 +297,55 @@ class PageBreakBlot extends BlockEmbed {
 
 Quill.register(PageBreakBlot, true);
 
-export { LatexBlockBlot, LatexInlineBlot, PageBreakBlot, FileMarkerBlot, EnvMarkerBlot };
+class PostambleBlot extends BlockEmbed {
+  static blotName = "postamble-block";
+  static tagName = "DIV";
+  static className = "ql-postamble-block";
 
+  static create(value) {
+    const node = super.create();
+    node.setAttribute("data-postamble", value.postamble || "");
+    node.contentEditable = "false";
+
+    Object.assign(node.style, {
+      margin: "16px 0 0 0",
+      padding: "8px 12px",
+      background: "#f3f4f6",
+      border: "1px solid #e5e7eb",
+      borderLeft: "3px solid #d1d5db",
+      borderRadius: "4px",
+      fontFamily: "'SF Mono', 'Fira Code', Consolas, monospace",
+      fontSize: "12px",
+      color: "#6b7280",
+      userSelect: "none",
+      cursor: "default",
+      whiteSpace: "pre-wrap",
+    });
+
+    let decoded = "";
+    if (value.postamble) {
+      try {
+        decoded = decodeURIComponent(escape(atob(value.postamble)));
+      } catch (e) {
+        decoded = value.postamble;
+      }
+    }
+    node.textContent = decoded || "\\end{document}";
+
+    return node;
+  }
+
+  static value(node) {
+    return { postamble: node.getAttribute("data-postamble") || "" };
+  }
+}
+Quill.register(PostambleBlot, true);
+
+export {
+  LatexBlockBlot,
+  LatexInlineBlot,
+  PageBreakBlot,
+  FileMarkerBlot,
+  EnvMarkerBlot,
+  PostambleBlot,
+};

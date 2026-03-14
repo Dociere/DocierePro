@@ -174,18 +174,50 @@ const MonacoEditorPanel = ({
     }
   }, [highlightLine]);
 
-  // Sync content in offline mode
+  // Mark if the edit originated locally to prevent cursor jumps during state sync
+  const isLocalEditRef = useRef(false);
+  const localEditTimeoutRef = useRef(null);
+
+  // Sync content and handle cursor jumps
   useEffect(() => {
-    if (!isOnline && editorInstanceRef.current && value !== undefined) {
-      const currentValue = editorInstanceRef.current.getValue();
-      if (currentValue !== value) {
-        console.log(
-          "📝 Updating Monaco editor with new content (offline mode)",
-        );
-        editorInstanceRef.current.setValue(value);
-      }
-    }
-  }, [value, isOnline]);
+    const editor = editorInstanceRef.current;
+    if (!editor || value === undefined) return;
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const currentValue = model.getValue();
+
+    // Do nothing if content is already identical
+    if (currentValue === value) return;
+
+    // Skip if this change originated locally (typing)
+    if (isLocalEditRef.current) return;
+
+    console.log("📝 External update applied to Monaco model");
+
+    const position = editor.getPosition();
+    const selection = editor.getSelection();
+
+    model.pushEditOperations(
+      [],
+      [
+        {
+          range: model.getFullModelRange(),
+          text: value,
+        },
+      ],
+      () => null,
+    );
+
+    // restore cursor
+    Promise.resolve().then(() => {
+      if (!editorInstanceRef.current) return;
+
+      if (selection) editorInstanceRef.current.setSelection(selection);
+      if (position) editorInstanceRef.current.setPosition(position);
+    });
+  }, [value]);
 
   // Update highlighting when content changes
   useEffect(() => {
@@ -196,14 +228,17 @@ const MonacoEditorPanel = ({
     }
   }, [value, editorReady, updateEnvironmentHighlighting]);
 
+  const handleBeforeMount = (monaco) => {
+    // Register LaTeX language with Monarch tokenizer BEFORE the editor/model is created
+    registerLatexLanguage(monaco);
+    defineLatexTheme(monaco);
+  };
+
   const handleEditorMount = (editor, monaco) => {
     monacoEditorRef.current = editor;
     editorInstanceRef.current = editor;
     monacoRef.current = monaco;
 
-    // Register LaTeX language with Monarch tokenizer
-    registerLatexLanguage(monaco);
-    defineLatexTheme(monaco);
     // monaco.editor.setTheme("latex-light");
     monaco.editor.setTheme(
       settings.appearance.customThemes[settings.appearance.theme].monacoEditor,
@@ -377,6 +412,21 @@ const MonacoEditorPanel = ({
     user,
   );
 
+  // Synchronous change handler to track local edits immediately
+  const handleLatexChangeWithRef = useCallback(
+    (newValue) => {
+      // Mark as local edit and suppress external sync for 500ms
+      isLocalEditRef.current = true;
+      clearTimeout(localEditTimeoutRef.current);
+      localEditTimeoutRef.current = setTimeout(() => {
+        isLocalEditRef.current = false;
+      }, 500);
+
+      handleLatexChange(newValue);
+    },
+    [handleLatexChange],
+  );
+
   return (
     <div className="h-full w-full flex-1 flex flex-col">
       {/* Active Users Bar */}
@@ -407,9 +457,9 @@ const MonacoEditorPanel = ({
         <MonacoEditor
           height="100%"
           defaultLanguage="latex"
-          value={value}
-          onChange={handleLatexChange}
-          // theme="customLight"
+          defaultValue={value}
+          onChange={handleLatexChangeWithRef}
+          beforeMount={handleBeforeMount}
           onMount={handleEditorMount}
           options={{
             minimap: { enabled: false },
