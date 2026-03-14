@@ -97,6 +97,7 @@ function createWindow() {
     console.log("Loading file:", filePath);
     console.log("File exists:", require("fs").existsSync(filePath));
     mainWindow.loadFile(filePath);
+    // mainWindow.webContents.openDevTools();
   }
 
   mainWindow.setMenu(null);
@@ -142,6 +143,10 @@ app.whenReady().then(async () => {
     archFolder,
     binaryName,
   );
+
+  console.log("pdflatexPath", pdflatexPath);
+  console.log("userDataPath", userDataPath);
+  console.log("checkDir", checkDir);
 
   const isFirstRun = !require("fs").existsSync(pdflatexPath);
   createSplashWindow(isFirstRun);

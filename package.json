@@ -1,7 +1,7 @@
 {
   "name": "dociere-pro",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -28,11 +28,14 @@
       "node_modules/**/*",
       "projects/*",
       "templates/*",
-      "settings/*"
+      "settings/*",
+      "package.json"
     ],
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "scripts/**/*",
+      "public/**/*",
       "node_modules/**/*",
       "package.json"
     ],

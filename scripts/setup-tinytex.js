@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function setupTinyTex(userDataPath, onProgress = () => {}) {
-  const isDev = !process.env.userDataPath;
+  const isDev = !userDataPath;
   const platform = process.platform;
   const baseDir = isDev ? process.cwd() : userDataPath;
   const destDir = path.join(
@@ -31,6 +31,14 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
 
   const pdflatexPath = path.join(destDir, "bin", archFolder, binaryName);
 
+  console.log("userDataPath from setup-latex.js", userDataPath);
+  console.log("process.cwd() from setup-latex.js", process.cwd());
+  console.log("pdflatexPath from setup-latex.js", pdflatexPath);
+  console.log(
+    "pdflatexPath status from setup-latex.js",
+    fs.existsSync(pdflatexPath),
+  );
+
   if (!fs.existsSync(pdflatexPath)) {
     // Install TinyTex-0
     const urls = {
@@ -47,7 +55,11 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
     onProgress(`Downloading TinyTeX-0...`);
 
     const response = await axios({ url, responseType: "stream" });
-    const tempFile = path.join(__dirname, `tinytex_temp${path.extname(url)}`);
+    // const tempFile = path.join(__dirname, `tinytex_temp${path.extname(url)}`);
+    const tempFile = path.join(
+      userDataPath,
+      `tinytex_temp${path.extname(url)}`,
+    );
     const writer = fs.createWriteStream(tempFile);
     response.data.pipe(writer);
 

@@ -269,17 +269,7 @@ export const compileDocument = async (
     let fileName = null;
 
     if (response.data.success) {
-      const pdfBlob = new Blob(
-        [Uint8Array.from(atob(response.data.pdf), (c) => c.charCodeAt(0))],
-        { type: "application/pdf" },
-      );
-      const newPdfUrl = URL.createObjectURL(pdfBlob);
-
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-
-      pdfUrl = newPdfUrl;
+      pdfUrl = `${API_URL}/output/${response.data.fileName}?t=${Date.now()}`;
       compilationStatus = "success";
       compilationMessage = "PDF compiled successfully!";
       fileName = response.data.fileName;
