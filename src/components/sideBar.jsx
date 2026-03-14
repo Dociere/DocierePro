@@ -9,12 +9,8 @@ import ImageInsertModal from "./ImageInsertModal";
 import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SectionIcon from "../assets/icons/sectionIcon.svg?react";
 import CitationIcon from "../assets/icons/citation-manager.svg?react";
-import FootnoteIcon from "../assets/icons/footnote.svg?react";
-import CrossRefIcon from "../assets/icons/link.svg?react";
 import ShareIcon from "../assets/icons/shareIcon.svg?react";
 import DraftIcon from "../assets/icons/draftIcon.svg?react";
-import FootnotePanel from "./FootnotePanel";
-import CrossRefPanel from "./CrossRefPanel";
 import MathIcon from "../assets/icons/mathIcon.svg?react";
 import TableIcon from "../assets/icons/tableIcon.svg?react";
 import ImageIcon from "../assets/icons/imageIcon.svg?react";
@@ -36,8 +32,6 @@ const DynamicSideBar = ({
 }) => {
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
-  const [isFootnoteModalOpen, setIsFootnoteModalOpen] = useState(false);
-  const [isCrossRefModalOpen, setIsCrossRefModalOpen] = useState(false);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -75,16 +69,6 @@ const DynamicSideBar = ({
   const handleCitationIconClick = (e) => {
     e.preventDefault();
     setIsCitationModalOpen(true);
-  };
-
-  const handleFootnoteIconClick = (e) => {
-    e.preventDefault();
-    setIsFootnoteModalOpen(true);
-  };
-
-  const handleCrossRefIconClick = (e) => {
-    e.preventDefault();
-    setIsCrossRefModalOpen(true);
   };
 
   const handleTableIconClick = (e) => {
@@ -235,36 +219,6 @@ const DynamicSideBar = ({
                           }}
                           className="w-4 h-4 "
                         />
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-
-                {/* Footnote Panel */}
-                <div id="tour-footnote-panel" className="relative group">
-                  <Link onClick={handleFootnoteIconClick}>
-                    <div
-                      className="flex items-center justify-center text-[#585858] cursor-pointer"
-                      title="Footnote Panel"
-                    >
-                      <div className="p-2 hover:bg-[#e9e9e9] rounded-md flex items-center justify-center w-8 h-8 font-serif font-bold italic"
-                           style={{ color: settings.appearance.customThemes[settings.appearance.theme].icon1 }}>
-                        fn
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-
-                {/* Cross-Reference Panel */}
-                <div id="tour-crossref-panel" className="relative group">
-                  <Link onClick={handleCrossRefIconClick}>
-                    <div
-                      className="flex items-center justify-center text-[#585858] cursor-pointer"
-                      title="Cross-Reference Panel"
-                    >
-                      <div className="p-2 hover:bg-[#e9e9e9] rounded-md flex items-center justify-center w-8 h-8 font-serif font-bold italic"
-                           style={{ color: settings.appearance.customThemes[settings.appearance.theme].icon1 }}>
-                        ref
                       </div>
                     </div>
                   </Link>
@@ -504,33 +458,11 @@ const DynamicSideBar = ({
 
       {/* Citation Manager Modal */}
       {isCitationModalOpen && (
-        <CitationManager isModal={true} onClose={() => setIsCitationModalOpen(false)} />
-      )}
-
-      {/* Footnote Modal */}
-      {isFootnoteModalOpen && (
-        <FootnotePanel isModal={true} onClose={() => setIsFootnoteModalOpen(false)} />
-      )}
-
-      {/* CrossRef Modal */}
-      {isCrossRefModalOpen && (
-        <CrossRefPanel 
-          isModal={true} 
-          projectFiles={projectDetails?.currentProject?.files || {}} 
-          onClose={() => setIsCrossRefModalOpen(false)} 
-        />
+        <CitationManager onClose={() => setIsCitationModalOpen(false)} />
       )}
 
       {isImageModalOpen && (
-        <ImageInsertModal 
-          isOpen={true} 
-          onClose={() => setIsImageModalOpen(false)} 
-          projectFiles={
-            projectDetails?.currentProject?.files
-              ? Object.keys(projectDetails.currentProject.files)
-              : []
-          }
-        />
+        <ImageInsertModal isOpen={true} onClose={() => setIsImageModalOpen(false)} />
       )}
 
       {isTableModalOpen && (
@@ -551,7 +483,6 @@ const DynamicSideBar = ({
         <VersionManager onClose={() => setIsVersionModalOpen(false)} />
       )}
 
-      {isSectionSpaceOpen && <SectionSpace />}
 
       {/* Auth Modal for Share */}
       {showAuthModal && (

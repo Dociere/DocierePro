@@ -531,40 +531,12 @@ const NavBar = ({ onStartTour }) => {
 
   const viewMenuItems = [
     {
-      label: "Code View",
-      shortcut: "Ctrl+1",
-      action: () => handleSwitchView("code"),
-      disabled: !hasProject,
-    },
-    {
-      label: "Text View",
-      shortcut: "Ctrl+2",
-      action: () => handleSwitchView("text"),
-      disabled: !hasProject,
-    },
-    {
-      label: "Section View",
-      shortcut: "Ctrl+3",
-      action: () => handleSwitchView("section"),
-      disabled: !hasProject,
-    },
-    { divider: true },
-    {
-      label: projectDetails.isSectionSpaceOpen
-        ? "Hide Section Space"
-        : "Show Section Space",
-      shortcut: "Ctrl+B",
-      action: handleToggleSectionSpace,
-      disabled: !hasProject,
-    },
-    {
       label: "Toggle PDF Preview",
       shortcut: "Ctrl+P",
       action: () => {
-        // Toggle PDF preview panel
-        updateProjectDetails({
-          showPdfPreview: !projectDetails.showPdfPreview,
-        });
+        // Fire Ctrl+P as a key event so editorPage picks it up
+        const evt = new KeyboardEvent("keydown", { key: "p", ctrlKey: true, bubbles: true });
+        window.dispatchEvent(evt);
       },
       disabled: !hasProject,
     },
@@ -573,14 +545,7 @@ const NavBar = ({ onStartTour }) => {
       label: "Zoom In",
       shortcut: "Ctrl++",
       action: () => {
-        // Apply zoom to editor content
-        const editorElement = document.querySelector(
-          ".monaco-editor, .text-editor",
-        );
-        if (editorElement) {
-          const currentZoom = parseFloat(editorElement.style.zoom || "1");
-          editorElement.style.zoom = (currentZoom + 0.1).toString();
-        }
+        window.dispatchEvent(new CustomEvent("pdfZoomIn"));
       },
       disabled: !hasProject,
     },
@@ -588,16 +553,7 @@ const NavBar = ({ onStartTour }) => {
       label: "Zoom Out",
       shortcut: "Ctrl+-",
       action: () => {
-        const editorElement = document.querySelector(
-          ".monaco-editor, .text-editor",
-        );
-        if (editorElement) {
-          const currentZoom = parseFloat(editorElement.style.zoom || "1");
-          editorElement.style.zoom = Math.max(
-            0.5,
-            currentZoom - 0.1,
-          ).toString();
-        }
+        window.dispatchEvent(new CustomEvent("pdfZoomOut"));
       },
       disabled: !hasProject,
     },
@@ -605,12 +561,7 @@ const NavBar = ({ onStartTour }) => {
       label: "Reset Zoom",
       shortcut: "Ctrl+0",
       action: () => {
-        const editorElement = document.querySelector(
-          ".monaco-editor, .text-editor",
-        );
-        if (editorElement) {
-          editorElement.style.zoom = "1";
-        }
+        window.dispatchEvent(new CustomEvent("resetPdfZoom"));
       },
       disabled: !hasProject,
     },
@@ -624,10 +575,9 @@ const NavBar = ({ onStartTour }) => {
       label: "Distraction Free Mode",
       shortcut: "Ctrl+Shift+F",
       action: () => {
-        // Hide all UI except editor
-        updateProjectDetails({
-          isDistractionFree: !projectDetails.isDistractionFree,
-        });
+        // Fire as keyboard event so pageLayout picks it up
+        const evt = new KeyboardEvent("keydown", { key: "F", ctrlKey: true, shiftKey: true, bubbles: true });
+        window.dispatchEvent(evt);
       },
       disabled: !hasProject,
     },
