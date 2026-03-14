@@ -6,8 +6,8 @@ import path from "path";
 import * as tar from "tar";
 import admZip from "adm-zip";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 export async function setupTinyTex(userDataPath, onProgress = () => {}) {
   const isDev = !userDataPath;
@@ -38,6 +38,45 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
     "pdflatexPath status from setup-latex.js",
     fs.existsSync(pdflatexPath),
   );
+
+  const tlmgrPath = path.join(
+    destDir,
+    "bin",
+    archFolder,
+    platform === "win32" ? "tlmgr.bat" : "tlmgr",
+  );
+
+  const runCommandAndGetOutput = (cmd, args) => {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(cmd, args);
+      let output = "";
+      proc.stdout.on("data", (data) => (output += data.toString()));
+      proc.on("close", (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Exit code ${code}`));
+      });
+    });
+  };
+
+  const runCommand = (cmd, args) => {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(cmd, args);
+      proc.stdout.on("data", (data) => {
+        const txt = data.toString();
+        const match =
+          txt.match(/install:\s+([a-zA-Z0-9_-]+)/i) ||
+          txt.match(/installing\s+([a-zA-Z0-9_-]+)/i);
+        if (match) {
+          onProgress(`Installing ${match[1]}...`);
+        }
+      });
+      proc.stderr.on("data", (data) => console.error(data.toString()));
+      proc.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`Command failed with exit code ${code}`));
+      });
+    });
+  };
 
   if (!fs.existsSync(pdflatexPath)) {
     // Install TinyTex-0
@@ -77,14 +116,15 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
       execSync(`chmod -R +x "${binDir}"`);
     }
     fs.removeSync(tempFile);
-  }
 
-  const tlmgrPath = path.join(
-    destDir,
-    "bin",
-    archFolder,
-    platform === "win32" ? "tlmgr.bat" : "tlmgr",
-  );
+    try {
+      console.log("Checking for tlmgr updates...");
+      onProgress("Checking for updates...");
+      await runCommand(tlmgrPath, ["update", "--self"]);
+    } catch (error) {
+      console.log("tlmgr is already up to date or update skipped.");
+    }
+  }
 
   const essentials = [
     "latex-bin",
@@ -134,43 +174,48 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
     "cite",
   ];
 
-  const runCommand = (cmd, args) => {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(cmd, args);
-      proc.stdout.on("data", (data) => {
-        const txt = data.toString();
-        const match =
-          txt.match(/install:\s+([a-zA-Z0-9_-]+)/i) ||
-          txt.match(/installing\s+([a-zA-Z0-9_-]+)/i);
-        if (match) {
-          onProgress(`Installing ${match[1]}...`);
-        }
-      });
-      proc.stderr.on("data", (data) => console.error(data.toString()));
-      proc.on("close", (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`Command failed with exit code ${code}`));
-      });
-    });
-  };
+  // try {
+  //   console.log("Checking for tlmgr updates...");
+  //   onProgress("Checking for updates...");
+  //   await runCommand(tlmgrPath, ["update", "--self"]);
+  // } catch (error) {
+  //   console.log("tlmgr is already up to date or update skipped.");
+  // }
 
   try {
-    console.log("Checking for tlmgr updates...");
-    onProgress("Checking for updates...");
-    await runCommand(tlmgrPath, ["update", "--self"]);
+    console.log("Checking for missing LaTeX packages...");
+    onProgress("Checking installed packages...");
+
+    const installedOutput = await runCommandAndGetOutput(tlmgrPath, [
+      "list",
+      "--only-installed",
+      "--data",
+      "name",
+    ]);
+    const installedSet = new Set(
+      installedOutput.split(/\r?\n/).map((s) => s.trim()),
+    );
+
+    const missingPackages = essentials.filter((pkg) => !installedSet.has(pkg));
+
+    if (missingPackages.length > 0) {
+      console.log(`Installing ${missingPackages.length} missing packages...`);
+      onProgress(`Installing ${missingPackages.length} packages...`);
+      await runCommand(tlmgrPath, ["install", ...missingPackages]);
+    } else {
+      console.log("All essential packages are already present.");
+    }
   } catch (error) {
-    console.log("tlmgr is already up to date or update skipped.");
+    console.log("Error during package check/install", error);
   }
 
-  try {
-    console.log("Installing essential LaTeX packages...");
-    onProgress("Preparing to install packages...");
-    await runCommand(tlmgrPath, ["install", ...essentials]);
-  } catch (error) {
-    console.log("There was an error when installing LaTeX packages", error);
-  }
+  // try {
+  //   console.log("Installing essential LaTeX packages...");
+  //   onProgress("Preparing to install packages...");
+  //   await runCommand(tlmgrPath, ["install", ...essentials]);
+  // } catch (error) {
+  //   console.log("There was an error when installing LaTeX packages", error);
+  // }
   console.log("✅ TinyTex Setup Complete!");
   onProgress("✅ Setup Complete!");
 }
-
-// setupTinyTex().catch(console.error);
