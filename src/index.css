@@ -19,3 +19,15 @@
   font-family: Inter;
   font-size: 16px;
 }
+
+@layer components {
+  /* Targeted styling for Monaco's custom scrollbar */
+  .monaco-editor .monaco-scrollable-element .scrollbar.vertical {
+    width: 7px !important;
+  }
+
+  .monaco-editor .slider {
+    border-radius: 1px;
+    background: rgba(100, 100, 100, 0.4) !important;
+  }
+}
