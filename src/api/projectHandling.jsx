@@ -28,16 +28,20 @@ export const createProject = async (
   templateType,
   templateSource,
   e,
+  aiConfig, // <-- 1. Add this parameter
 ) => {
-  e.preventDefault();
+  if (e && e.preventDefault) e.preventDefault();
   if (!title) return;
 
   try {
-    // Fix boilerplate generation for Blank Document
     const typeToSend =
       templateType === "blank" ? "Blank Document" : templateType || "blank";
 
-    console.log("CreateProject Payload:", { title, typeToSend, isGenChecked, templateSource });
+    // 2. Clean the config (mask handling)
+    const cleanConfig = aiConfig ? { ...aiConfig } : null;
+    if (cleanConfig && cleanConfig.apiKey === "********") {
+      delete cleanConfig.apiKey;
+    }
 
     const payload = {
       title,
@@ -47,41 +51,74 @@ export const createProject = async (
       Owner: Owner || null,
       templateType: typeToSend,
       templateSource: templateSource || "local",
+      aiConfig: cleanConfig, // <-- 3. Add to payload
     };
 
     const response = await axios.post(
       `${API_URL}/api/projects/create`,
       payload,
+      { withCredentials: true }, // <-- 4. CRITICAL for decryption
     );
+
     console.log(`Project Successfully Created - ${title}`);
-    return response.data.project.id; // Return project ID for navigation
+    return response.data.project.id;
   } catch (error) {
-    console.log("Failed to create project: " + error.message);
+    console.error(
+      "Failed to create project:",
+      error.response?.data || error.message,
+    );
     throw error;
   }
 };
 
 export const editDocumentWithAI = async (
   prompt,
-  currentLatex,
+  latexContent,
   signal = null,
   context = null,
   fileMap = null,
+  aiConfig,
 ) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/api/edit`,
-      {
-        prompt,
-        latexContent: currentLatex,
-        context,
-        fileMap,
-      },
-      { signal }, // Pass abort signal to axios
-    );
-    return response.data; // Returns { success, latexContent, fileUpdates, changedSnippet }
+    const cleanConfig = { ...aiConfig };
+    if (cleanConfig.apiKey === "********" || cleanConfig.apiKey === "") {
+      delete cleanConfig.apiKey;
+    }
+
+    const payload = {
+      prompt,
+      latexContent,
+      context,
+      fileMap,
+      aiConfig: cleanConfig, // use cleanConfig, not the original
+    };
+
+    // Make sure withCredentials is true so the auth cookie is sent!
+    const response = await axios.post(`${API_URL}/api/edit`, payload, {
+      signal,
+      withCredentials: true, // <-- 3. CRITICAL for decryption to work
+    });
+
+    return response.data;
   } catch (error) {
-    console.error("AI Edit Failed:", error);
+    if (axios.isCancel(error)) {
+      console.log("Request canceled by user");
+      throw new Error("Request canceled");
+    }
+    console.error("Error editing document with AI:", error);
+    throw error;
+  }
+};
+
+export const fetchDecryptedSecret = async (configId) => {
+  try {
+    const response = await axios.get(
+      `${import.meta.env.VITE_admin_server}/api/aiconfigs/secret/${configId}`,
+      { withCredentials: true },
+    );
+    return response.data.apiKey;
+  } catch (error) {
+    console.error("Failed to fetch secret:", error);
     throw error;
   }
 };
@@ -359,6 +396,35 @@ export const loadDraftVersion = async (projectId) => {
     return responses.data;
   } catch (error) {
     console.error("Error Loading Draft:", error);
+    throw error;
+  }
+};
+
+export const fetchAIConfigsFromCloud = async () => {
+  try {
+    const response = await axios.get(
+      `${import.meta.env.VITE_admin_server}/api/aiconfigs`,
+      {
+        withCredentials: true,
+      },
+    );
+    return response.data.configs || [];
+  } catch (error) {
+    console.error("Failed to fetch AI configs from cloud", error);
+    return [];
+  }
+};
+
+export const saveAIConfigsToCloud = async (configs) => {
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_admin_server}/api/aiconfigs`,
+      { configs },
+      { withCredentials: true },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Failed to save AI configs to cloud", error);
     throw error;
   }
 };
