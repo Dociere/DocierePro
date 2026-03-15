@@ -1,9 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSettings } from "../context/useSettings";
 import { useAuth } from "../context/useAuth";
 import { useOutletContext, useNavigate, Link } from "react-router-dom";
 import GoBack from "../assets/icons/goBack.svg?react";
 import ConfirmModal from "../components/confirmModal";
+import {
+  saveAIConfigsToCloud,
+  fetchAIConfigsFromCloud,
+  fetchDecryptedSecret,
+} from "../api/projectHandling";
 
 const SettingsPage = () => {
   const { isSectionSpaceOpen } = useOutletContext();
@@ -11,10 +16,12 @@ const SettingsPage = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("editor");
+  const [visibleConfigId, setVisibleConfigId] = useState(null);
   const [showToken, setShowToken] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isAddingConfig, setIsAddingConfig] = useState(false);
   const [newConfig, setNewConfig] = useState({
+    id: "",
     name: "",
     provider: "gemini", // "gemini" or "ollama"
     model: "gemini-2.5-flash",
@@ -37,6 +44,28 @@ const SettingsPage = () => {
   //   { value: "hc-black", label: "High Contrast" },
   // ];
 
+  useEffect(() => {
+    const loadCloudConfigs = async () => {
+      if (isAuthenticated) {
+        try {
+          console.log("Fetching AI configs from CouchDB...");
+          const cloudConfigs = await fetchAIConfigsFromCloud();
+
+          if (cloudConfigs) {
+            handleSettingChange("app", "aiConfigs", cloudConfigs);
+          }
+        } catch (error) {
+          console.error("Failed to load configs from cloud:", error);
+        }
+      } else {
+        console.log("User signed out, clearing AI configs from UI...");
+        handleSettingChange("app", "aiConfigs", []);
+      }
+    };
+
+    loadCloudConfigs();
+  }, [isAuthenticated]);
+
   const handleSettingChange = (section, key, value) => {
     updateSetting(section, key, value);
   };
@@ -50,16 +79,41 @@ const SettingsPage = () => {
     setShowResetConfirm(false);
   };
 
-  const handleAddConfig = () => {
-    const configId = Date.now().toString();
+  const handleSaveConfig = async () => {
     const currentConfigs = settings.app?.aiConfigs || [];
-    const updatedConfigs = [
-      ...currentConfigs,
-      { ...newConfig, id: configId, active: currentConfigs.length === 0 },
-    ];
+    let updatedConfigs = [];
+
+    if (newConfig.id) {
+      // Update existing config
+      updatedConfigs = currentConfigs.map((c) =>
+        c.id === newConfig.id ? newConfig : c,
+      );
+    } else {
+      // Add new config
+      const configId = Date.now().toString();
+      updatedConfigs = [
+        ...currentConfigs,
+        { ...newConfig, id: configId, active: currentConfigs.length === 0 },
+      ];
+    }
+
+    // 1. Update local React state (and triggers the intercepted server.js save)
     handleSettingChange("app", "aiConfigs", updatedConfigs);
+
+    // 2. THE MISSING CLOUD SAVE
+    if (isAuthenticated) {
+      try {
+        await saveAIConfigsToCloud(updatedConfigs);
+        console.log("Configs successfully saved to CouchDB");
+      } catch (err) {
+        console.error("Cloud sync failed:", err);
+      }
+    }
+
+    // 3. Reset form
     setIsAddingConfig(false);
     setNewConfig({
+      id: "",
       name: "",
       provider: "gemini",
       model: "gemini-2.5-flash",
@@ -69,26 +123,67 @@ const SettingsPage = () => {
     });
   };
 
-  const handleDeleteConfig = (id) => {
+  const handleEditConfig = (config) => {
+    setNewConfig(config);
+    setIsAddingConfig(true);
+  };
+
+  const handleDeleteConfig = async (id) => {
     const currentConfigs = settings.app?.aiConfigs || [];
     const updatedConfigs = currentConfigs.filter((c) => c.id !== id);
-    // If we deleted the active one, pick the first one remaining as active
     if (
       updatedConfigs.length > 0 &&
       currentConfigs.find((c) => c.id === id)?.active
     ) {
       updatedConfigs[0].active = true;
     }
+
     handleSettingChange("app", "aiConfigs", updatedConfigs);
+
+    // Sync deletion to cloud
+    if (isAuthenticated) {
+      await saveAIConfigsToCloud(updatedConfigs);
+    }
   };
 
-  const handleToggleActive = (id) => {
+  const handleToggleVisibility = async (configId) => {
+    if (visibleConfigId === configId) {
+      // Hide: Replace the real key with the mask again in the UI
+      const maskedConfigs = settings.app.aiConfigs.map((c) =>
+        c.id === configId ? { ...c, apiKey: "********" } : c,
+      );
+      handleSettingChange("app", "aiConfigs", maskedConfigs);
+      setVisibleConfigId(null);
+      return;
+    }
+
+    try {
+      const realKey = await fetchDecryptedSecret(configId);
+      const updatedConfigs = settings.app.aiConfigs.map((c) =>
+        c.id === configId ? { ...c, apiKey: realKey } : c,
+      );
+
+      // This updates the UI state so you see the real key
+      handleSettingChange("app", "aiConfigs", updatedConfigs);
+      setVisibleConfigId(configId);
+    } catch (err) {
+      console.error("Failed to fetch secure key:", err);
+    }
+  };
+
+  const handleToggleActive = async (id) => {
     const currentConfigs = settings.app?.aiConfigs || [];
     const updatedConfigs = currentConfigs?.map((c) => ({
       ...c,
       active: c.id === id,
     }));
+
     handleSettingChange("app", "aiConfigs", updatedConfigs);
+
+    // Sync active toggle to cloud
+    if (isAuthenticated) {
+      await saveAIConfigsToCloud(updatedConfigs);
+    }
   };
 
   const isDark = settings.appearance.theme === "dark";
@@ -419,11 +514,13 @@ const SettingsPage = () => {
                     </div>
                     <div className="flex gap-3 mt-6">
                       <button
-                        onClick={handleAddConfig}
+                        onClick={handleSaveConfig}
                         disabled={!newConfig.name}
                         className={`px-6 py-2 bg-green-600 text-white rounded-md font-inter text-sm hover:bg-green-700 transition-colors disabled:opacity-50`}
                       >
-                        Save Configuration
+                        {newConfig.id
+                          ? "Update Configuration"
+                          : "Save Configuration"}{" "}
                       </button>
                       <button
                         onClick={() => setIsAddingConfig(false)}
@@ -474,22 +571,87 @@ const SettingsPage = () => {
                             </span>
                           </div>
                           <div
-                            className={`text-xs font-mono truncate ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                            className={`text-xs font-mono flex items-center gap-2 mt-1 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
                           >
-                            {config.model} |{" "}
-                            {config.provider === "gemini"
-                              ? "********"
-                              : config.url}
+                            <span>{config.model}</span>
+                            <span className="opacity-30">|</span>
+
+                            {config.provider === "gemini" ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type={
+                                    visibleConfigId === config.id
+                                      ? "text"
+                                      : "password"
+                                  }
+                                  value={
+                                    visibleConfigId === config.id
+                                      ? config.apiKey
+                                      : "********"
+                                  }
+                                  readOnly
+                                  className={`bg-transparent border-none p-0 w-24 focus:ring-0 text-xs font-mono ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleVisibility(config.id);
+                                  }}
+                                  className="text-[10px] font-bold uppercase hover:underline text-blue-500"
+                                >
+                                  {visibleConfigId === config.id
+                                    ? "Hide"
+                                    : "Show"}
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="truncate">{config.url}</span>
+                            )}
                           </div>
                         </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditConfig(config)}
+                            className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-[#333] text-[#a0a0a0] hover:text-blue-400" : "hover:bg-blue-50 text-[#7D7D7D] hover:text-blue-600"}`}
+                            title="Edit Configuration"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.5}
+                              stroke="currentColor"
+                              className="w-5 h-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"
+                              />
+                            </svg>
+                          </button>
 
-                        <button
-                          onClick={() => handleDeleteConfig(config.id)}
-                          className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-[#333] text-[#a0a0a0]" : "hover:bg-red-50 text-[#7D7D7D] hover:text-red-600"}`}
-                          title="Delete Configuration"
-                        >
-                          <span className="text-lg">🗑️</span>
-                        </button>
+                          <button
+                            onClick={() => handleDeleteConfig(config.id)}
+                            className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-[#333] text-[#a0a0a0] hover:text-red-400" : "hover:bg-red-50 text-[#7D7D7D] hover:text-red-600"}`}
+                            title="Delete Configuration"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.5}
+                              stroke="currentColor"
+                              className="w-5 h-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}

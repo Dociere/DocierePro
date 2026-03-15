@@ -8,15 +8,19 @@ import { projectContext } from "../context/useProject";
 import { useAuth } from "../context/useAuth";
 import { useNavigate } from "react-router-dom";
 import GoBack from "../assets/icons/goBack.svg?react";
+import { useSettings } from "../context/useSettings";
+import ConfirmModal from "./confirmModal";
 
 const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
   const { updateProjectDetails } = useContext(projectContext);
   const { isAuthenticated } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);        // API request in-flight
+  const [isLoading, setIsLoading] = useState(false); // API request in-flight
   const [streamingMsgId, setStreamingMsgId] = useState(null); // Which msg is doing typewriter
+  const [showConfigModal, setShowConfigModal] = useState(false);
   const messagesEndRef = useRef(null);
   const abortControllerRef = useRef(null);
   const projectId = projectDetails.currentProject?.id;
@@ -61,9 +65,9 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
 
     for (const [filePath, fileData] of Object.entries(files)) {
       // Skip non-content files
-      if (filePath.endsWith('.gitkeep')) continue;
+      if (filePath.endsWith(".gitkeep")) continue;
       if (/\.(cls|sty|pdf|png|jpg|jpeg|gif|svg|eps)$/i.test(filePath)) continue;
-      if (filePath === 'main.tex') continue; // main.tex is sent as latexContent
+      if (filePath === "main.tex") continue; // main.tex is sent as latexContent
       if (fileData.isImage) continue;
 
       // Include .tex and .bib files
@@ -74,7 +78,6 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
 
     return Object.keys(fileMap).length > 0 ? fileMap : null;
   };
-
 
   // ---- Build context from sections ----
   const buildContext = () => {
@@ -90,7 +93,9 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
 
     // Extract abstract
     const abstractBlock = sections.find(
-      (s) => s.subtype === "env" && (s.envTag === "abstract" || s.name?.toLowerCase() === "abstract")
+      (s) =>
+        s.subtype === "env" &&
+        (s.envTag === "abstract" || s.name?.toLowerCase() === "abstract"),
     );
     const abstractText = abstractBlock?.content?.substring(0, 500) || "";
 
@@ -153,13 +158,24 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
         id: Date.now(),
         sender: "system",
         text: "Request stopped by user.",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
       addMessage(abortedMsg);
       return;
     }
 
     if (!input.trim()) return;
+
+    const activeConfig = settings?.app?.aiConfigs?.find((c) => c.active);
+
+    if (!activeConfig) {
+      // You can replace this alert with your custom Toast notification if you prefer
+      setShowConfigModal(true);
+      return;
+    }
 
     const userMsg = {
       id: Date.now(),
@@ -184,12 +200,20 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
       // Build file map of all project files (excluding main.tex)
       const fileMap = buildFileMap();
 
+      const activeFileName =
+        projectDetails.currentProject?.activeFile || "main.tex";
+      const documentContent =
+        projectDetails.latexContent ||
+        projectDetails.currentProject?.files?.[activeFileName]?.content ||
+        " "; // Fallback to a single space, never undefined!
+
       const result = await editDocumentWithAI(
         userMsg.text,
-        projectDetails.latexContent,
+        documentContent, // <-- PASS THE SAFE VARIABLE HERE
         abortControllerRef.current.signal,
         context,
-        fileMap
+        fileMap,
+        activeConfig,
       );
 
       abortControllerRef.current = null;
@@ -244,7 +268,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
     setStreamingMsgId(null);
     // Clear isStreaming from state so copy button shows
     setMessages((prev) =>
-      prev.map((m) => (m.id === msgId ? { ...m, isStreaming: false } : m))
+      prev.map((m) => (m.id === msgId ? { ...m, isStreaming: false } : m)),
     );
   };
 
@@ -254,7 +278,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
     }
 
     setMessages((prev) =>
-      prev.map((m) => (m.id === msgId ? { ...m, isAction: false } : m))
+      prev.map((m) => (m.id === msgId ? { ...m, isAction: false } : m)),
     );
 
     const sysMsg = {
@@ -271,7 +295,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
 
   const handleRejectChanges = (msgId) => {
     setMessages((prev) =>
-      prev.map((m) => (m.id === msgId ? { ...m, isAction: false } : m))
+      prev.map((m) => (m.id === msgId ? { ...m, isAction: false } : m)),
     );
 
     const rejectMsg = {
@@ -312,7 +336,9 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
                     : "bg-white border border-[#CFCFCF] text-[#343434] rounded-bl-none"
               }`}
             >
-              {msg.sender === "ai" && msg.isStreaming && streamingMsgId === msg.id ? (
+              {msg.sender === "ai" &&
+              msg.isStreaming &&
+              streamingMsgId === msg.id ? (
                 <TypewriterText
                   text={msg.text}
                   onComplete={() => handleStreamingComplete(msg.id)}
@@ -324,12 +350,28 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
               {/* Copy Button — shows on AI messages after streaming completes */}
               {msg.sender === "ai" && !msg.isStreaming && (
                 <button
-                  onClick={() => handleCopy(msg.snippet || msg.newContent || msg.text)}
+                  onClick={() =>
+                    handleCopy(msg.snippet || msg.newContent || msg.text)
+                  }
                   className="absolute -top-2 -right-2 p-1.5 text-gray-400 hover:text-gray-600 bg-white border border-gray-200 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Copy"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <rect
+                      x="9"
+                      y="9"
+                      width="13"
+                      height="13"
+                      rx="2"
+                      ry="2"
+                    ></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                   </svg>
                 </button>
@@ -345,11 +387,27 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
               {msg.isAction && (
                 <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
                   <button
-                    onClick={() => handleApplyChanges(msg.id, msg.newContent, msg.fileUpdates)}
+                    onClick={() =>
+                      handleApplyChanges(
+                        msg.id,
+                        msg.newContent,
+                        msg.fileUpdates,
+                      )
+                    }
                     className="flex-1 bg-[#343434] hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded transition-colors flex items-center justify-center gap-2"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      ></path>
                     </svg>
                     Apply
                   </button>
@@ -357,8 +415,18 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
                     onClick={() => handleRejectChanges(msg.id)}
                     className="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold py-2 px-3 rounded transition-colors flex items-center justify-center gap-2"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      ></path>
                     </svg>
                     Reject
                   </button>
@@ -393,8 +461,12 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
         {!isAuthenticated ? (
           <div className="text-center py-4">
             <div className="text-4xl mb-2">👤</div>
-            <h3 className="font-inter font-semibold text-sm text-[#343434] mb-1">Not Signed In</h3>
-            <p className="text-xs text-[#7D7D7D] font-inter mb-3">Sign in to use AI features</p>
+            <h3 className="font-inter font-semibold text-sm text-[#343434] mb-1">
+              Not Signed In
+            </h3>
+            <p className="text-xs text-[#7D7D7D] font-inter mb-3">
+              Sign in to use AI features
+            </p>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => navigate("/login")}
@@ -436,25 +508,53 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
                 }`}
               >
                 {isBusy ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    className="w-4 h-4"
+                  >
                     <rect x="6" y="6" width="12" height="12" rx="2" />
                   </svg>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                    />
                   </svg>
                 )}
               </button>
             </form>
             <div className="text-[10px] text-gray-500 mt-2 text-center font-inter">
-              Content generated by AI is purely for reference. We do not promote academic dishonesty.
+              Content generated by AI is purely for reference. We do not promote
+              academic dishonesty.
             </div>
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={showConfigModal}
+        onConfirm={() => {
+          setShowConfigModal(false);
+          navigate("/settings");
+        }}
+        onCancel={() => setShowConfigModal(false)}
+        title="AI Configuration Required"
+        message="No active AI Configuration found. Please set up a provider in the Settings page to use the AI Chat."
+        confirmText="Go to Settings"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
 
 export default AIChatPanel;
-

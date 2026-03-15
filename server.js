@@ -50,7 +50,7 @@ const AI_SERVICE_URL = "http://localhost:5025";
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: true,
     credentials: true,
   }),
 );
@@ -538,7 +538,13 @@ app.post("/api/synctex", async (req, res) => {
 // API: AI Edit LaTeX
 app.post("/api/edit", async (req, res) => {
   try {
-    const { prompt, latexContent, context, fileMap } = req.body;
+    const {
+      prompt,
+      latexContent,
+      context,
+      fileMap,
+      aiConfig: frontendConfig,
+    } = req.body;
 
     if (!prompt || !latexContent) {
       return res
@@ -550,18 +556,24 @@ app.post("/api/edit", async (req, res) => {
       `🤖 Editing LaTeX with AI prompt: "${prompt.substring(0, 50)}..."`,
     );
 
-    const aiConfig = await getActiveAIConfig();
+    const aiConfig = frontendConfig || (await getActiveAIConfig());
     console.log(
       `📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || "default"}`,
     );
 
-    const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/edit-latex`, {
-      prompt,
-      latexContent,
-      context,
-      fileMap,
-      aiConfig, // Pass active config
-    });
+    const aiResponse = await axios.post(
+      `${AI_SERVICE_URL}/api/edit-latex`,
+      {
+        prompt,
+        latexContent,
+        context,
+        fileMap,
+        aiConfig, // Pass active config
+      },
+      {
+        headers: { Cookie: req.headers.cookie || "" }, // <-- Added this!
+      },
+    );
 
     if (aiResponse.data.success) {
       res.json({
@@ -584,7 +596,7 @@ app.post("/api/edit", async (req, res) => {
 
 app.post("/api/generate-equation", async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, aiConfig: frontendConfig } = req.body;
 
     if (!prompt) {
       return res
@@ -595,14 +607,14 @@ app.post("/api/generate-equation", async (req, res) => {
     console.log(`🤖 Generating equation for prompt: "${prompt}"`);
 
     // Call Python AI Service
-    const aiConfig = await getActiveAIConfig();
+    const aiConfig = frontendConfig || (await getActiveAIConfig());
     const response = await axios.post(
       `${AI_SERVICE_URL}/api/generate-equation`,
       {
         prompt,
         aiConfig,
       },
-      { timeout: 30000 },
+      { timeout: 30000, headers: { Cookie: req.headers.cookie || "" } },
     );
 
     if (response.data && response.data.success) {
@@ -869,67 +881,38 @@ app.post(
 // API: Create new project
 app.post("/api/projects/create", async (req, res) => {
   try {
-    const { title, generateBoilerplate, userIdea, Owner } = req.body;
+    const { title, generateBoilerplate, userIdea, Owner, aiConfig } = req.body;
     const projectId = uuidv4();
-    const projectDir = path.join(PROJECTS_DIR, projectId);
-    await fs.ensureDir(projectDir);
+    const projectPath = path.join(PROJECTS_DIR, projectId);
+    await fs.ensureDir(projectPath);
 
     console.log("🆕 Creating new project:", title);
 
-    const templateType = req.body.templateType || "article";
+    // Normalize templateType
+    let templateType = req.body.templateType || "article";
+    if (templateType === "blank") templateType = "Blank Document";
+
     const templateSource = req.body.templateSource || "local";
-    const projectPath = path.join(PROJECTS_DIR, projectId);
-
     console.log("🆕 Project details:", templateType, templateSource);
-    // Initialize files object
-    let files = {};
-    let mainContent = "";
 
-    // 1. Handle "Blank Document" logic
-    if (templateType === "Blank Document" || templateType === "blank") {
-      mainContent = `\\documentclass{article}
-\\usepackage{graphicx} % Required for inserting images
+    let files = {};
+
+    // Default fallback content for Blank Document
+    let mainContent = `\\documentclass{article}
+\\usepackage{graphicx}
 \\title{${title}}
 \\author{Author Name}
 \\date{\\today}
 \\begin{document}
 \\maketitle
 \\section{Introduction}
-
+ 
 \\end{document}`;
 
-      if (generateBoilerplate && userIdea) {
-        try {
-          console.log("🤖 Generating boilerplate for blank document...");
-          const aiConfig = await getActiveAIConfig();
-          const aiResponse = await axios.post(
-            `${AI_SERVICE_URL}/api/generate-latex`,
-            {
-              userIdea,
-              title,
-              templateType: templateType, // Using existing templateType
-              authorDetails: "", // Placeholder as authorDetails is not in scope
-              aiConfig,
-            },
-          );
-          if (aiResponse.data.success && aiResponse.data.latexContent) {
-            mainContent = aiResponse.data.latexContent;
-            console.log("✅ AI-generated blank document content received");
-          }
-        } catch (error) {
-          console.error("AI Generation failed for blank doc:", error.message);
-          // Fallback to default content
-        }
-      }
-
-      files["main.tex"] = {
-        name: "main.tex",
-        content: mainContent,
-        type: "tex",
-      };
-    }
-    // 2. Handle Local Templates (Multifile)
-    else if (templateSource === "local") {
+    // ==========================================
+    // 1. LOAD LOCAL TEMPLATE FILES (IF ANY)
+    // ==========================================
+    if (templateType !== "Blank Document" && templateSource === "local") {
       const keyToFolder = {
         ieee_conference: "IEEE Conference",
         ieee_journal: "IEEE Journal",
@@ -938,8 +921,6 @@ app.post("/api/projects/create", async (req, res) => {
         resume: "Resume",
         blank: "Blank Document",
       };
-
-      console.log(keyToFolder);
 
       const folderName = keyToFolder[templateType] || templateType;
       const templatePath = path.join(TEMPLATES_DIR, folderName);
@@ -951,75 +932,18 @@ app.post("/api/projects/create", async (req, res) => {
         throw new Error(`Template not found or empty: ${folderName}`);
       }
 
-      // Set title from user input
+      // Pre-fill title if the file exists
       if (files["title.tex"]) {
         files["title.tex"].content = title;
       }
-
-      // Generate boilerplate content for all template files
-      if (generateBoilerplate && userIdea) {
-        try {
-          console.log("🤖 Generating boilerplate for multifile template...");
-
-          // Build templateFiles map (just the file keys the AI should generate for)
-          const templateFileKeys = Object.keys(files).filter((k) => {
-            // Skip non-content files
-            if (k.endsWith(".gitkeep")) return false;
-            if (k === "main.tex") return false;
-            if (k === "title.tex") return false; // Already set from user input
-            if (/\.(cls|sty|pdf|png|jpg|jpeg|gif|svg|eps)$/i.test(k))
-              return false;
-            return true;
-          });
-
-          if (templateFileKeys.length > 0) {
-            const aiConfig = await getActiveAIConfig();
-            // Assuming templateJson is defined elsewhere or should be derived from templatePath
-            // For now, using templateFileKeys as it was before, as templateJson is not defined.
-            // If templateJson is meant to be a path to a JSON file describing the template,
-            // it needs to be defined or derived. Sticking to the original logic for templateFiles
-            // as the instruction's `JSON.parse(fs.readFileSync(templateJson, "utf8"))`
-            // would cause a ReferenceError for `templateJson`.
-            const aiResponse = await axios.post(
-              `${AI_SERVICE_URL}/api/generate-boilerplate`,
-              {
-                userIdea,
-                title,
-                templateFiles: templateFileKeys, // Reverted to templateFileKeys as templateJson is undefined
-                aiConfig,
-              },
-            );
-
-            if (aiResponse.data.success && aiResponse.data.fileContents) {
-              const generatedContent = aiResponse.data.fileContents;
-              let populated = 0;
-
-              for (const [fileKey, content] of Object.entries(
-                generatedContent,
-              )) {
-                if (files[fileKey] && typeof content === "string") {
-                  files[fileKey].content = content;
-                  populated++;
-                }
-              }
-
-              console.log(
-                `✅ AI populated ${populated}/${templateFileKeys.length} template files`,
-              );
-            } else {
-              console.error("⚠️ AI boilerplate generation returned no content");
-            }
-          }
-        } catch (error) {
-          console.error("❌ AI Generation failed for template:", error.message);
-          // Fallback: template files stay with their default content
-        }
-      }
-    }
-    // 3. Handle Server Templates (Placeholder)
-    else {
-      // Fallback or implementation for server templates
-      // For now treat as blank logic or error
+    } else if (templateType === "Blank Document") {
+      // Initialize the files object for a blank document
+      files["main.tex"] = {
+        name: "main.tex",
+        content: mainContent,
+        type: "tex",
+      };
+    } else {
       console.warn(
         `Server templates not yet implemented locally: ${templateType}`,
       );
@@ -1030,8 +954,95 @@ app.post("/api/projects/create", async (req, res) => {
       };
     }
 
-    // Create project directory
-    await fs.ensureDir(projectPath);
+    // ==========================================
+    // 2. UNIFIED AI GENERATION BLOCK
+    // ==========================================
+    if (generateBoilerplate && userIdea) {
+      try {
+        console.log(`🤖 Generating boilerplate for ${templateType}...`);
+
+        // Use frontend config if provided, otherwise fallback to local config.json
+        // Strip apiKey — Python fetches it from CouchDB using the forwarded cookie
+        const rawConfig = req.body.aiConfig || (await getActiveAIConfig());
+        const { apiKey: _k, ...activeConfig } = rawConfig || {};
+
+        console.log(
+          `🤖 Boilerplate aiConfig: provider=${activeConfig?.provider}, id=${activeConfig?.id}, hasKey=${!!rawConfig?.apiKey}`,
+        );
+
+        if (!activeConfig?.provider) {
+          console.error("❌ No AI config found for boilerplate generation");
+          // Don't abort — let Python handle it (will try env key fallback)
+        }
+
+        // Build templateFiles map (just the file keys the AI should generate for)
+        let templateFileKeys = [];
+        if (templateType !== "Blank Document") {
+          templateFileKeys = Object.keys(files).filter((k) => {
+            if (k.endsWith(".gitkeep") || k === "main.tex" || k === "title.tex")
+              return false;
+            if (/\.(cls|sty|pdf|png|jpg|jpeg|gif|svg|eps)$/i.test(k))
+              return false;
+            return true;
+          });
+        }
+
+        const aiResponse = await axios.post(
+          `${AI_SERVICE_URL}/api/generate-boilerplate`, // Unified endpoint
+          {
+            userIdea,
+            title,
+            templateType,
+            templateFiles: templateFileKeys,
+            aiConfig: activeConfig,
+          },
+          {
+            // CRITICAL: Forward the user's auth cookie to Python so it can decrypt their API keys
+            headers: { Cookie: req.headers.cookie || "" },
+          },
+        );
+
+        if (aiResponse.data.success) {
+          if (
+            templateType === "Blank Document" &&
+            aiResponse.data.mainContent
+          ) {
+            files["main.tex"].content = aiResponse.data.mainContent;
+            console.log("✅ AI-generated blank document content applied");
+          } else if (aiResponse.data.fileUpdates) {
+            // <-- Change to fileUpdates
+            const generatedContent = aiResponse.data.fileUpdates; // <-- Change to fileUpdates
+            let populated = 0;
+
+            for (const [fileKey, content] of Object.entries(generatedContent)) {
+              // Note: files[fileKey] is an object, so we update its .content property
+              if (files[fileKey] && typeof content === "string") {
+                files[fileKey].content = content;
+                populated++;
+              }
+            }
+            console.log(
+              `✅ AI populated ${populated}/${templateFileKeys.length} template files`,
+            );
+          }
+        } else {
+          console.error(
+            "⚠️ AI boilerplate generation failed:",
+            aiResponse.data.error,
+          );
+        }
+      } catch (error) {
+        console.error(
+          "❌ AI Generation Error:",
+          error.response?.data || error.message,
+        );
+        // Fallback: templates/blank doc stay with their default static content
+      }
+    }
+
+    // ==========================================
+    // 3. SAVE FILES TO DISK & DB
+    // ==========================================
 
     // Save all files
     for (const [relPath, fileData] of Object.entries(files)) {
@@ -1039,8 +1050,6 @@ app.post("/api/projects/create", async (req, res) => {
       await fs.ensureDir(path.dirname(filePath));
 
       if (fileData.isImage) {
-        // write fileData.content (base64) back to file?
-        // content is "data:image/png;base64,..."
         const base64Data = fileData.content.split(";base64,").pop();
         await fs.writeFile(filePath, base64Data, { encoding: "base64" });
       } else {
@@ -1624,6 +1633,25 @@ app.post("/api/latex/compile", async (req, res) => {
       return res.status(400).json({ error: "LaTeX code is required" });
     }
 
+    let cleanLatex = latex
+      .replace(/```latex/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    let extraPackages = "";
+    cleanLatex = cleanLatex.replace(
+      /\\usepackage(?:\[.*?\])?{.*?}/g,
+      (match) => {
+        extraPackages += match + "\n";
+        return ""; // Remove it from the body
+      },
+    );
+
+    cleanLatex = cleanLatex.replace(/\\documentclass(?:\[.*?\])?{.*?}/g, "");
+    cleanLatex = cleanLatex.replace(/\\begin{document}/g, "");
+    cleanLatex = cleanLatex.replace(/\\end{document}/g, "");
+    cleanLatex = cleanLatex.trim();
+
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9_-]/g, "_");
     const baseFileName = isTemp ? "temp" : sanitizedFileName;
     const texFileName = `${baseFileName}.tex`;
@@ -1637,9 +1665,7 @@ app.post("/api/latex/compile", async (req, res) => {
 
     if (preamble) {
       // ✅ OPTION A: Use the User's Real Preamble
-      // We assume the preamble includes \documentclass ... \begin{document}
-      // We just append the section content and the closing tag.
-      minimalLatexDocument = `${preamble}\n${latex}\n\\end{document}`;
+      minimalLatexDocument = `${preamble}\n${cleanLatex}\n\\end{document}`;
       console.log(minimalLatexDocument);
     } else if (type === "table") {
       // 📊 OPTION for TABLE preview
@@ -1651,27 +1677,30 @@ app.post("/api/latex/compile", async (req, res) => {
 \\usepackage{multirow}
 \\usepackage{xcolor}
 \\usepackage{caption}
+${extraPackages}
 \\begin{document}
-${latex}
+${cleanLatex}
 \\end{document}`;
     } else if (type === "figure") {
       // 🖼️ OPTION for FIGURE preview
       minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
 \\usepackage{graphicx}
 \\usepackage{caption}
+${extraPackages}
 \\begin{document}
-${latex}
+${cleanLatex}
 \\end{document}`;
     } else if (type === "section") {
-      // ⚠️ OPTION B: Fallback Section Template (if no preamble found)
+      // ⚠️ OPTION B: Fallback Section Template
       minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
 \\usepackage{amssymb}
 \\usepackage{graphicx}
 \\usepackage{xcolor}
+${extraPackages}
 \\begin{document}
-${latex}
+${cleanLatex}
 \\end{document}`;
     } else {
       // ➗ OPTION C: Equation Mode
@@ -1681,9 +1710,10 @@ ${latex}
 \\usepackage{amssymb}
 \\usepackage{mathtools}
 \\usepackage{xcolor}
+${extraPackages}
 \\begin{document}
 \\begin{displaymath}
-${latex.replace(/[‹›]/g, "")}
+${cleanLatex.replace(/[‹›]/g, "")}
 \\end{displaymath}
 \\end{document}`;
     }

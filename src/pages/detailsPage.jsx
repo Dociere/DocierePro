@@ -1,8 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { useSettings } from "../context/useSettings";
-import { createProject } from "../api/projectHandling";
+import { createProject, fetchAIConfigsFromCloud } from "../api/projectHandling";
 import LinearLoading from "../components/loading/linearLoading";
 import ConfirmModal from "../components/confirmModal";
 import axios from "axios";
@@ -25,11 +25,33 @@ const DetailsPage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
   const fileInputRef = useRef(null);
-  const [alertModal, setAlertModal] = useState({ isOpen: false, title: "", message: "" });
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
   // Derived — no useEffect needed
   const isFormValid = title.trim() !== "";
+
+  useEffect(() => {
+    const syncConfigs = async () => {
+      if (isAuthenticated) {
+        try {
+          const cloudConfigs = await fetchAIConfigsFromCloud();
+          if (cloudConfigs && cloudConfigs.length > 0) {
+            // This updates the central settings context
+            settings.app.aiConfigs = cloudConfigs;
+          }
+        } catch (err) {
+          console.error("Failed to sync configs on details page", err);
+        }
+      }
+    };
+    syncConfigs();
+  }, [isAuthenticated]);
 
   const handleGenCheck = () => {
     if (!isAuthenticated) {
@@ -45,7 +67,11 @@ const DetailsPage = () => {
 
     const ext = file.name.split(".").pop().toLowerCase();
     if (!["pdf", "txt", "md"].includes(ext)) {
-      setAlertModal({ isOpen: true, title: "Unsupported File", message: "Only PDF, TXT, and Markdown files are supported." });
+      setAlertModal({
+        isOpen: true,
+        title: "Unsupported File",
+        message: "Only PDF, TXT, and Markdown files are supported.",
+      });
       return;
     }
 
@@ -59,18 +85,26 @@ const DetailsPage = () => {
       const response = await axios.post(
         "http://localhost:5000/api/extract-file-text",
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { headers: { "Content-Type": "multipart/form-data" } },
       );
 
       if (response.data.success) {
         setUserIdea(response.data.text);
       } else {
-        setAlertModal({ isOpen: true, title: "Extraction Failed", message: response.data.error || "Failed to extract text from file." });
+        setAlertModal({
+          isOpen: true,
+          title: "Extraction Failed",
+          message: response.data.error || "Failed to extract text from file.",
+        });
         setUploadedFile(null);
       }
     } catch (err) {
       console.error("File extraction error:", err);
-      setAlertModal({ isOpen: true, title: "Extraction Failed", message: "Failed to extract text from the uploaded file." });
+      setAlertModal({
+        isOpen: true,
+        title: "Extraction Failed",
+        message: "Failed to extract text from the uploaded file.",
+      });
       setUploadedFile(null);
     } finally {
       setIsExtracting(false);
@@ -85,8 +119,22 @@ const DetailsPage = () => {
 
   const handleNextClick = async (e) => {
     e.preventDefault();
+
+    let activeConfig = null;
+    if (isGenChecked) {
+      activeConfig = settings?.app?.aiConfigs?.find((c) => c.active);
+      if (!activeConfig) {
+        setShowConfigModal(true);
+        return; // Stop project creation if they want boilerplate but have no AI config
+      }
+    }
+
     if (!title.trim()) {
-      setAlertModal({ isOpen: true, title: "Missing Title", message: "Please enter a project title." });
+      setAlertModal({
+        isOpen: true,
+        title: "Missing Title",
+        message: "Please enter a project title.",
+      });
       return;
     }
 
@@ -112,6 +160,7 @@ const DetailsPage = () => {
         templateTitle,
         templateSource, // Pass source
         e,
+        activeConfig,
       );
 
       if (projectId) {
@@ -127,36 +176,36 @@ const DetailsPage = () => {
 
   return (
     <>
-    <div className="flex justify-center items-center w-full min-h-screen">
-      {isLoading && <LinearLoading />}
-      <div className="w-[90vw] max-w-[830px] h-auto bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
-        {/* Heading */}
-        <h1 className="font-playfair text-4xl md:text-5xl font-bold mb-3">
-          Document Details
-        </h1>
+      <div className="flex justify-center items-center w-full min-h-screen">
+        {isLoading && <LinearLoading />}
+        <div className="w-[90vw] max-w-[830px] h-auto bg-[#F9F9F9] border border-[#A8A8A8] px-14 py-8 relative">
+          {/* Heading */}
+          <h1 className="font-playfair text-4xl md:text-5xl font-bold mb-3">
+            Document Details
+          </h1>
 
-        {/* Subheading */}
-        <p className="text-[#7D7D7D] text-sm md:text-base font-inter font-medium leading-tight mb-7 ml-1">
-          Enter Details related to the Document
-        </p>
+          {/* Subheading */}
+          <p className="text-[#7D7D7D] text-sm md:text-base font-inter font-medium leading-tight mb-7 ml-1">
+            Enter Details related to the Document
+          </p>
 
-        {/* Input Label: Title */}
-        <label
-          htmlFor="title"
-          className="text-[#343434] text-base md:text-lg font-semibold font-inter block"
-        >
-          <span className="text-red-400 text-sm mr-1">*</span>Title:
-        </label>
-        <input
-          id="title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
-        />
+          {/* Input Label: Title */}
+          <label
+            htmlFor="title"
+            className="text-[#343434] text-base md:text-lg font-semibold font-inter block"
+          >
+            <span className="text-red-400 text-sm mr-1">*</span>Title:
+          </label>
+          <input
+            id="title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
+          />
 
-        {/* Author Details Section - Commented Out */}
-        {/*
+          {/* Author Details Section - Commented Out */}
+          {/*
         {templateTitle !== "blank" && (
           <div className="mt-8">
             <p className={`font-inter font-medium mb-3 ${isDark ? "text-gray-300" : "text-[#525252]"}`}>
@@ -200,97 +249,132 @@ const DetailsPage = () => {
         )}
         */}
 
-        <div className="flex items-center gap-3 mt-5">
-          <p className="text-[#343434] text-base font-medium font-inter">
-            Generate a boilerplate or a paraphrased document?
-          </p>
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="boilerplate"
-              checked={isGenChecked}
-              onChange={handleGenCheck}
-              className="h-4 w-4 border-gray-300 rounded text-blue-500 focus:ring-blue-500"
-            />
-            <label
-              htmlFor="boilerplate"
-              className="text-sm font-inter text-[#343434]"
-            >
-              Yes
-            </label>
-          </div>
-        </div>
-
-        {isGenChecked && (
-          <>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Describe your document idea
-              </label>
-              <textarea
-                value={userIdea}
-                onChange={(e) => setUserIdea(e.target.value)}
-                placeholder="E.g., A research paper on machine learning applications in healthcare..."
-                className="w-full max-w-md h-32 border border-[#CFCFCF] bg-[#F9F9F9] px-2 py-2 resize-none"
+          <div className="flex items-center gap-3 mt-5">
+            <p className="text-[#343434] text-base font-medium font-inter">
+              Generate a boilerplate or a paraphrased document?
+            </p>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="boilerplate"
+                checked={isGenChecked}
+                onChange={handleGenCheck}
+                className="h-4 w-4 border-gray-300 rounded text-blue-500 focus:ring-blue-500"
               />
+              <label
+                htmlFor="boilerplate"
+                className="text-sm font-inter text-[#343434]"
+              >
+                Yes
+              </label>
+            </div>
+          </div>
 
-              {/* File Upload */}
-              <div className="mt-3 max-w-md">
-                <div className="flex items-center gap-3">
-                  <label
-                    className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 border border-[#CFCFCF] bg-white hover:bg-gray-50 text-sm font-inter text-gray-600 rounded transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    Upload a file
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.txt,.md"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-                  <span className="text-xs text-gray-400 font-inter">PDF, TXT, or MD</span>
+          {isGenChecked && (
+            <>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Describe your document idea
+                </label>
+                <textarea
+                  value={userIdea}
+                  onChange={(e) => setUserIdea(e.target.value)}
+                  placeholder="E.g., A research paper on machine learning applications in healthcare..."
+                  className="w-full max-w-md h-32 border border-[#CFCFCF] bg-[#F9F9F9] px-2 py-2 resize-none"
+                />
+
+                {/* File Upload */}
+                <div className="mt-3 max-w-md">
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 border border-[#CFCFCF] bg-white hover:bg-gray-50 text-sm font-inter text-gray-600 rounded transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      Upload a file
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.txt,.md"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-xs text-gray-400 font-inter">
+                      PDF, TXT, or MD
+                    </span>
+                  </div>
+
+                  {isExtracting && (
+                    <div className="mt-2 flex items-center gap-2 text-sm text-gray-500 font-inter">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Extracting text...
+                    </div>
+                  )}
+
+                  {uploadedFile && !isExtracting && (
+                    <div className="mt-2 flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-200 rounded text-sm">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#16a34a"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                      <span className="text-green-700 font-inter truncate">
+                        {uploadedFile.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
+                        title="Remove file"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {isExtracting && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-500 font-inter">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Extracting text...
-                  </div>
-                )}
-
-                {uploadedFile && !isExtracting && (
-                  <div className="mt-2 flex items-center gap-2 px-2 py-1 bg-green-50 border border-green-200 rounded text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                      <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    <span className="text-green-700 font-inter truncate">{uploadedFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={handleRemoveFile}
-                      className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
-                      title="Remove file"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
+                <div className="text-[10px] text-gray-500 mt-2 text-center font-inter max-w-md">
+                  Content generated by AI is purely for reference. We do not
+                  promote academic dishonesty.
+                </div>
               </div>
-
-              <div className="text-[10px] text-gray-500 mt-2 text-center font-inter max-w-md">
-                Content generated by AI is purely for reference. We do not promote academic dishonesty.
-              </div>
-            </div>
-            {/* <label
+              {/* <label
               htmlFor="githubUrl"
               className="text-[#343434] text-base font-medium font-inter block mt-5"
             >
@@ -304,88 +388,108 @@ const DetailsPage = () => {
               // onChange={(e) => setTitle(e.target.value)}
               className="mt-2 mb-6 w-full max-w-md h-7 border border-[#CFCFCF] bg-[#F9F9F9] px-2"
             /> */}
-          </>
-        )}
+            </>
+          )}
 
-        {/* Buttons */}
-        <div className="flex justify-end gap-4 mt-8">
-          <Link to="/template">
-            <div className="w-32 h-8 bg-[#D9D9D9] flex items-center justify-center">
-              <span className="text-[#5F5F5F] text-base font-semibold font-inter">
-                Back
-              </span>
-            </div>
-          </Link>
+          {/* Buttons */}
+          <div className="flex justify-end gap-4 mt-8">
+            <Link to="/template">
+              <div className="w-32 h-8 bg-[#D9D9D9] flex items-center justify-center">
+                <span className="text-[#5F5F5F] text-base font-semibold font-inter">
+                  Back
+                </span>
+              </div>
+            </Link>
 
-          {isFormValid ? (
-            <>
-              <Link id="tour-details-next" to="#" onClick={handleNextClick}>
-                <div className="w-32 h-8 border-2 flex items-center justify-center border-[#5F5F5F]">
-                  <span className="text-base font-semibold font-inter text-[#5F5F5F]">
+            {isFormValid ? (
+              <>
+                <Link id="tour-details-next" to="#" onClick={handleNextClick}>
+                  <div className="w-32 h-8 border-2 flex items-center justify-center border-[#5F5F5F]">
+                    <span className="text-base font-semibold font-inter text-[#5F5F5F]">
+                      Next
+                    </span>
+                  </div>
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="w-32 h-8 border-2 flex items-center justify-center border-[#D9D9D9]">
+                  <span className="text-base font-semibold font-inter text-[#D9D9D9]">
                     Next
                   </span>
                 </div>
-              </Link>
-            </>
-          ) : (
-            <>
-              <div className="w-32 h-8 border-2 flex items-center justify-center border-[#D9D9D9]">
-                <span className="text-base font-semibold font-inter text-[#D9D9D9]">
-                  Next
-                </span>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
+
+          {/* Footer Tip */}
+          <p className="mt-16 text-[#7D7D7D] text-xs font-inter font-medium leading-[15.85px] text-center whitespace-nowrap">
+            Make sure to keep the Input relevant for better boilerplate template
+          </p>
         </div>
-
-        {/* Footer Tip */}
-        <p className="mt-16 text-[#7D7D7D] text-xs font-inter font-medium leading-[15.85px] text-center whitespace-nowrap">
-          Make sure to keep the Input relevant for better boilerplate template
-        </p>
       </div>
-    </div>
 
-    {/* Auth Modal */}
-    {showAuthModal && (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[80]">
-        <div className="bg-white rounded-xl shadow-xl p-8 w-[380px] max-w-full text-center font-inter">
-          <div className="text-5xl mb-3">👤</div>
-          <h3 className="font-semibold text-lg text-[#343434] mb-1">Not Signed In</h3>
-          <p className="text-sm text-[#7D7D7D] mb-5">Sign in to generate a boilerplate document</p>
-          <div className="flex gap-3 justify-center">
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[80]">
+          <div className="bg-white rounded-xl shadow-xl p-8 w-[380px] max-w-full text-center font-inter">
+            <div className="text-5xl mb-3">👤</div>
+            <h3 className="font-semibold text-lg text-[#343434] mb-1">
+              Not Signed In
+            </h3>
+            <p className="text-sm text-[#7D7D7D] mb-5">
+              Sign in to generate a boilerplate document
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => navigate("/login")}
+                className="px-5 py-2 bg-[#AB2D2D] text-white rounded-md text-sm hover:bg-[#8a2424] transition-colors"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-5 py-2 border border-[#CFCFCF] text-[#343434] rounded-md text-sm hover:bg-[#F9F9F9] transition-colors"
+              >
+                Create Account
+              </button>
+            </div>
             <button
-              onClick={() => navigate("/login")}
-              className="px-5 py-2 bg-[#AB2D2D] text-white rounded-md text-sm hover:bg-[#8a2424] transition-colors"
+              onClick={() => setShowAuthModal(false)}
+              className="mt-4 text-xs text-[#7D7D7D] hover:text-[#343434] transition-colors"
             >
-              Sign In
-            </button>
-            <button
-              onClick={() => navigate("/signup")}
-              className="px-5 py-2 border border-[#CFCFCF] text-[#343434] rounded-md text-sm hover:bg-[#F9F9F9] transition-colors"
-            >
-              Create Account
+              Close
             </button>
           </div>
-          <button
-            onClick={() => setShowAuthModal(false)}
-            className="mt-4 text-xs text-[#7D7D7D] hover:text-[#343434] transition-colors"
-          >
-            Close
-          </button>
         </div>
-      </div>
-    )}
+      )}
 
-    {/* Alert Modal */}
-    <ConfirmModal
-      isOpen={alertModal.isOpen}
-      title={alertModal.title}
-      message={alertModal.message}
-      confirmText="OK"
-      cancelText=""
-      onConfirm={() => setAlertModal({ isOpen: false, title: "", message: "" })}
-      onCancel={() => setAlertModal({ isOpen: false, title: "", message: "" })}
-    />
+      {/* Alert Modal */}
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="OK"
+        cancelText=""
+        onConfirm={() =>
+          setAlertModal({ isOpen: false, title: "", message: "" })
+        }
+        onCancel={() =>
+          setAlertModal({ isOpen: false, title: "", message: "" })
+        }
+      />
+      <ConfirmModal
+        isOpen={showConfigModal}
+        onConfirm={() => {
+          setShowConfigModal(false);
+          navigate("/settings");
+        }}
+        onCancel={() => setShowConfigModal(false)}
+        title="AI Configuration Required"
+        message="You selected 'Generate Boilerplate', but no active AI Configuration was found. Please set one up in the Settings page."
+        confirmText="Go to Settings"
+        cancelText="Cancel"
+      />
     </>
   );
 };
