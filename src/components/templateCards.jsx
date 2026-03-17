@@ -114,7 +114,7 @@ const TemplateCards = ({ title, onDeleteClick }) => {
         >
           <path
             d="M8 4a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2z"
-            fill={isDark ? "#212121" : "#7D7D7D"}
+            fill="#000000"
           />
         </svg>
       </button>
@@ -122,7 +122,7 @@ const TemplateCards = ({ title, onDeleteClick }) => {
       {/* Dropdown Menu - Styled similar to SideBar profile */}
       {isMenuOpen && (
         <div
-          className="absolute right-2 top-10 z-30 min-w-[100px] py-1 rounded-md border shadow-lg animate-in fade-in zoom-in duration-150"
+          className="absolute right-2 top-10 z-30 min-w-[100px] rounded-md border shadow-lg animate-in fade-in zoom-in duration-150"
           style={{
             backgroundColor: isDark ? "#2d2d2d" : "#F9F9F9",
             borderColor: theme.border,
@@ -135,8 +135,7 @@ const TemplateCards = ({ title, onDeleteClick }) => {
               setIsMenuOpen(false);
               onDeleteClick(); // This opens the confirmation modal
             }}
-            className="w-full text-left px-4 py-2 text-sm font-inter transition-colors hover:bg-red-50 hover:text-red-600"
-            style={{ color: isDark ? "#e5e5e5" : "#212121" }}
+            className="w-full text-left px-4 py-2 text-sm font-inter transition-colors bg-red-100 text-red-600 hover:font-semibold"
           >
             Delete
           </button>
@@ -148,8 +147,7 @@ const TemplateCards = ({ title, onDeleteClick }) => {
               setIsMenuOpen(false);
               //   onDeleteClick(); // This opens the confirmation modal
             }}
-            className="w-full text-left px-4 py-2 text-sm font-inter transition-colors hover:bg-red-50 hover:text-red-600"
-            style={{ color: isDark ? "#e5e5e5" : "#212121" }}
+            className="w-full text-left px-4 py-2 text-sm font-inter transition-colors hover:font-semibold"
           >
             Rename
           </button>
@@ -163,8 +161,8 @@ const TemplateCards = ({ title, onDeleteClick }) => {
       <div
         className={`w-44 h-56 border-2 flex-shrink-0 rounded-md transition-colors ${
           isDark
-            ? "bg-[#2d2d2d] border-[#404040] group-hover:border-[#AB2D2D]"
-            : "bg-[#F9F9F9] border-[#c6c6c6] group-hover:border-[#AB2D2D]"
+            ? "bg-[#2d2d2d] border-[#404040] group-hover:border-[#ffffff]"
+            : "bg-[#F9F9F9] border-[#c6c6c6] group-hover:border-[#646464]"
         }`}
       ></div>
 

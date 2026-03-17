@@ -82,17 +82,55 @@ const PdfViewer = ({
     setNumPages(numPages);
   }
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!pdfUrl) {
       alert("Please compile your document first to generate a PDF");
       return;
     }
 
-    // Trigger PDF download
-    const link = document.createElement("a");
-    link.href = pdfUrl;
-    link.download = `${fileTitle || "document"}.pdf`;
-    link.click();
+    try {
+      const response = await fetch(pdfUrl);
+      const blob = await response.blob();
+      const defaultName = `${fileTitle || "document"}.pdf`;
+
+      // Check if we are running inside the Electron Desktop App
+      const isElectron =
+        window.electronAPI && typeof window.electronAPI.savePDF === "function";
+
+      if (isElectron) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const result = await window.electronAPI.savePDF(
+          arrayBuffer,
+          defaultName,
+        );
+
+        if (result.success) {
+          console.log("PDF saved successfully to:", result.filePath);
+        } else if (!result.canceled) {
+          throw new Error(result.error || "Unknown Electron save error");
+        }
+      } else {
+        // For Web Browser - Create a local URL for the Blob
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = downloadUrl;
+        link.download = defaultName;
+
+        // Append to body to ensure compatibility with all browsers
+        document.body.appendChild(link);
+        link.click();
+
+        // Cleanup: Remove element and revoke URL to prevent memory leaks
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+
+        console.log("PDF download triggered via Browser");
+      }
+    } catch (error) {
+      console.error("Error during PDF export:", error);
+      alert(`An error occurred during PDF export: ${error.message}`);
+    }
   };
 
   useEffect(() => {
