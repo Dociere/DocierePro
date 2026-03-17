@@ -146,26 +146,39 @@ const SettingsPage = () => {
     }
   };
 
-  const handleToggleVisibility = async (configId) => {
-    if (visibleConfigId === configId) {
-      // Hide: Replace the real key with the mask again in the UI
-      const maskedConfigs = settings.app.aiConfigs.map((c) =>
-        c.id === configId ? { ...c, apiKey: "********" } : c,
-      );
-      handleSettingChange("app", "aiConfigs", maskedConfigs);
-      setVisibleConfigId(null);
+  // Replace your existing handleToggleVisibility with this:
+  const handleToggleVisibility = async (configId, isForm = false) => {
+    // 1. If we are hiding the key
+    if ((!isForm && visibleConfigId === configId) || (isForm && showToken)) {
+      if (isForm) {
+        setShowToken(false);
+      } else {
+        // For the list: Replace the real key with the mask in UI state
+        const maskedConfigs = settings.app.aiConfigs.map((c) =>
+          c.id === configId ? { ...c, apiKey: "********" } : c,
+        );
+        handleSettingChange("app", "aiConfigs", maskedConfigs);
+        setVisibleConfigId(null);
+      }
       return;
     }
 
+    // 2. If we are showing the key (Fetch and Decrypt)
     try {
       const realKey = await fetchDecryptedSecret(configId);
-      const updatedConfigs = settings.app.aiConfigs.map((c) =>
-        c.id === configId ? { ...c, apiKey: realKey } : c,
-      );
 
-      // This updates the UI state so you see the real key
-      handleSettingChange("app", "aiConfigs", updatedConfigs);
-      setVisibleConfigId(configId);
+      if (isForm) {
+        // Update only the form's local state
+        setNewConfig((prev) => ({ ...prev, apiKey: realKey }));
+        setShowToken(true);
+      } else {
+        // Update the global list state
+        const updatedConfigs = settings.app.aiConfigs.map((c) =>
+          c.id === configId ? { ...c, apiKey: realKey } : c,
+        );
+        handleSettingChange("app", "aiConfigs", updatedConfigs);
+        setVisibleConfigId(configId);
+      }
     } catch (err) {
       console.error("Failed to fetch secure key:", err);
     }
@@ -482,8 +495,21 @@ const SettingsPage = () => {
                             />
                             {isAuthenticated && (
                               <button
-                                onClick={() => setShowToken(!showToken)}
-                                className={`absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-[10px] font-bold uppercase ${isDark ? "text-[#a0a0a0] hover:text-[#e5e5e5]" : "text-[#7D7D7D] hover:text-[#212121]"}`}
+                                type="button" // Ensure it doesn't trigger form submit
+                                onClick={() => {
+                                  // If we have an ID, we are editing; fetch from cloud.
+                                  // If no ID, it's a new entry, just toggle local visibility.
+                                  if (newConfig.id) {
+                                    handleToggleVisibility(newConfig.id, true);
+                                  } else {
+                                    setShowToken(!showToken);
+                                  }
+                                }}
+                                className={`absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-[10px] font-bold uppercase ${
+                                  isDark
+                                    ? "text-[#a0a0a0] hover:text-[#e5e5e5]"
+                                    : "text-[#7D7D7D] hover:text-[#212121]"
+                                }`}
                               >
                                 {showToken ? "Hide" : "Show"}
                               </button>
