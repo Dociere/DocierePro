@@ -212,3 +212,27 @@ ipcMain.on("window-maximize", () =>
   mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize(),
 );
 ipcMain.on("window-close", () => mainWindow.close());
+
+ipcMain.handle("save-pdf", async (event, { arrayBuffer, defaultName }) => {
+  const { dialog } = require("electron");
+  const fs = require("fs-extra");
+
+  const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+    title: "Export PDF",
+    defaultPath: defaultName || "document.pdf",
+    filters: [{ name: "PDF Files", extensions: ["pdf"] }],
+  });
+
+  if (canceled || !filePath) {
+    return { success: false, canceled: true };
+  }
+
+  try {
+    const buffer = Buffer.from(arrayBuffer);
+    await fs.writeFile(filePath, buffer);
+    return { success: true, filePath };
+  } catch (error) {
+    console.error("Failed to save PDF:", error);
+    return { success: false, error: error.message };
+  }
+});

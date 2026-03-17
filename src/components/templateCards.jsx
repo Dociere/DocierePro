@@ -114,7 +114,7 @@ const TemplateCards = ({ title, onDeleteClick }) => {
         >
           <path
             d="M8 4a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2z"
-            fill={isDark ? "#212121" : "#7D7D7D"}
+            fill="#000000"
           />
         </svg>
       </button>

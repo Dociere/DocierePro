@@ -116,16 +116,14 @@ function TemplateSelect() {
             <div className="flex gap-3">
               <button
                 onClick={() => setIsSetupModalOpen(true)}
-                className="px-6 py-2 rounded font-semibold bg-black text-white hover:bg-gray-800 transition-colors shadow-sm"
+                className={`px-6 py-2 rounded font-normal border transition-colors font-inter border-gray-400 hover:border-gray-600 hover:bg-gray-50
+                }`}
               >
-                + Create Custom Template
+                Create Custom Template
               </button>
               <button
                 onClick={handleBrowseClick}
-                className={`px-6 py-2 rounded font-medium border transition-colors ${
-                  isDark
-                    ? "border-gray-600 hover:bg-gray-800"
-                    : "border-gray-300 hover:bg-gray-50"
+                className={`px-6 py-2 rounded font-normal border transition-colors font-inter border-gray-400 hover:border-gray-600 hover:bg-gray-50
                 }`}
               >
                 Browse More Templates
