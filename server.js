@@ -181,19 +181,7 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
     const pdflatexPath = getPdflatexPath();
 
     const pdflatex = spawn(
-<<<<<<< HEAD
-//      "pdflatex",
-      // path.join(
-      //   baseDir,
-      //   "resources",
-      //   "TinyTex",
-      //   "bin",
-      //   "x86_64-linux",
-      //   "pdflatex",
-      // ),
-=======
       // "pdflatex",
->>>>>>> deadbd8 (Optimise build config - Vite)
       pdflatexPath,
       [
         `-output-directory=${outputPath}`,
