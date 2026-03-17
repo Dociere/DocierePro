@@ -60,10 +60,6 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-//System Environment
-// const isDev = !app.isPackaged;
-// const isDev = __dirname.includes("app.asar") === false;
-
 const isDev = !process.env.USER_DATA_PATH;
 const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
 
@@ -185,6 +181,7 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
     const pdflatexPath = getPdflatexPath();
 
     const pdflatex = spawn(
+<<<<<<< HEAD
 //      "pdflatex",
       // path.join(
       //   baseDir,
@@ -194,6 +191,9 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
       //   "x86_64-linux",
       //   "pdflatex",
       // ),
+=======
+      // "pdflatex",
+>>>>>>> deadbd8 (Optimise build config - Vite)
       pdflatexPath,
       [
         `-output-directory=${outputPath}`,
@@ -2706,19 +2706,12 @@ async function startServer() {
       const pdflatexPath = getPdflatexPath();
       console.log("pdflatexPath = ", pdflatexPath);
 
-//      const testPdfLatex = spawn("pdflatex", ["--version"]);
-       const testPdfLatex = spawn(
-         // path.join(
-         //   baseDir,
-         //   "resources",
-         //   "TinyTex",
-         //   "bin",
-         //   "x86_64-linux",
-         //   "pdflatex",
-         // ),
-         pdflatexPath,
-         ["--version"],
-      );
+      //To use pdflatex from Local device use the below code
+      // const testPdfLatex = spawn("pdflatex", ["--version"]);
+
+      //To use pdflatex from TinyTex use the below code
+      const testPdfLatex = spawn(pdflatexPath, ["--version"]);
+
       testPdfLatex.on("close", (code) => {
         if (code === 0) {
           console.log("✅ pdflatex is available and ready");
