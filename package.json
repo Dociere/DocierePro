@@ -20,6 +20,9 @@
     "appId": "com.docierepro.app",
     "productName": "DocierePro",
     "icon": "public/dociereLogo6.png",
+    "electronLanguages": [
+      "en-US"
+    ],
     "directories": {
       "output": "release"
     },
