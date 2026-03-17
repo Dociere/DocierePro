@@ -3,11 +3,17 @@ import { Link } from "react-router-dom";
 import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SearchBar from "../components/searchBar";
 import TemplateCards from "../components/templateCards";
-import { loadProjects } from "../api/projectHandling.jsx";
+import {
+  loadProjects,
+  deleteProjectFromDisk,
+} from "../api/projectHandling.jsx";
 import { useSettings } from "../context/useSettings";
+import ConfirmModal from "../components/confirmModal.jsx";
 
 const StartingPage = () => {
   const [projectData, setProjectData] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
   const fileRef = useRef(null);
   const modalRefs = useRef({});
   const [projectModal, setProjectModal] = useState(false);
@@ -21,6 +27,33 @@ const StartingPage = () => {
     const { Projects } = await loadProjects();
     setProjectData(Projects);
     console.log("Starting Page", Projects);
+  };
+  const handleDeleteClick = (project) => {
+    setProjectToDelete(project);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (projectToDelete) {
+      try {
+        // 1. Physical deletion from local disk
+        const result = await deleteProjectFromDisk(projectToDelete.id);
+
+        if (result.success) {
+          // 2. Update local React state to remove the card
+          setProjectData((prev) =>
+            prev.filter((p) => p.id !== projectToDelete.id),
+          );
+          console.log(`UI updated: Removed ${projectToDelete.id}`);
+        }
+      } catch (error) {
+        console.error("Deletion process failed:", error);
+        // Optional: Add a toast notification here to inform the user
+      } finally {
+        setShowDeleteConfirm(false);
+        setProjectToDelete(null);
+      }
+    }
   };
 
   return (
@@ -111,8 +144,11 @@ const StartingPage = () => {
         <SearchBar data={projectData} />
         <div className="flex flex-row mt-10 gap-8 flex-wrap">
           {(projectData || []).slice(0, 5)?.map((project) => (
-            <Link to={`/canvas?project=${project.id}`}>
-              <TemplateCards title={project.title} />
+            <Link key={project.id} to={`/canvas?project=${project.id}`}>
+              <TemplateCards
+                title={project.title}
+                onDeleteClick={() => handleDeleteClick(project)}
+              />
             </Link>
           ))}
         </div>
@@ -138,7 +174,11 @@ const StartingPage = () => {
               <div className="flex flex-row mt-10 gap-8 flex-wrap">
                 {(projectData || [])?.map((project) => (
                   <Link key={project.id} to={`/canvas?project=${project.id}`}>
-                    <TemplateCards title={project.title} />
+                    <TemplateCards
+                      key={project.id}
+                      title={project.title}
+                      onDeleteClick={() => handleDeleteClick(project)}
+                    />
                   </Link>
                 ))}
               </div>
@@ -146,6 +186,15 @@ const StartingPage = () => {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${projectToDelete?.title}"? This will permanently remove the project folder (${projectToDelete?.id}) and all its contents.`}
+        confirmText="Delete Project"
+        isDanger={true}
+      />
     </div>
   );
 };

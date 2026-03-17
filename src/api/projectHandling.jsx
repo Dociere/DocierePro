@@ -71,6 +71,19 @@ export const createProject = async (
   }
 };
 
+export const deleteProjectFromDisk = async (projectId) => {
+  try {
+    const response = await axios.delete(
+      `${API_URL}/api/projects/delete/${projectId}`,
+      { withCredentials: true },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("API Error during deletion:", error);
+    throw error;
+  }
+};
+
 export const editDocumentWithAI = async (
   prompt,
   latexContent,

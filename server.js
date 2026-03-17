@@ -185,7 +185,7 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
     const pdflatexPath = getPdflatexPath();
 
     const pdflatex = spawn(
-      // "pdflatex",
+//      "pdflatex",
       // path.join(
       //   baseDir,
       //   "resources",
@@ -1112,6 +1112,33 @@ app.get("/api/projects", async (req, res) => {
   }
 });
 
+app.delete("/api/projects/delete/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const projectDir = path.join(PROJECTS_DIR, id);
+
+    // Check if the directory exists before attempting deletion
+    if (!(await fs.pathExists(projectDir))) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Project directory not found" });
+    }
+
+    // fs.remove (from fs-extra) deletes the directory and all its contents
+    await fs.remove(projectDir);
+
+    console.log(`\u2705 Deleted project directory: ${id}`);
+    res.json({
+      success: true,
+      message: "Project deleted successfully from disk",
+    });
+  } catch (error) {
+    console.error("\u274C Project deletion error:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to delete project folder" });
+  }
+});
 // API: Load project
 app.get("/api/projects/:id", async (req, res) => {
   try {
@@ -2679,18 +2706,18 @@ async function startServer() {
       const pdflatexPath = getPdflatexPath();
       console.log("pdflatexPath = ", pdflatexPath);
 
-      // const testPdfLatex = spawn("pdflatex", ["--version"]);
-      const testPdfLatex = spawn(
-        // path.join(
-        //   baseDir,
-        //   "resources",
-        //   "TinyTex",
-        //   "bin",
-        //   "x86_64-linux",
-        //   "pdflatex",
-        // ),
-        pdflatexPath,
-        ["--version"],
+//      const testPdfLatex = spawn("pdflatex", ["--version"]);
+       const testPdfLatex = spawn(
+         // path.join(
+         //   baseDir,
+         //   "resources",
+         //   "TinyTex",
+         //   "bin",
+         //   "x86_64-linux",
+         //   "pdflatex",
+         // ),
+         pdflatexPath,
+         ["--version"],
       );
       testPdfLatex.on("close", (code) => {
         if (code === 0) {
