@@ -424,11 +424,7 @@ const EditorPage = () => {
 
       // Gate on having more than just one file if we're expecting \input resolution
       // or if it's main.tex, ensure it looks like a valid document
-      if (
-        isMainFile(activeFile) &&
-        (!latexDoc.includes("\\begin{document}") ||
-          Object.keys(files).length <= 1)
-      ) {
+      if (isMainFile(activeFile) && !latexDoc.includes("\\begin{document}")) {
         return;
       }
 
