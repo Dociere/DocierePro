@@ -68,6 +68,7 @@ const DynamicSideBar = ({
 
   const handleCitationIconClick = (e) => {
     e.preventDefault();
+    console.log("handleCitationIconClick");
     setIsCitationModalOpen(true);
   };
 
@@ -458,15 +459,24 @@ const DynamicSideBar = ({
 
       {/* Citation Manager Modal */}
       {isCitationModalOpen && (
-        <CitationManager onClose={() => setIsCitationModalOpen(false)} />
+        <CitationManager
+          isModal={true}
+          onClose={() => setIsCitationModalOpen(false)}
+        />
       )}
 
       {isImageModalOpen && (
-        <ImageInsertModal isOpen={true} onClose={() => setIsImageModalOpen(false)} />
+        <ImageInsertModal
+          isOpen={true}
+          onClose={() => setIsImageModalOpen(false)}
+        />
       )}
 
       {isTableModalOpen && (
-        <TableDesignerModal isOpen={true} onClose={() => setIsTableModalOpen(false)} />
+        <TableDesignerModal
+          isOpen={true}
+          onClose={() => setIsTableModalOpen(false)}
+        />
       )}
 
       {/* Share Project Modal */}
@@ -483,14 +493,17 @@ const DynamicSideBar = ({
         <VersionManager onClose={() => setIsVersionModalOpen(false)} />
       )}
 
-
       {/* Auth Modal for Share */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[80]">
           <div className="bg-white rounded-xl shadow-xl p-8 w-[380px] max-w-full text-center font-inter">
             <div className="text-5xl mb-3">👤</div>
-            <h3 className="font-semibold text-lg text-[#343434] mb-1">Not Signed In</h3>
-            <p className="text-sm text-[#7D7D7D] mb-5">Sign in to share and collaborate on projects</p>
+            <h3 className="font-semibold text-lg text-[#343434] mb-1">
+              Not Signed In
+            </h3>
+            <p className="text-sm text-[#7D7D7D] mb-5">
+              Sign in to share and collaborate on projects
+            </p>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => navigate("/login")}
