@@ -8,7 +8,7 @@ const SearchBar = ({ data }) => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  const searchData = data.map((item) => ({
+  const searchData = (data || []).map((item) => ({
     name: item.title,
     path: `/canvas?project=${item.id}`,
   }));

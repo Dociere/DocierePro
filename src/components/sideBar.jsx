@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
@@ -6,6 +6,8 @@ import ShareProject from "./shareProject";
 import VersionManager from "./versionManager";
 import TableDesignerModal from "./TableDesignerModal";
 import ImageInsertModal from "./ImageInsertModal";
+import Extensions from "./extensions";
+import { FiBox } from "react-icons/fi";
 import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SectionIcon from "../assets/icons/sectionIcon.svg?react";
 import CitationIcon from "../assets/icons/citation-manager.svg?react";
@@ -36,12 +38,44 @@ const DynamicSideBar = ({
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const [isExtensionsModalOpen, setIsExtensionsModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const { user, isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
+
+  const [extensionViews, setExtensionViews] = useState([]);
+  const [activeExtensionId, setActiveExtensionId] = useState(null);
+
+  useEffect(() => {
+    const handleLoaded = (e) => {
+      const allExtensions = e.detail;
+      const views = [];
+      allExtensions.forEach(ext => {
+        if (ext.contributions && ext.contributions.views) {
+          ext.contributions.views.forEach(view => {
+            if (view.location === "sidebar") {
+              views.push({ ...view, extensionId: ext.id });
+            }
+          });
+        }
+      });
+      setExtensionViews(views);
+    };
+
+    window.addEventListener("dociere-extensions-loaded", handleLoaded);
+    return () => window.removeEventListener("dociere-extensions-loaded", handleLoaded);
+  }, []);
+
+  const handleExtensionClick = (extId) => {
+    const newId = activeExtensionId === extId ? null : extId;
+    setActiveExtensionId(newId);
+    window.dispatchEvent(new CustomEvent("dociere-toggle-extension", { 
+      detail: { id: extId, visible: !!newId } 
+    }));
+  };
 
   console.log("user", user);
   console.log("isServerConnected", isServerConnected);
@@ -79,6 +113,11 @@ const DynamicSideBar = ({
   const handleImageIconClick = (e) => {
     e.preventDefault();
     setIsImageModalOpen(true);
+  };
+
+  const handleExtensionsIconClick = (e) => {
+    e.preventDefault();
+    setIsExtensionsModalOpen(true);
   };
 
   const handleLogout = async (e) => {
@@ -310,10 +349,10 @@ const DynamicSideBar = ({
             )}
 
             {/* Extensions */}
-            <Link id="tour-extensions" to="/canvas">
+            <Link id="tour-extensions" onClick={handleExtensionsIconClick}>
               <span
                 className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
-                title="Extensions"
+                title="Extensions Store"
               >
                 <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
                   <ExtensionIcon
@@ -327,6 +366,32 @@ const DynamicSideBar = ({
                 </div>
               </span>
             </Link>
+
+            {/* Dynamic Extension Icons */}
+            {extensionViews.map((view) => (
+              <div 
+                key={view.id} 
+                onClick={() => handleExtensionClick(view.extensionId)}
+                className={`border-r-[1.5px] ml-1 pr-1 ${
+                  activeExtensionId === view.extensionId ? "border-black" : "border-transparent"
+                }`}
+              >
+                <span
+                  className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                  title={view.title}
+                >
+                  <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                    {/* For now use a generic box icon for dynamic ones or the provided icon if we had mapping */}
+                    <FiBox 
+                      size={16}
+                      style={{
+                        color: settings.appearance.customThemes[settings.appearance.theme].icon1,
+                      }}
+                    />
+                  </div>
+                </span>
+              </div>
+            ))}
 
             {/* Share / Collaborate */}
             <div id="tour-share" onClick={handleShareIconClick}>
@@ -481,6 +546,11 @@ const DynamicSideBar = ({
       {/* Versioning Manager Modal */}
       {isVersionModalOpen && (
         <VersionManager onClose={() => setIsVersionModalOpen(false)} />
+      )}
+
+      {/* Extensions Modal */}
+      {isExtensionsModalOpen && (
+        <Extensions onClose={() => setIsExtensionsModalOpen(false)} />
       )}
 
 

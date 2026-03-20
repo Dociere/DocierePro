@@ -12,6 +12,8 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import * as TemplateEngine from "./renderStrategies.js";
 import util from "util";
+import os from "os";
+
 dotenv.config();
 
 const execAsync = util.promisify(exec);
@@ -22,8 +24,10 @@ const AI_SERVICE_URL = "http://localhost:5025";
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.1:3000"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   }),
 );
 app.use(express.json({ limit: "50mb" }));
@@ -37,11 +41,20 @@ const __dirname = dirname(__filename);
 // const isDev = __dirname.includes("app.asar") === false;
 
 const isDev = !process.env.USER_DATA_PATH; // if not set, we're in dev
-const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
 
-// Base directory: userData in production, current directory in development
-// const baseDir = isDev ? __dirname : electronApp.getPath("userData");
-console.log("isDev, baseDir", isDev, baseDir);
+// In dev mode, detect the Electron userData path automatically (same location IPC installs extensions to)
+const getDefaultUserDataPath = () => {
+  const home = os.homedir();
+  if (process.platform === "win32") return path.join(home, "AppData", "Roaming", "dociere-pro");
+  if (process.platform === "darwin") return path.join(home, "Library", "Application Support", "dociere-pro");
+  return path.join(home, ".config", "dociere-pro");
+};
+
+const userDataPath = process.env.USER_DATA_PATH || getDefaultUserDataPath();
+const baseDir = isDev ? __dirname : userDataPath;
+// Always use userDataPath for extensions so dev and production are consistent
+const EXTENSIONS_BASE = userDataPath;
+console.log("isDev, baseDir, EXTENSIONS_BASE:", isDev, baseDir, EXTENSIONS_BASE);
 
 // Directories
 // const SETTINGS_DIR = path.join(__dirname);
@@ -59,6 +72,7 @@ const OUTPUT_DIR = join(baseDir, "projects/output");
 const EQUATIONS_DIR = join(baseDir, "projects/equations");
 const CITATIONS_DIR = join(baseDir, "projects/citations");
 const TEMPLATES_DIR = join(baseDir, "templates");
+const EXTENSIONS_DIR = join(EXTENSIONS_BASE, "extensions"); // Always resolves to userData/extensions
 
 //Create all Directories
 [
@@ -69,6 +83,7 @@ const TEMPLATES_DIR = join(baseDir, "templates");
   EQUATIONS_DIR,
   CITATIONS_DIR,
   TEMPLATES_DIR,
+  EXTENSIONS_DIR,
 ].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -2344,6 +2359,283 @@ app.get("/health", (req, res) => {
   });
 });
 
+// ==================== EXTENSION ROUTES ====================
+
+// API: List installed extensions
+app.get("/api/extensions", async (req, res) => {
+  try {
+    const extensions = [];
+    if (!(await fs.pathExists(EXTENSIONS_DIR))) {
+      return res.json([]);
+    }
+    const entries = await fs.readdir(EXTENSIONS_DIR, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const manifestPath = path.join(EXTENSIONS_DIR, entry.name, "manifest.json");
+        if (await fs.pathExists(manifestPath)) {
+          try {
+            const manifest = await fs.readJSON(manifestPath);
+            extensions.push({
+              id: entry.name,
+              ...manifest,
+              installed: true,
+            });
+          } catch (e) {
+            console.warn(`Malformed manifest for extension ${entry.name}`);
+          }
+        }
+      }
+    }
+    res.json(extensions);
+  } catch (error) {
+    console.error("❌ Extensions list error:", error);
+    res.status(500).json({ error: "Failed to list extensions" });
+  }
+});
+
+// Multer for extension uploads
+const extensionStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, TEMP_DIR);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `upload_${Date.now()}_${file.originalname}`);
+  },
+});
+const uploadExtension = multer({ storage: extensionStorage });
+
+// API: Upload local extension (ZIP)
+app.post("/api/extensions/upload", uploadExtension.single("extension"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const zipPath = req.file.path;
+    const extractName = path.basename(req.file.originalname, ".zip").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const targetDir = path.join(EXTENSIONS_DIR, extractName);
+
+    // Ensure target doesn't already exist or clean it
+    if (await fs.pathExists(targetDir)) {
+      await fs.remove(targetDir);
+    }
+    await fs.ensureDir(targetDir);
+
+    // Unzip using powershell on Windows (assuming current user OS is Windows)
+    const unzipCmd = `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${targetDir}' -Force"`;
+    
+    await execAsync(unzipCmd);
+
+    // Cleanup uploaded zip
+    await fs.remove(zipPath);
+
+    // Verify manifest
+    const manifestPath = path.join(targetDir, "manifest.json");
+    if (!(await fs.pathExists(manifestPath))) {
+      await fs.remove(targetDir);
+      return res.status(400).json({ error: "Extension missing manifest.json" });
+    }
+
+    const manifest = await fs.readJSON(manifestPath);
+    res.json({ success: true, extension: { id: extractName, ...manifest } });
+  } catch (error) {
+    console.error("❌ Extension upload error:", error);
+    res.status(500).json({ error: "Failed to upload extension", details: error.message });
+  }
+});
+
+// API: List marketplace extensions (Mock)
+app.get("/api/extensions/marketplace", async (req, res) => {
+  // This will eventually pull from a GitHub repository
+  const mockMarketplace = [
+    {
+      id: "zotero-integration",
+      name: "Zotero Integration",
+      version: "1.0.0",
+      description: "Directly import citations from your Zotero library.",
+      author: "Dociere Team",
+      icon: "https://www.zotero.org/favicon.ico",
+    },
+    {
+      id: "vscode-shortcuts",
+      name: "VS Code Shortcuts",
+      version: "1.1.2",
+      description: "Enable VS Code style keybindings in the editor.",
+      author: "Dociere Team",
+      icon: "https://visualstudio.microsoft.com/wp-content/uploads/2023/10/VS-Code-Icon.png",
+    },
+    {
+      id: "markdown-preview",
+      name: "Markdown Preview",
+      version: "2.0.1",
+      description: "Side-by-side preview for .md files in your project.",
+      author: "Community",
+      icon: "https://upload.wikimedia.org/wikipedia/commons/4/48/Markdown-mark.svg",
+    }
+  ];
+  res.json(mockMarketplace);
+});
+
+// API: Install extension from marketplace (Mock)
+app.post("/api/extensions/install", async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "Extension ID required" });
+
+    // Mock installation: Create a dummy folder with manifest
+    const targetDir = path.join(EXTENSIONS_DIR, id);
+    await fs.ensureDir(targetDir);
+    
+    const manifest = {
+      name: id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      version: "1.0.0",
+      description: `Installed via Marketplace: ${id}`,
+      author: "Marketplace",
+    };
+
+    await fs.writeJSON(path.join(targetDir, "manifest.json"), manifest, { spaces: 2 });
+    await fs.writeFile(path.join(targetDir, "index.js"), "// Extension logic here", "utf8");
+
+    res.json({ success: true, message: `Extension ${id} installed successfully` });
+  } catch (error) {
+    console.error("❌ Extension install error:", error);
+    res.status(500).json({ error: "Failed to install extension" });
+  }
+});
+
+// API: Delete extension
+app.delete("/api/extensions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetDir = path.join(EXTENSIONS_DIR, id);
+    if (await fs.pathExists(targetDir)) {
+      await fs.remove(targetDir);
+      res.json({ success: true, message: `Extension ${id} removed` });
+    } else {
+      res.status(404).json({ error: "Extension not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: "Failed to remove extension" });
+  }
+});
+
+// ==========================================
+// Zotero / Better BibTeX proxy
+// ==========================================
+// The extension iframe cannot directly call localhost:23119 due to CORS.
+// This proxy forwards JSON-RPC requests from the frontend to BBT.
+app.post("/api/zotero/bbt", async (req, res) => {
+  try {
+    const response = await axios.post(
+      "http://127.0.0.1:23119/better-bibtex/json-rpc",
+      req.body,
+      {
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        timeout: 5000,
+      }
+    );
+    res.json(response.data);
+  } catch (err) {
+    if (err.code === "ECONNREFUSED") {
+      res.status(503).json({
+        error: "Zotero is not running or Better BibTeX is not installed.",
+        hint: "Please open Zotero with the Better BibTeX plugin enabled.",
+      });
+    } else {
+      console.error("BBT proxy error:", err.message);
+      res.status(500).json({ error: "BBT proxy error", message: err.message });
+    }
+  }
+});
+
+// Zotero CAYW (Cite As You Write) picker proxy
+app.get("/api/zotero/cayw", async (req, res) => {
+  try {
+    const format = req.query.format || "latex";
+    const response = await axios.get(
+      `http://127.0.0.1:23119/better-bibtex/cayw?format=${format}&brackets=1`,
+      { timeout: 60000 } // long timeout — user picks in Zotero
+    );
+    res.json({ citation: response.data });
+  } catch (err) {
+    if (err.code === "ECONNREFUSED") {
+      res.status(503).json({ error: "Zotero is not running." });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// Zotero Web API proxy (Zotero.org)
+app.post("/api/zotero/web", async (req, res) => {
+  try {
+    const { userId, apiKey, endpoint, params } = req.body;
+    
+    if (!userId || !apiKey) {
+      return res.status(400).json({ error: "Missing Zotero credentials (UserID or API Key)" });
+    }
+
+    const baseUrl = `https://api.zotero.org/users/${userId}`;
+    const targetUrl = endpoint ? `${baseUrl}/${endpoint}` : baseUrl;
+
+    const response = await axios.get(targetUrl, {
+      params: { ...params, format: "json" },
+      headers: { 
+        "Zotero-API-Key": apiKey,
+        "Zotero-API-Version": "3"
+      },
+      timeout: 10000
+    });
+
+    res.json(response.data);
+  } catch (err) {
+    console.error("Zotero Web API proxy error:", err.message);
+    const status = err.response ? err.response.status : 500;
+    const message = err.response ? err.response.data : err.message;
+    res.status(status).json({ error: "Zotero Web API Error", message });
+  }
+});
+
+// API: Serve extension files (explicit routes for Express 5 compatibility)
+app.get("/api/extensions/load/:id", async (req, res) => {
+  return serveExtensionFile(req.params.id, "index.html", res);
+});
+
+app.get("/api/extensions/load/:id/:file", async (req, res) => {
+  return serveExtensionFile(req.params.id, req.params.file, res);
+});
+
+async function serveExtensionFile(id, file, res) {
+  try {
+    // Sanitize to prevent path traversal
+    const safeId = path.basename(id);
+    const safeFile = (file || "index.html").split("?")[0]; 
+    const fullPath = path.join(EXTENSIONS_DIR, safeId, safeFile);
+    
+    // Security: ensure the resolved path is still inside EXTENSIONS_DIR
+    if (!path.resolve(fullPath).startsWith(path.resolve(EXTENSIONS_DIR))) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (await fs.pathExists(fullPath)) {
+      console.log(`📦 Serving extension file: ${fullPath}`);
+      res.sendFile(path.resolve(fullPath));
+    } else {
+      console.log(`❌ Extension file not found: ${fullPath}`);
+      res.status(404).json({ 
+        error: "Extension file not found", 
+        path: fullPath,
+        resolvedDir: EXTENSIONS_DIR 
+      });
+    }
+  } catch (err) {
+    console.error("Extension load error:", err);
+    res.status(500).json({ error: "Failed to load extension file" });
+  }
+}
+
+
 // Root endpoint
 app.get("/", (req, res) => {
   res.json({
@@ -2378,30 +2670,34 @@ app.get("/", (req, res) => {
 });
 
 // Error handling middleware
-app.use((error, req, res, next) => {
-  console.error("🔥 Unhandled error:", error);
-  res.status(500).json({
-    error: "Internal server error",
-    message: error.message,
-    timestamp: new Date().toISOString(),
-  });
-});
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: "Endpoint not found",
-    path: req.path,
-    method: req.method,
-  });
-});
-
-// Start server
+// Server startup logic
 async function startServer() {
   try {
     await initDirectories();
+    // Extension static files are now served by the explicit app.get route above
 
-    app.listen(PORT, () => {
+    // Error handling middleware (MUST BE LAST)
+    app.use((error, req, res, next) => {
+      console.error("🔥 Unhandled error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // 404 handler (MUST BE LAST)
+    app.use((req, res) => {
+      res.status(404).json({
+        error: "Endpoint not found",
+        path: req.path,
+        method: req.method,
+      });
+    });
+
+
+    const server = app.listen(PORT, "0.0.0.0", () => {
       console.log("🚀 Unified LaTeX Server Started!");
       console.log("=".repeat(60));
       console.log(`📡 Server: http://localhost:${PORT}`);

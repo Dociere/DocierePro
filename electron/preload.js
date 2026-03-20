@@ -12,4 +12,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("window-is-maximized", () => callback()),
   onUnmaximize: (callback) =>
     ipcRenderer.on("window-is-unmaximized", () => callback()),
+
+  extensions: {
+    getInstalled: () => ipcRenderer.invoke("extensions:get-installed"),
+    install: (id, url) => ipcRenderer.invoke("extensions:install", { id, url }),
+    uninstall: (id) => ipcRenderer.invoke("extensions:uninstall", id),
+    openWindow: (url, title) => ipcRenderer.send("extensions:open-window", { url, title }),
+  },
 });

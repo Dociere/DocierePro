@@ -41,6 +41,7 @@ import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/useAuth.jsx";
 import { useSettings } from "../context/useSettings";
 import axios from "axios";
+import { useToast } from "../hooks/useToast";
 
 const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -52,6 +53,7 @@ const EditorPage = () => {
   const [collaborationToken, setCollaborationToken] = useState(null);
   const { user, isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
+  const showToast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isPdfFullscreen, setIsPdfFullscreen] = useState(false);
   const [splitPos, setSplitPos] = useState(50); // percentage for left panel
@@ -94,6 +96,29 @@ const EditorPage = () => {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
+
+  // Handle Extension Events
+  useEffect(() => {
+    const handleInsertText = (e) => {
+      const { text } = e.detail;
+      if (monacoEditorRef.current && monacoEditorRef.current.insertAtCursor) {
+        monacoEditorRef.current.insertAtCursor(text);
+      }
+    };
+
+    const handleShowToast = (e) => {
+      const { type, message } = e.detail;
+      showToast(type || "info", message);
+    };
+
+    window.addEventListener("dociere-insert-text", handleInsertText);
+    window.addEventListener("dociere-show-toast", handleShowToast);
+
+    return () => {
+      window.removeEventListener("dociere-insert-text", handleInsertText);
+      window.removeEventListener("dociere-show-toast", handleShowToast);
+    };
+  }, [showToast]);
 
   // Track which editor is actively being edited
   const [activeEditor, setActiveEditor] = useState(null);

@@ -1,6 +1,9 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
+const fs = require("fs-extra");
+const axios = require("axios");
+const extract = require("extract-zip");
 
 let backendProcess = null;
 let mainWindow = null;
@@ -103,3 +106,102 @@ ipcMain.on("window-maximize", () =>
   mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize(),
 );
 ipcMain.on("window-close", () => mainWindow.close());
+
+const getExtensionsDir = () => path.join(app.getPath("userData"), "extensions");
+
+ipcMain.handle("extensions:get-installed", async () => {
+  const dir = getExtensionsDir();
+  await fs.ensureDir(dir);
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const extensions = [];
+
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const manifestPath = path.join(dir, entry.name, "dociere-extension.json");
+      if (await fs.pathExists(manifestPath)) {
+        try {
+          const manifest = await fs.readJSON(manifestPath);
+          extensions.push({ id: entry.name, ...manifest });
+        } catch (e) {
+          console.error(`Failed to read manifest for ${entry.name}`, e);
+        }
+      }
+    }
+  }
+  return extensions;
+});
+
+ipcMain.handle("extensions:install", async (event, { id, url }) => {
+  const dir = getExtensionsDir();
+  const targetDir = path.join(dir, id);
+  const tempZip = path.join(app.getPath("temp"), `${id}_${Date.now()}.zip`);
+
+  try {
+    await fs.ensureDir(dir);
+    
+    // Download ZIP
+    const response = await axios({
+      method: "get",
+      url: url,
+      responseType: "stream",
+    });
+
+    const writer = fs.createWriteStream(tempZip);
+    response.data.pipe(writer);
+
+    await new Promise((resolve, reject) => {
+      writer.on("finish", resolve);
+      writer.on("error", reject);
+    });
+
+    // Extract ZIP
+    if (await fs.pathExists(targetDir)) {
+      await fs.remove(targetDir);
+    }
+    await fs.ensureDir(targetDir);
+    
+    await extract(tempZip, { dir: targetDir });
+    
+    // Cleanup
+    await fs.remove(tempZip);
+
+    // Read manifest to return
+    const manifestPath = path.join(targetDir, "dociere-extension.json");
+    if (await fs.pathExists(manifestPath)) {
+      return await fs.readJSON(manifestPath);
+    }
+    return { id, success: true };
+  } catch (error) {
+    console.error(`Failed to install extension ${id}`, error);
+    if (tempZip && await fs.pathExists(tempZip)) await fs.remove(tempZip);
+    throw error;
+  }
+});
+
+ipcMain.handle("extensions:uninstall", async (event, id) => {
+  const targetDir = path.join(getExtensionsDir(), id);
+  if (await fs.pathExists(targetDir)) {
+    await fs.remove(targetDir);
+    return { success: true };
+  }
+  return { success: false, error: "Not found" };
+});
+
+ipcMain.on("extensions:open-window", (event, { url, title }) => {
+  let win = new BrowserWindow({
+    width: 450,
+    height: 650,
+    title: title || "Extension",
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+
+  win.loadURL(url);
+  win.on("closed", () => {
+    win = null;
+  });
+});

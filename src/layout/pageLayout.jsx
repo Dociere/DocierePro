@@ -4,6 +4,7 @@ import SectionSpace from "../components/sectionSpace";
 import NavBar from "../components/navBar";
 import { Outlet, useLocation } from "react-router-dom";
 import StatusBar from "../components/statusBar";
+import ExtensionHost from "../services/ExtensionHost";
 import { useState, useEffect, useRef, useCallback, useContext } from "react";
 import { projectContext } from "../context/useProject";
 import { startTour, syncTourWithRoute } from "../utils/tour";
@@ -22,8 +23,20 @@ const PageLayout = () => {
 
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isDistractionFree, setIsDistractionFree] = useState(false);
+  const [isExtensionPanelOpen, setIsExtensionPanelOpen] = useState(false);
+  const [activeExtensionId, setActiveExtensionId] = useState(null);
   const [sectionSpaceWidth, setSectionSpaceWidth] = useState(256); // default 256px (w-64)
   const { settings } = useSettings();
+
+  useEffect(() => {
+    const handleToggle = (e) => {
+      const { id, visible } = e.detail;
+      setIsExtensionPanelOpen(visible);
+      setActiveExtensionId(visible ? id : null);
+    };
+    window.addEventListener("dociere-toggle-extension", handleToggle);
+    return () => window.removeEventListener("dociere-toggle-extension", handleToggle);
+  }, []);
 
   const isDraggingSection = useRef(false);
   const sectionDragStartX = useRef(0);
@@ -111,6 +124,34 @@ const PageLayout = () => {
         {!isDistractionFree && isSectionSpaceOpen && (
           <SectionSpace width={sectionSpaceWidth} onDragStart={handleStartSectionDrag} />
         )}
+
+        {/* Extension Panel (Dynamic Drawer) */}
+        <div 
+          className={`h-[calc(100vh-3rem)] flex flex-col transition-all duration-300 ease-in-out ${
+            !isDistractionFree && isExtensionPanelOpen ? "w-[300px] border-r" : "w-0 border-none overflow-hidden"
+          }`}
+          style={{ 
+            backgroundColor: settings.appearance.customThemes[settings.appearance.theme].background,
+            borderColor: settings.appearance.customThemes[settings.appearance.theme].border
+          }}
+        >
+          <div className="p-4 border-b flex items-center justify-between min-w-[300px]">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Extension View</h3>
+            <button 
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("dociere-toggle-extension", { 
+                  detail: { id: activeExtensionId, visible: false } 
+                }));
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden relative min-w-[300px]">
+            <ExtensionHost activeExtensionId={activeExtensionId} />
+          </div>
+        </div>
 
         <div className="w-full h-auto">
           <Outlet
