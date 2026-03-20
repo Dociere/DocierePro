@@ -3,6 +3,7 @@ import cors from "cors";
 import fs from "fs-extra";
 import path from "path";
 import { exec, spawn } from "child_process";
+import { createInterface } from "readline";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
 import { PDFParse as pdfParse } from "pdf-parse";
@@ -41,6 +42,10 @@ function decrypt(text) {
   decrypted = Buffer.concat([decrypted, decipher.final()]);
   return decrypted.toString();
 }
+
+// const SIDECAR_PATH = isDev
+//   ? path.join(__dirname, "sidecar", "build", "sidecar")
+//   : path.join(process.env.RESOURCES_PATH, "sidecar");
 
 const execAsync = util.promisify(exec);
 const app = express();
@@ -118,6 +123,10 @@ const OUTPUT_DIR = join(baseDir, "projects/output");
 const EQUATIONS_DIR = join(baseDir, "projects/equations");
 const CITATIONS_DIR = join(baseDir, "projects/citations");
 const TEMPLATES_DIR = join(baseDir, "templates");
+// const JOB_DIR = (projectId) =>
+//   path.join(BASE_TEMP, `job_${projectId}_${Date.now()}`);
+// const jobDir = JOB_DIR(projectId);
+const jobDir = TEMP_DIR;
 
 //Create all Directories
 [
@@ -172,6 +181,16 @@ const getPdflatexPath = () => {
   return path.join(tinyTexBaseDir, "bin", archFolder, binaryName);
 };
 
+// Initialize directories
+async function initDirectories() {
+  await fs.ensureDir(PROJECTS_DIR);
+  await fs.ensureDir(TEMP_DIR);
+  await fs.ensureDir(OUTPUT_DIR);
+  await fs.ensureDir(EQUATIONS_DIR);
+  await fs.ensureDir(CITATIONS_DIR);
+  console.log("✅ Directories initialized");
+}
+
 //FIXME: Convert to C++
 function runPdfLatexPermissive(texFilePath, outputPath) {
   return new Promise((resolve, reject) => {
@@ -181,8 +200,8 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
     const pdflatexPath = getPdflatexPath();
 
     const pdflatex = spawn(
-      // "pdflatex",
-      pdflatexPath,
+      "pdflatex",
+      // pdflatexPath,
       [
         `-output-directory=${outputPath}`,
         "-interaction=nonstopmode", // Never stop for errors
@@ -218,16 +237,6 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
       reject(error);
     });
   });
-}
-
-// Initialize directories
-async function initDirectories() {
-  await fs.ensureDir(PROJECTS_DIR);
-  await fs.ensureDir(TEMP_DIR);
-  await fs.ensureDir(OUTPUT_DIR);
-  await fs.ensureDir(EQUATIONS_DIR);
-  await fs.ensureDir(CITATIONS_DIR);
-  console.log("✅ Directories initialized");
 }
 
 //FIXME: To delete the code below
@@ -1392,8 +1401,7 @@ app.get("/api/projects/:id/chat", async (req, res) => {
 });
 
 // API: Compile LaTeX (for projects)
-// server.js
-
+// Convert to C++
 app.post("/api/compile", async (req, res) => {
   console.log("\n" + "=".repeat(60));
   console.log("NEW COMPILATION REQUEST");
@@ -1416,19 +1424,23 @@ app.post("/api/compile", async (req, res) => {
         .json({ success: false, error: "No LaTeX content" });
     }
 
-    const filename = projectId ? projectId : `temp_project_${Date.now()}`;
+    // const filename = projectId ? projectId : `temp_project_${Date.now()}`;
+
+    const filename = projectId ?? `temp_project_${Date.now()}`;
+    const jobDir = path.join(TEMP_DIR, `job_${filename}_${Date.now()}`);
+    await fs.ensureDir(jobDir);
 
     console.log(`Project ID: ${projectId}`);
     console.log(`Target Filename: ${filename}`);
+    console.log(`Job Directory: ${jobDir}`);
 
-    // Write all project files to TEMP_DIR, preserving directory structure
+    // Write all project files to jobDir, preserving directory structure
     let mainTexFile = "main.tex"; // Default to main.tex
     for (const [relPath, file] of Object.entries(files)) {
       // Skip .gitkeep files
       if (file.name === ".gitkeep" || relPath.endsWith("/.gitkeep")) continue;
 
-      // Use the relative path key (e.g. "sections/introduction.tex") not just file.name
-      const filePath = path.join(TEMP_DIR, relPath);
+      const filePath = path.join(jobDir, relPath);
       // Ensure subdirectory exists
       await fs.ensureDir(path.dirname(filePath));
 
@@ -1461,7 +1473,7 @@ app.post("/api/compile", async (req, res) => {
       ([k]) => k.startsWith("Definitions/") && !k.endsWith("/.gitkeep"),
     );
     for (const [relPath, file] of defFiles) {
-      const destPath = path.join(TEMP_DIR, file.name); // copy flat to root
+      const destPath = path.join(jobDir, file.name); // copy flat to root
       if (file.isImage && file.content && file.content.startsWith("data:")) {
         const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
         if (base64Match)
@@ -1471,7 +1483,7 @@ app.post("/api/compile", async (req, res) => {
       }
     }
 
-    const texPath = path.join(TEMP_DIR, mainTexFile);
+    const texPath = path.join(jobDir, mainTexFile);
     const pdfPath = path.join(OUTPUT_DIR, `${filename}.pdf`);
     const logPath = path.join(OUTPUT_DIR, `${filename}.log`);
 
@@ -1482,6 +1494,15 @@ app.post("/api/compile", async (req, res) => {
     } catch (e) {}
 
     console.log("🔄 Running PDFLaTeX...");
+
+    function needsRerun(log) {
+      return (
+        log.includes("Rerun to get") ||
+        log.includes("Label(s) may have changed") ||
+        log.includes("Citation(s) may have changed")
+      );
+    }
+
     const result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
 
     // PDFLaTeX outputs based on input filename (main.tex -> main.pdf)
@@ -1539,13 +1560,19 @@ app.post("/api/compile", async (req, res) => {
       }
     }
 
-    // Second pass (resolves references, citations)
-    if (pdfExists) {
+    // // Second pass (resolves references, citations)
+    // if (pdfExists) {
+    //   await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+    //   // Third pass for cross-references if bibtex was run
+    //   if (hasBibFiles) {
+    //     await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+    //   }
+    // }
+
+    if (needsRerun(result1.stdout)) {
       await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-      // Third pass for cross-references if bibtex was run
-      if (hasBibFiles) {
-        await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-      }
+      // Only run pass 3 if still needed
+      const result2 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
     }
 
     pdfExists = await fs.pathExists(generatedPdfPath);
@@ -1567,16 +1594,37 @@ app.post("/api/compile", async (req, res) => {
         }
       }
 
-      const pdfBuffer = await fs.readFile(pdfPath);
-      console.log(`✅ PDF Generated: ${filename}.pdf`);
+      // const pdfBuffer = await fs.readFile(pdfPath);
+      // console.log(`✅ PDF Generated: ${filename}.pdf`);
 
-      res.json({
-        success: true,
-        pdf: pdfBuffer.toString("base64"),
-        fileName: `${filename}.pdf`,
-        message: "Compiled successfully",
-        log: result1.stdout,
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}.pdf"`,
+      );
+
+      // Pass the compilation log in a custom header (base64 encoded)
+      if (result1.stdout) {
+        const logBase64 = Buffer.from(result1.stdout).toString("base64");
+        res.setHeader("X-Compilation-Log", logBase64);
+      }
+
+      const stream = fs.createReadStream(pdfPath);
+      stream.pipe(res);
+
+      // Handle errors to prevent server hang
+      stream.on("error", (err) => {
+        console.error(err);
+        res.status(500).end();
       });
+
+      // res.json({
+      //   success: true,
+      //   pdf: pdfBuffer.toString("base64"),
+      //   fileName: `${filename}.pdf`,
+      //   message: "Compiled successfully",
+      //   log: result1.stdout,
+      // });
     } else {
       res.json({
         success: false,
@@ -1586,9 +1634,14 @@ app.post("/api/compile", async (req, res) => {
     }
 
     // Only clean the TEMP .tex file, KEEP the .pdf and .synctex.gz
-    setTimeout(() => {
-      cleanupFiles(filename, TEMP_DIR);
-    }, 60000);
+    // setTimeout(() => {
+    // cleanupFiles(filename, jobDir);
+    // }, 60000);
+    res.on("finish", () => {
+      fs.remove(jobDir).catch((err) =>
+        console.error(`Cleanup failed for ${jobDir}:`, err),
+      );
+    });
   } catch (error) {
     console.error("Server Error:", error);
     res.status(500).json({ error: error.message });
@@ -1605,7 +1658,8 @@ app.get("/api/test-pdflatex", async (req, res) => {
 Hello World
 \\end{document}`;
 
-    const testFile = path.join(TEMP_DIR, "test.tex");
+    // const testFile = path.join(TEMP_DIR, "test.tex");
+    const testFile = path.join(jobDir, "test.tex");
     await fs.writeFile(testFile, testLatex);
 
     console.log("Testing pdflatex...");
@@ -1672,7 +1726,8 @@ app.post("/api/latex/compile", async (req, res) => {
     const texFileName = `${baseFileName}.tex`;
     const pdfFileName = `${baseFileName}.pdf`;
     const imgFileName = `${baseFileName}.png`;
-    const texFilePath = path.join(TEMP_DIR, texFileName);
+    // const texFilePath = path.join(TEMP_DIR, texFileName);
+    const texFilePath = path.join(jobDir, texFileName);
     const pdfFilePath = path.join(OUTPUT_DIR, pdfFileName);
     const imgFilePath = path.join(OUTPUT_DIR, imgFileName);
 
@@ -2203,7 +2258,8 @@ app.post("/api/citation/compile", async (req, res) => {
     const texFileName = `${baseFileName}.tex`;
     const pdfFileName = `${baseFileName}.pdf`;
     const imgFileName = `${baseFileName}.png`;
-    const texFilePath = path.join(TEMP_DIR, texFileName);
+    // const texFilePath = path.join(TEMP_DIR, texFileName);
+    const texFilePath = path.join(jobDir, texFileName);
     const pdfFilePath = path.join(OUTPUT_DIR, pdfFileName);
     const imgFilePath = path.join(OUTPUT_DIR, imgFileName);
 
@@ -2572,7 +2628,8 @@ app.get("/api/status", async (req, res) => {
         getDirectoryInfo(PROJECTS_DIR),
         getDirectoryInfo(EQUATIONS_DIR),
         getDirectoryInfo(CITATIONS_DIR),
-        getDirectoryInfo(TEMP_DIR),
+        // getDirectoryInfo(TEMP_DIR),
+        getDirectoryInfo(jobDir),
         getDirectoryInfo(OUTPUT_DIR),
       ]);
 
@@ -2682,7 +2739,8 @@ async function startServer() {
       console.log(`📁 Projects: ${PROJECTS_DIR}`);
       console.log(`📁 Equations: ${EQUATIONS_DIR}`);
       console.log(`📁 Citations: ${CITATIONS_DIR}`);
-      console.log(`📁 Temp: ${TEMP_DIR}`);
+      // console.log(`📁 Temp: ${TEMP_DIR}`);
+      console.log(`📁 Temp: ${jobDir}`);
       console.log(`📁 Output: ${OUTPUT_DIR}`);
       console.log(
         `🔧 pdfLaTeX: ${PDFLATEX_PATH ? "✅ Ready" : "❌ Not found"}`,
@@ -2695,10 +2753,10 @@ async function startServer() {
       console.log("pdflatexPath = ", pdflatexPath);
 
       //To use pdflatex from Local device use the below code
-      // const testPdfLatex = spawn("pdflatex", ["--version"]);
+      const testPdfLatex = spawn("pdflatex", ["--version"]);
 
       //To use pdflatex from TinyTex use the below code
-      const testPdfLatex = spawn(pdflatexPath, ["--version"]);
+      // const testPdfLatex = spawn(pdflatexPath, ["--version"]);
 
       testPdfLatex.on("close", (code) => {
         if (code === 0) {

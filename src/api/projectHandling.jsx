@@ -310,19 +310,36 @@ export const compileDocument = async (
       throw new Error("Invalid LaTeX document structure");
     }
 
-    const response = await axios.post(`${API_URL}/api/compile`, {
-      content: contentToCompile,
-      files: currentProject.files,
-      projectId: currentProject.id,
-    });
+    const response = await axios.post(
+      `${API_URL}/api/compile`,
+      {
+        content: contentToCompile,
+        files: currentProject.files,
+        projectId: currentProject.id,
+      },
+      { responseType: "blob" },
+    ); // <-- Handle binary stream
 
-    let fileName = null;
+    let fileName = `${currentProject.id || "temp"}.pdf`;
 
-    if (response.data.success) {
-      pdfUrl = `${API_URL}/output/${response.data.fileName}?t=${Date.now()}`;
+    // 1. Success case: server returns PDF stream
+    if (response.status === 200 && response.data.type === "application/pdf") {
+      // Create a local URL for the blob
+      pdfUrl = URL.createObjectURL(response.data);
       compilationStatus = "success";
       compilationMessage = "PDF compiled successfully!";
-      fileName = response.data.fileName;
+
+      // 2. Extract logs from custom header
+      const logBase64 = response.headers["x-compilation-log"];
+      let logs = "";
+      if (logBase64) {
+        try {
+          logs = atob(logBase64);
+          console.log("Compilation logs from header:", logs);
+        } catch (e) {
+          console.error("Failed to decode logs header", e);
+        }
+      }
 
       await saveProject(
         currentProject,
@@ -332,17 +349,30 @@ export const compileDocument = async (
         isServerConnected,
         isAuthenticated,
       );
-    } else {
-      compilationStatus = "error";
-      compilationMessage = `Compilation failed: ${response.data.log}`;
-      console.log("Compilation details:", response.data);
-    }
 
-    // 3. RETURN THE FILENAME SO EDITORPAGE CAN USE IT
-    return { pdfUrl, compilationStatus, compilationMessage, fileName };
+      return { pdfUrl, compilationStatus, compilationMessage, fileName, logs };
+    } else {
+      // 3. Fallback for potential JSON responses if handled differently
+      compilationStatus = "error";
+      compilationMessage = "Compilation failed: unexpected response format";
+      return { pdfUrl, compilationStatus, compilationMessage, fileName: null };
+    }
   } catch (error) {
     compilationStatus = "error";
-    compilationMessage = "Compilation failed: " + error.message;
+    let message = error.message;
+
+    // Convert blob error to text if possible
+    if (error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const json = JSON.parse(text);
+        message = json.error || json.message || text;
+      } catch (e) {
+        console.error("Failed to parse error blob", e);
+      }
+    }
+
+    compilationMessage = "Compilation failed: " + message;
     console.error("Compilation error:", error);
     return { pdfUrl, compilationStatus, compilationMessage, fileName: null };
   } finally {
