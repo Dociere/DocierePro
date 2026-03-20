@@ -17,6 +17,10 @@ import util from "util";
 import crypto from "crypto";
 dotenv.config();
 
+//DEV Mode means using pdflatex while PROD Mode means TinyTex
+// const projMode = "DEV";
+const projMode = "PROD";
+
 const ENCRYPTION_KEY = Buffer.from(
   process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef",
   "utf8",
@@ -43,8 +47,6 @@ function decrypt(text) {
   return decrypted.toString();
 }
 
-
-
 const execAsync = util.promisify(exec);
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -69,7 +71,6 @@ const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
 const SIDECAR_PATH = isDev
   ? join(__dirname, "sidecar", "build", "sidecar")
   : join(process.env.RESOURCES_PATH, "sidecar");
-
 
 async function getActiveAIConfig() {
   try {
@@ -106,18 +107,7 @@ async function getActiveAIConfig() {
   return null;
 }
 
-// Base directory: userData in production, current directory in development
-// const baseDir = isDev ? __dirname : electronApp.getPath("userData");
 console.log("isDev, baseDir", isDev, baseDir);
-
-// Directories
-// const SETTINGS_DIR = path.join(__dirname);
-// const PROJECTS_DIR = path.join(__dirname, "projects");
-// const TEMP_DIR = path.join(__dirname, "temp");
-// const OUTPUT_DIR = path.join(__dirname, "output");
-// const EQUATIONS_DIR = path.join(__dirname, "equations");
-// const CITATIONS_DIR = path.join(__dirname, "citations");
-// const TEMPLATES_DIR = path.join(__dirname, "templates");
 
 const SETTINGS_DIR = isDev ? __dirname : join(baseDir, "settings");
 const PROJECTS_DIR = join(baseDir, "projects");
@@ -126,9 +116,6 @@ const OUTPUT_DIR = join(baseDir, "projects/output");
 const EQUATIONS_DIR = join(baseDir, "projects/equations");
 const CITATIONS_DIR = join(baseDir, "projects/citations");
 const TEMPLATES_DIR = join(baseDir, "templates");
-// const JOB_DIR = (projectId) =>
-//   path.join(BASE_TEMP, `job_${projectId}_${Date.now()}`);
-// const jobDir = JOB_DIR(projectId);
 const jobDir = TEMP_DIR;
 
 //Create all Directories
@@ -278,8 +265,7 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
     const pdflatexPath = getPdflatexPath();
 
     const pdflatex = spawn(
-      "pdflatex",
-      // pdflatexPath,
+      projMode === "DEV" ? "pdflatex" : pdflatexPath,
       [
         `-output-directory=${outputPath}`,
         "-interaction=nonstopmode", // Never stop for errors
@@ -316,35 +302,6 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
     });
   });
 }
-
-//FIXME: To delete the code below
-// Auto-detect LaTeX installation
-// const detectLaTeX = () => {
-//   const possiblePaths = [
-//     "C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-//     "C:\\Users\\jerde\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-//     "C:\\Program Files (x86)\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-//     path.join(
-//       process.env.USERPROFILE || "",
-//       "AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
-//     ),
-//     "/usr/bin/pdflatex",
-//     "/usr/local/bin/pdflatex",
-//     "pdflatex",
-//   ];
-
-//   for (const pdflatexPath of possiblePaths) {
-//     try {
-//       if (fs.existsSync(pdflatexPath) || pdflatexPath === "pdflatex") {
-//         console.log(`✅ Found pdfLaTeX at: ${pdflatexPath}`);
-//         return pdflatexPath;
-//       }
-//     } catch (error) {
-//       continue;
-//     }
-//   }
-//   throw new Error("❌ pdfLaTeX not found! Please install MiKTeX or TeX Live");
-// };
 
 //FIXME: The below code makes NOOO sense
 // Detect LaTeX on startup
@@ -1602,19 +1559,26 @@ app.post("/api/compile", async (req, res) => {
         generatedPdfPath,
         (event) => {
           if (event.chunk !== undefined) {
-             console.log(`[Sidecar] Chunk ${event.chunk}/${event.total}: ${event.status}`);
+            console.log(
+              `[Sidecar] Chunk ${event.chunk}/${event.total}: ${event.status}`,
+            );
           }
-        }
+        },
       );
 
       if (parallelOutput) {
-        console.log(`🚀 Parallel compilation successful using sidecar! Output: ${parallelOutput}`);
+        console.log(
+          `🚀 Parallel compilation successful using sidecar! Output: ${parallelOutput}`,
+        );
         usedParallel = true;
         pdfExists = await fs.pathExists(generatedPdfPath);
         result1.stdout = "Successfully compiled using C++ sidecar.\n"; // Stub log to skip serial rerun
       }
     } catch (err) {
-      console.error("Parallel compilation error, falling back to serial:", err.message);
+      console.error(
+        "Parallel compilation error, falling back to serial:",
+        err.message,
+      );
     }
 
     if (!usedParallel) {
@@ -1841,11 +1805,11 @@ app.post("/api/latex/compile", async (req, res) => {
     let minimalLatexDocument = "";
 
     if (preamble) {
-      // ✅ OPTION A: Use the User's Real Preamble
+      // Use the User's Real Preamble
       minimalLatexDocument = `${preamble}\n${cleanLatex}\n\\end{document}`;
       console.log(minimalLatexDocument);
     } else if (type === "table") {
-      // 📊 OPTION for TABLE preview
+      // For TABLE preview
       minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
@@ -1859,7 +1823,7 @@ ${extraPackages}
 ${cleanLatex}
 \\end{document}`;
     } else if (type === "figure") {
-      // 🖼️ OPTION for FIGURE preview
+      // OPTION for FIGURE preview
       minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
 \\usepackage{graphicx}
 \\usepackage{caption}
@@ -1868,7 +1832,7 @@ ${extraPackages}
 ${cleanLatex}
 \\end{document}`;
     } else if (type === "section") {
-      // ⚠️ OPTION B: Fallback Section Template
+      // OPTION B: Fallback Section Template
       minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
@@ -1880,7 +1844,7 @@ ${extraPackages}
 ${cleanLatex}
 \\end{document}`;
     } else {
-      // ➗ OPTION C: Equation Mode
+      // OPTION C: Equation Mode
       minimalLatexDocument = `\\documentclass[border=2pt,varwidth=true]{standalone}
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
@@ -2860,8 +2824,12 @@ async function startServer() {
       console.log("pdflatexPath = ", pdflatexPath);
 
       //To use pdflatex from Local device use the below code
-      const testPdfLatex = spawn("pdflatex", ["--version"]);
+      const testPdfLatex = spawn(
+        projMode === "DEV" ? "pdflatex" : pdflatexPath,
+        ["--version"],
+      );
 
+      //FIXME: The below code is useless, can be deleted
       //To use pdflatex from TinyTex use the below code
       // const testPdfLatex = spawn(pdflatexPath, ["--version"]);
 
