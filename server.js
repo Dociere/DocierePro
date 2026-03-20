@@ -43,9 +43,7 @@ function decrypt(text) {
   return decrypted.toString();
 }
 
-// const SIDECAR_PATH = isDev
-//   ? path.join(__dirname, "sidecar", "build", "sidecar")
-//   : path.join(process.env.RESOURCES_PATH, "sidecar");
+
 
 const execAsync = util.promisify(exec);
 const app = express();
@@ -67,6 +65,11 @@ const __dirname = dirname(__filename);
 
 const isDev = !process.env.USER_DATA_PATH;
 const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
+
+const SIDECAR_PATH = isDev
+  ? join(__dirname, "sidecar", "build", "sidecar")
+  : join(process.env.RESOURCES_PATH, "sidecar");
+
 
 async function getActiveAIConfig() {
   try {
@@ -142,6 +145,81 @@ const jobDir = TEMP_DIR;
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+function splitIntoChunks(texContent, files) {
+  const preamble = extractPreamble(texContent);
+
+  // Case 1: multi-file — use \input{} boundaries
+  const inputMatches = [...texContent.matchAll(/\\input\{([^}]+)\}/g)];
+  if (inputMatches.length >= 2) {
+    return {
+      preamble,
+      chunks: inputMatches.map((m) => {
+        const relPath = m[1].endsWith(".tex") ? m[1] : m[1] + ".tex";
+        return files[relPath]?.content ?? `% missing: ${relPath}`;
+      }),
+    };
+  }
+
+  // Case 2: single-file — split by \chapter or \section
+  const body = texContent
+    .replace(/^[\s\S]*?\\begin\{document\}/, "")
+    .replace(/\\end\{document\}[\s\S]*$/, "");
+  const parts = body.split(/(?=\\chapter\{|\\section\{)/);
+  const meaningful = parts.filter((p) => p.trim().length > 50); // skip tiny fragments
+
+  return { preamble, chunks: meaningful.length > 1 ? meaningful : [body] };
+}
+
+async function compileParallel(
+  texContent,
+  files,
+  jobDir,
+  outputPdfPath,
+  progressCallback,
+) {
+  const { preamble, chunks } = splitIntoChunks(texContent, files);
+
+  // If only one chunk after splitting, no benefit — fall back to serial
+  if (chunks.length <= 1) return null;
+
+  const config = {
+    job_dir: jobDir,
+    preamble,
+    chunks,
+    output_pdf: outputPdfPath,
+  };
+
+  return new Promise((resolve, reject) => {
+    const sidecar = spawn(SIDECAR_PATH, [], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    // Send job config to sidecar via stdin
+    sidecar.stdin.write(JSON.stringify(config));
+    sidecar.stdin.end();
+
+    // ─── What you learn: readline for line-delimited JSON ────────────────
+    // stdout is a byte stream. readline splits it on \n for us.
+    // Each line is one JSON progress event from the sidecar.
+    const rl = createInterface({ input: sidecar.stdout });
+    rl.on("line", (line) => {
+      try {
+        const event = JSON.parse(line);
+        progressCallback(event); // forward to SSE stream
+        if (event.event === "complete") resolve(event.output);
+      } catch (e) {
+        /* malformed line, ignore */
+      }
+    });
+
+    sidecar.stderr.on("data", (d) => console.error("sidecar:", d.toString()));
+    sidecar.on("error", reject);
+    sidecar.on("close", (code) => {
+      if (code !== 0) reject(new Error(`Sidecar exited with code ${code}`));
+    });
+  });
+}
 
 const getPdflatexPath = () => {
   const effectiveResourcesPath =
@@ -1503,8 +1581,6 @@ app.post("/api/compile", async (req, res) => {
       );
     }
 
-    const result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-
     // PDFLaTeX outputs based on input filename (main.tex -> main.pdf)
     const mainTexBaseName = path.basename(mainTexFile, ".tex");
     const generatedPdfPath = path.join(OUTPUT_DIR, `${mainTexBaseName}.pdf`);
@@ -1513,8 +1589,39 @@ app.post("/api/compile", async (req, res) => {
       `${mainTexBaseName}.synctex.gz`,
     );
 
-    // Check if pdflatex generated the PDF (with main.tex's name)
-    let pdfExists = await fs.pathExists(generatedPdfPath);
+    let result1 = { stdout: "", stderr: "", code: 0 };
+    let pdfExists = false;
+    let usedParallel = false;
+
+    try {
+      // Attempt parallel compilation first
+      const parallelOutput = await compileParallel(
+        content,
+        files,
+        jobDir,
+        generatedPdfPath,
+        (event) => {
+          if (event.chunk !== undefined) {
+             console.log(`[Sidecar] Chunk ${event.chunk}/${event.total}: ${event.status}`);
+          }
+        }
+      );
+
+      if (parallelOutput) {
+        console.log(`🚀 Parallel compilation successful using sidecar! Output: ${parallelOutput}`);
+        usedParallel = true;
+        pdfExists = await fs.pathExists(generatedPdfPath);
+        result1.stdout = "Successfully compiled using C++ sidecar.\n"; // Stub log to skip serial rerun
+      }
+    } catch (err) {
+      console.error("Parallel compilation error, falling back to serial:", err.message);
+    }
+
+    if (!usedParallel) {
+      console.log("🔄 Running serial PDFLaTeX compilation...");
+      result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+      pdfExists = await fs.pathExists(generatedPdfPath);
+    }
 
     // Run BibTeX if any .bib files exist (needed for \bibliography{})
     const hasBibFiles = Object.keys(files).some((k) => k.endsWith(".bib"));
@@ -1570,9 +1677,11 @@ app.post("/api/compile", async (req, res) => {
     // }
 
     if (needsRerun(result1.stdout)) {
-      await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+      console.log("🔄 Rerunning PDFLaTeX (Pass 2)...");
+      result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
       // Only run pass 3 if still needed
       const result2 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+      if (result2) result1 = result2; // Keep latest log
     }
 
     pdfExists = await fs.pathExists(generatedPdfPath);
@@ -1603,11 +1712,8 @@ app.post("/api/compile", async (req, res) => {
         `attachment; filename="${filename}.pdf"`,
       );
 
-      // Pass the compilation log in a custom header (base64 encoded)
-      if (result1.stdout) {
-        const logBase64 = Buffer.from(result1.stdout).toString("base64");
-        res.setHeader("X-Compilation-Log", logBase64);
-      }
+      // Pass the compilation log filename in a custom header (avoids huge base64 strings)
+      res.setHeader("X-Log-File", `${mainTexBaseName}.log`);
 
       const stream = fs.createReadStream(pdfPath);
       stream.pipe(res);
@@ -1626,10 +1732,11 @@ app.post("/api/compile", async (req, res) => {
       //   log: result1.stdout,
       // });
     } else {
-      res.json({
+      res.setHeader("X-Log-File", `${mainTexBaseName}.log`);
+      res.status(400).json({
         success: false,
         error: "Compilation failed",
-        log: result1.stdout,
+        log: result1.stdout, // Include raw stdout in JSON too as alternative
       });
     }
 

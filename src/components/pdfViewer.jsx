@@ -26,9 +26,17 @@ const PdfViewer = ({
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(800);
+  const viewportRef = useRef(null);
   const pageRefs = useRef([]);
   const { settings } = useSettings();
-  console.log("From PDFViewer", projectDetails);
+
+  // Standard A4 aspect ratio height at 1x scale (96dpi approximate)
+  // We'll adjust this once the first page loads if possible, but 842 is a safe LaTeX default.
+  const ESTIMATED_PAGE_HEIGHT = 842;
+  const GAP = 16; // gap-4 in tailwind is 16px
+  const itemHeight = (ESTIMATED_PAGE_HEIGHT * scale) + GAP;
 
   const getPdfFileName = () => {
     // Use the pdfFileName prop if available (from server compile response)
@@ -134,9 +142,41 @@ const PdfViewer = ({
   };
 
   useEffect(() => {
-    const page = pageRefs.current[pageNumber - 1];
-    page?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [pageNumber]);
+    const updateHeight = () => {
+      if (viewportRef.current) {
+        setViewportHeight(viewportRef.current.clientHeight);
+      }
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
+
+  const handleScroll = (e) => {
+    const newScrollTop = e.target.scrollTop;
+    setScrollTop(newScrollTop);
+
+    // Update pageNumber based on current scroll position
+    const currentPage = Math.round(newScrollTop / itemHeight) + 1;
+    if (currentPage !== pageNumber && currentPage >= 1 && currentPage <= numPages) {
+      setPageNumber(currentPage);
+    }
+  };
+
+  useEffect(() => {
+    if (numPages && viewportRef.current) {
+      const targetScrollTop = (pageNumber - 1) * itemHeight;
+      // Only scroll if we are significantly off (prevents feedback loops)
+      if (Math.abs(viewportRef.current.scrollTop - targetScrollTop) > 10) {
+        viewportRef.current.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+      }
+    }
+  }, [pageNumber, numPages, itemHeight]);
+
+  // Calculate sliding window
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - 2);
+  const endIndex = Math.min((numPages || 0) - 1, Math.floor((scrollTop + viewportHeight) / itemHeight) + 2);
+  const visiblePages = numPages ? Array.from({ length: endIndex - startIndex + 1 }, (_, i) => startIndex + i) : [];
 
   return (
     <div className="flex flex-col h-full">
@@ -292,6 +332,8 @@ const PdfViewer = ({
       </div>
       {/* PDF Viewer */}
       <div
+        ref={viewportRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-auto pb-4"
         style={{
           overflowX: "auto",
@@ -302,7 +344,14 @@ const PdfViewer = ({
         }}
       >
         {pdfUrl ? (
-          <div className="flex flex-col items-center gap-4 min-w-min">
+          <div
+            className="relative mx-auto"
+            style={{
+              height: `${(numPages || 0) * itemHeight}px`,
+              width: "100%",
+              maxWidth: "min-content"
+            }}
+          >
             <Document
               file={pdfUrl}
               onLoadSuccess={onDocumentLoadSuccess}
@@ -311,19 +360,23 @@ const PdfViewer = ({
                 <div className="p-4 text-red-600">Failed to load PDF.</div>
               }
             >
-              {Array.from(new Array(numPages), (_, index) => (
+              {visiblePages.map((index) => (
                 <div
                   key={index}
                   ref={(el) => (pageRefs.current[index] = el)}
                   onClick={(e) => handlePageClick(e, index)}
-                  className="cursor-text"
+                  className="cursor-text absolute left-1/2 -translate-x-1/2"
+                  style={{
+                    top: `${index * itemHeight}px`,
+                    height: `${ESTIMATED_PAGE_HEIGHT * scale}px`,
+                  }}
                 >
                   <Page
                     pageNumber={index + 1}
                     scale={scale}
                     renderTextLayer
                     renderAnnotationLayer
-                    className="shadow-lg mb-4 border-2 border-gray-200 rounded-xl overflow-hidden"
+                    className="shadow-lg border-2 border-gray-200 rounded-xl overflow-hidden"
                   />
                 </div>
               ))}

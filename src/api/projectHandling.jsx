@@ -329,15 +329,18 @@ export const compileDocument = async (
       compilationStatus = "success";
       compilationMessage = "PDF compiled successfully!";
 
-      // 2. Extract logs from custom header
-      const logBase64 = response.headers["x-compilation-log"];
+      // 2. Fetch logs indirectly based on header, avoiding massive header payloads
+      const logFileName = response.headers["x-log-file"];
       let logs = "";
-      if (logBase64) {
+      if (logFileName) {
         try {
-          logs = atob(logBase64);
-          console.log("Compilation logs from header:", logs);
+          const logRes = await fetch(`${API_URL}/output/${logFileName}`);
+          if (logRes.ok) {
+            logs = await logRes.text();
+            console.log("Compilation logs fetched from server.");
+          }
         } catch (e) {
-          console.error("Failed to decode logs header", e);
+          console.error("Failed to fetch logs payload", e);
         }
       }
 
@@ -360,6 +363,7 @@ export const compileDocument = async (
   } catch (error) {
     compilationStatus = "error";
     let message = error.message;
+    let logs = "";
 
     // Convert blob error to text if possible
     if (error.response?.data instanceof Blob) {
@@ -367,6 +371,7 @@ export const compileDocument = async (
         const text = await error.response.data.text();
         const json = JSON.parse(text);
         message = json.error || json.message || text;
+        logs = json.log || "";
       } catch (e) {
         console.error("Failed to parse error blob", e);
       }
@@ -374,7 +379,22 @@ export const compileDocument = async (
 
     compilationMessage = "Compilation failed: " + message;
     console.error("Compilation error:", error);
-    return { pdfUrl, compilationStatus, compilationMessage, fileName: null };
+
+    // TRY TO FETCH RAW LOGS EVEN ON FAILURE
+    const logFileName = error.response?.headers?.["x-log-file"];
+    if (logFileName) {
+      try {
+        const logRes = await fetch(`${API_URL}/output/${logFileName}`);
+        if (logRes.ok) {
+          logs = await logRes.text();
+          console.log("Detailed compilation logs fetched from server on failure.");
+        }
+      } catch (e) {
+        console.error("Failed to fetch logs payload on failure", e);
+      }
+    }
+
+    return { pdfUrl, compilationStatus, compilationMessage, fileName: null, logs };
   } finally {
     isCompiling = false;
     setTimeout(() => {
