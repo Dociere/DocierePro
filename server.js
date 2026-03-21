@@ -17,14 +17,11 @@ import util from "util";
 import crypto from "crypto";
 dotenv.config();
 
-//DEV Mode means using pdflatex while PROD Mode means TinyTex
+//DEV Mode means using local pdflatex while PROD Mode means TinyTex
 // const projMode = "DEV";
 const projMode = "PROD";
 
-const ENCRYPTION_KEY = Buffer.from(
-  process.env.ENCRYPTION_KEY || "0123456789abcdef0123456789abcdef",
-  "utf8",
-); // 32 bytes
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, "utf8");
 const IV_LENGTH = 16;
 
 function encrypt(text) {
