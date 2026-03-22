@@ -486,13 +486,17 @@ const EditorPage = () => {
   }, [projectDetails.currentProject?.id]);
 
   useEffect(() => {
-    if (projectDetails.compilationMessage) {
+    if (projectDetails.logs) {
+      // Split raw logs by newline and update the local logs state
+      const rawLogLines = projectDetails.logs.split("\n");
+      setLogs(rawLogLines);
+    } else if (projectDetails.compilationMessage) {
       setLogs((prev) => [
         ...prev,
         `${projectDetails.compilationStatus} : ${projectDetails.compilationMessage}`,
       ]);
     }
-  }, [projectDetails.compilationStatus, projectDetails.compilationMessage]);
+  }, [projectDetails.compilationStatus, projectDetails.compilationMessage, projectDetails.logs]);
 
   // ============ ACTIVE FILE FILTERING ============
   // Filter sections for the currently active file (Used exclusively for Section Editor view)
@@ -790,6 +794,7 @@ const EditorPage = () => {
         compilationStatus: response.compilationStatus,
         compilationMessage: response.compilationMessage,
         pdfFileName: response.fileName,
+        logs: response.logs, // Capture raw logs
       });
     } catch (error) {
       console.error("Compilation failed:", error);

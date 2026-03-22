@@ -310,19 +310,39 @@ export const compileDocument = async (
       throw new Error("Invalid LaTeX document structure");
     }
 
-    const response = await axios.post(`${API_URL}/api/compile`, {
-      content: contentToCompile,
-      files: currentProject.files,
-      projectId: currentProject.id,
-    });
+    const response = await axios.post(
+      `${API_URL}/api/compile`,
+      {
+        content: contentToCompile,
+        files: currentProject.files,
+        projectId: currentProject.id,
+      },
+      { responseType: "blob" },
+    ); // <-- Handle binary stream
 
-    let fileName = null;
+    let fileName = `${currentProject.id || "temp"}.pdf`;
 
-    if (response.data.success) {
-      pdfUrl = `${API_URL}/output/${response.data.fileName}?t=${Date.now()}`;
+    // 1. Success case: server returns PDF stream
+    if (response.status === 200 && response.data.type === "application/pdf") {
+      // Create a local URL for the blob
+      pdfUrl = URL.createObjectURL(response.data);
       compilationStatus = "success";
       compilationMessage = "PDF compiled successfully!";
-      fileName = response.data.fileName;
+
+      // 2. Fetch logs indirectly based on header, avoiding massive header payloads
+      const logFileName = response.headers["x-log-file"];
+      let logs = "";
+      if (logFileName) {
+        try {
+          const logRes = await fetch(`${API_URL}/output/${logFileName}`);
+          if (logRes.ok) {
+            logs = await logRes.text();
+            console.log("Compilation logs fetched from server.");
+          }
+        } catch (e) {
+          console.error("Failed to fetch logs payload", e);
+        }
+      }
 
       await saveProject(
         currentProject,
@@ -332,19 +352,57 @@ export const compileDocument = async (
         isServerConnected,
         isAuthenticated,
       );
-    } else {
-      compilationStatus = "error";
-      compilationMessage = `Compilation failed: ${response.data.log}`;
-      console.log("Compilation details:", response.data);
-    }
 
-    // 3. RETURN THE FILENAME SO EDITORPAGE CAN USE IT
-    return { pdfUrl, compilationStatus, compilationMessage, fileName };
+      return { pdfUrl, compilationStatus, compilationMessage, fileName, logs };
+    } else {
+      // 3. Fallback for potential JSON responses if handled differently
+      compilationStatus = "error";
+      compilationMessage = "Compilation failed: unexpected response format";
+      return { pdfUrl, compilationStatus, compilationMessage, fileName: null };
+    }
   } catch (error) {
     compilationStatus = "error";
-    compilationMessage = "Compilation failed: " + error.message;
+    let message = error.message;
+    let logs = "";
+
+    // Convert blob error to text if possible
+    if (error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const json = JSON.parse(text);
+        message = json.error || json.message || text;
+        logs = json.log || "";
+      } catch (e) {
+        console.error("Failed to parse error blob", e);
+      }
+    }
+
+    compilationMessage = "Compilation failed: " + message;
     console.error("Compilation error:", error);
-    return { pdfUrl, compilationStatus, compilationMessage, fileName: null };
+
+    // TRY TO FETCH RAW LOGS EVEN ON FAILURE
+    const logFileName = error.response?.headers?.["x-log-file"];
+    if (logFileName) {
+      try {
+        const logRes = await fetch(`${API_URL}/output/${logFileName}`);
+        if (logRes.ok) {
+          logs = await logRes.text();
+          console.log(
+            "Detailed compilation logs fetched from server on failure.",
+          );
+        }
+      } catch (e) {
+        console.error("Failed to fetch logs payload on failure", e);
+      }
+    }
+
+    return {
+      pdfUrl,
+      compilationStatus,
+      compilationMessage,
+      fileName: null,
+      logs,
+    };
   } finally {
     isCompiling = false;
     setTimeout(() => {

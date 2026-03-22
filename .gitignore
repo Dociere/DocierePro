@@ -39,3 +39,4 @@ projects
 # Production
 release
 resources
+sidecar/build/
