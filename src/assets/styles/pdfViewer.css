@@ -21,6 +21,27 @@
   margin-bottom: 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   background-color: white;
+  position: absolute; /* Vital for your virtualization logic */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden; /* Keeps the flash contained */
+}
+
+.react-pdf__Page__canvas {
+  display: block !important;
+  margin: 0 auto;
+  /* This prevents the canvas from flickering by keeping the last frame */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Prevent the text and annotation layers from appearing/disappearing awkwardly */
+.react-pdf__Page__textContent,
+.react-pdf__Page__annotations {
+  transition: opacity 0.2s ease-in-out;
 }
 
 /* Hide scrollbars for cleaner look (optional) */

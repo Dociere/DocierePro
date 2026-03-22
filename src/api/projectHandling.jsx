@@ -387,14 +387,22 @@ export const compileDocument = async (
         const logRes = await fetch(`${API_URL}/output/${logFileName}`);
         if (logRes.ok) {
           logs = await logRes.text();
-          console.log("Detailed compilation logs fetched from server on failure.");
+          console.log(
+            "Detailed compilation logs fetched from server on failure.",
+          );
         }
       } catch (e) {
         console.error("Failed to fetch logs payload on failure", e);
       }
     }
 
-    return { pdfUrl, compilationStatus, compilationMessage, fileName: null, logs };
+    return {
+      pdfUrl,
+      compilationStatus,
+      compilationMessage,
+      fileName: null,
+      logs,
+    };
   } finally {
     isCompiling = false;
     setTimeout(() => {

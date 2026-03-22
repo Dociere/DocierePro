@@ -21,7 +21,8 @@ dotenv.config();
 // const projMode = "DEV";
 const projMode = "PROD";
 
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, "utf8");
+const envEncryptionKey = process.env.ENCRYPTION_KEY;
+const ENCRYPTION_KEY = Buffer.from(envEncryptionKey, "utf8");
 const IV_LENGTH = 16;
 
 function encrypt(text) {
