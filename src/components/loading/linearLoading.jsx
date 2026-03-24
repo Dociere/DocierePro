@@ -1,6 +1,8 @@
 import React from "react";
 
-const LinearLoading = () => {
+const LinearLoading = ({
+  message = "Generating Boilerplate code from AI Model",
+}) => {
   return (
     <div>
       <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/20">
@@ -12,7 +14,7 @@ const LinearLoading = () => {
             <div className="absolute left-0 top-0 h-full w-1/3 bg-black animate-slide"></div>
           </div>
           <div className="text-center text-gray-400 font-inter font-normal text-[12px] mt-4">
-            <p>Generating Boilerplate code from AI Model</p>
+            <p>{message}</p>
           </div>
         </div>
       </div>

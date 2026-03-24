@@ -50,6 +50,66 @@ import { useAuth } from "../context/useAuth.jsx";
 import { useSettings } from "../context/useSettings";
 import axios from "axios";
 
+// Modal to select Root File if missing
+const RootFileModal = ({ isOpen, files, onSelect, onClose, isDark }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div
+        className={`rounded-xl shadow-xl p-6 max-w-md w-full mx-4 border ${isDark ? "bg-[#252525] border-[#404040]" : "bg-white border-gray-200"}`}
+      >
+        <h3
+          className={`text-lg font-semibold mb-2 ${isDark ? "text-white" : "text-gray-900"}`}
+        >
+          Select Main Document
+        </h3>
+        <p
+          className={`text-sm mb-4 ${isDark ? "text-gray-400" : "text-gray-600"}`}
+        >
+          We couldn't find a default <code>main.tex</code> file. Please select
+          the primary LaTeX file to compile:
+        </p>
+        <div
+          className={`max-h-60 overflow-y-auto mb-4 rounded border ${isDark ? "border-[#404040]" : "border-gray-200"}`}
+        >
+          {files.map((f) => (
+            <button
+              key={f}
+              onClick={() => onSelect(f)}
+              className={`w-full text-left px-4 py-3 text-sm transition-colors border-b last:border-0 ${isDark ? "border-[#404040] text-gray-200 hover:bg-[#333]" : "border-gray-100 text-gray-700 hover:bg-gray-50"}`}
+            >
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <span className="truncate font-mono">{f}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className={`px-4 py-2 rounded font-medium ${isDark ? "text-gray-300 hover:bg-[#333]" : "text-gray-600 hover:bg-gray-100"}`}
+          >
+            Cancel Compile
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const {
@@ -143,6 +203,10 @@ const EditorPage = () => {
   const [showTextViewNotice, setShowTextViewNotice] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
+  // Root File selection logic
+  const [showRootFileModal, setShowRootFileModal] = useState(false);
+  const [availableRootFiles, setAvailableRootFiles] = useState([]);
+
   const {
     currentProject,
     activeFile,
@@ -168,11 +232,11 @@ const EditorPage = () => {
    */
   const getSectionNameForFile = useCallback(
     (fileName) => {
-      if (!fileName || !projectDetails.currentProject?.files["main.tex"])
+      const rootFile = projectDetails.currentProject?.rootFile || "main.tex";
+      if (!fileName || !projectDetails.currentProject?.files[rootFile])
         return null;
 
-      const mainContent =
-        projectDetails.currentProject.files["main.tex"].content;
+      const mainContent = projectDetails.currentProject.files[rootFile].content;
       const baseName = fileName.replace(".tex", "");
       const regex = new RegExp(
         `\\\\section\\*?\\{([^}]*)\\}[\s\S]*?\\\\input\\{${baseName}\\}`,
@@ -321,11 +385,20 @@ const EditorPage = () => {
 
       console.log("Project data received:", project);
 
+      let nextActiveFile = project.activeFile;
+      if (!nextActiveFile || !project.files[nextActiveFile]) {
+        const texFiles = Object.keys(project.files).filter((f) =>
+          f.endsWith(".tex"),
+        );
+        nextActiveFile = texFiles.length > 0 ? texFiles[0] : null;
+      }
+
       updateProjectDetails({
         currentProject: project,
-        activeFile: project.activeFile || "main.tex",
-        latexContent:
-          project.files[project.activeFile || "main.tex"]?.content || "",
+        activeFile: nextActiveFile,
+        latexContent: nextActiveFile
+          ? project.files[nextActiveFile]?.content || ""
+          : "",
         isLoading: false, // NOW set to false
         isRemoteProject: true,
         serverUrl: serverUrl,
@@ -333,9 +406,10 @@ const EditorPage = () => {
 
       setRemoteProject({
         currentProject: project,
-        activeFile: project.activeFile || "main.tex",
-        latexContent:
-          project.files[project.activeFile || "main.tex"]?.content || "",
+        activeFile: nextActiveFile,
+        latexContent: nextActiveFile
+          ? project.files[nextActiveFile]?.content || ""
+          : "",
         isLoading: false,
         isRemoteProject: true,
         serverUrl,
@@ -496,16 +570,24 @@ const EditorPage = () => {
         `${projectDetails.compilationStatus} : ${projectDetails.compilationMessage}`,
       ]);
     }
-  }, [projectDetails.compilationStatus, projectDetails.compilationMessage, projectDetails.logs]);
+  }, [
+    projectDetails.compilationStatus,
+    projectDetails.compilationMessage,
+    projectDetails.logs,
+  ]);
 
   // ============ ACTIVE FILE FILTERING ============
   // Filter sections for the currently active file (Used exclusively for Section Editor view)
   const activeSections = useMemo(() => {
     if (!sections || sections.length === 0) return [];
-    const af = projectDetails.activeFile || "main.tex";
 
-    // main.tex → show everything
-    if (af === "main.tex") return sections;
+    const af = projectDetails.activeFile;
+    if (!af) return [];
+
+    const rootFile = projectDetails.currentProject?.rootFile || "main.tex";
+
+    // rootFile → show everything
+    if (af === rootFile) return sections;
 
     // Sub-file → find sections that belong to this file
     return sections.filter(
@@ -521,7 +603,9 @@ const EditorPage = () => {
 
   // Determine file type for preview rendering
   const activeFileType = useMemo(() => {
-    const af = projectDetails.activeFile || "main.tex";
+    const af = projectDetails.activeFile;
+    if (!af) return "empty";
+
     const ext = af.split(".").pop().toLowerCase();
     if (["tex", "bib"].includes(ext)) return "tex";
     if (["png", "jpg", "jpeg", "gif", "svg"].includes(ext)) return "image";
@@ -773,6 +857,22 @@ const EditorPage = () => {
   };
 
   const handleCompile = async () => {
+    // Check if root file requires intervention
+    const hasMainTex = !!currentProject?.files["main.tex"];
+    const hasRootFile = !!currentProject?.rootFile;
+
+    if (!hasRootFile && !hasMainTex && currentProject?.files) {
+      const texFiles = Object.keys(currentProject.files).filter((f) =>
+        f.endsWith(".tex"),
+      );
+      if (texFiles.length > 0) {
+        // Find if any tex file actually has a \documentclass just to be sure, or just list all
+        setAvailableRootFiles(texFiles);
+        setShowRootFileModal(true);
+        return; // Pause compile until user picks a root
+      }
+    }
+
     setIsLoading(true);
     try {
       const response = await compileDocument(
@@ -968,7 +1068,11 @@ const EditorPage = () => {
                 }}
                 className="w-4 h-4 mr-2"
               />
-              {projectDetails.activeFile}
+              {projectDetails.activeFile || (
+                <span className="italic text-gray-400 font-medium">
+                  No File Selected
+                </span>
+              )}
             </div>
             {activeFileType === "tex" && (
               <select
@@ -1061,6 +1165,31 @@ const EditorPage = () => {
                   readOnly={true}
                   projectFiles={[]}
                 />
+              </div>
+            )}
+
+            {/* ---- Empty State ---- */}
+            {activeFileType === "empty" && (
+              <div className="h-full w-full flex flex-col items-center justify-center bg-[#FAFAFA] text-gray-500 font-inter">
+                <svg
+                  className="w-16 h-16 mb-4 text-gray-300 pointer-events-none"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <p className="text-lg font-medium text-gray-400">
+                  No active file
+                </p>
+                <p className="text-sm mt-1 text-gray-400 max-w-[200px] text-center">
+                  Select an existing file from the sidebar or create a new one.
+                </p>
               </div>
             )}
 
@@ -1173,9 +1302,14 @@ const EditorPage = () => {
                     }
                   }
 
-                  // Update main.tex content
-                  updatedFiles["main.tex"] = {
-                    ...updatedFiles["main.tex"],
+                  // Update root file content
+                  const rootFile =
+                    projectDetails.currentProject?.rootFile || "main.tex";
+                  updatedFiles[rootFile] = {
+                    ...(updatedFiles[rootFile] || {
+                      name: rootFile,
+                      type: "tex",
+                    }),
                     content: newContent,
                   };
 
@@ -1187,9 +1321,9 @@ const EditorPage = () => {
                   });
 
                   // If the active file was updated by the AI, refresh the editor with its new content
-                  const activeFile = projectDetails.activeFile || "main.tex";
+                  const activeFile = projectDetails.activeFile || rootFile;
                   if (
-                    activeFile !== "main.tex" &&
+                    activeFile !== rootFile &&
                     fileUpdates &&
                     fileUpdates[activeFile]
                   ) {
@@ -1414,6 +1548,50 @@ const EditorPage = () => {
           </div>
         )}
       </div>
+
+      <RootFileModal
+        isOpen={showRootFileModal}
+        files={availableRootFiles}
+        isDark={settings.appearance.mode === "dark"}
+        onClose={() => setShowRootFileModal(false)}
+        onSelect={(selectedRoot) => {
+          setShowRootFileModal(false);
+          const updatedProject = {
+            ...currentProject,
+            rootFile: selectedRoot,
+          };
+          updateProjectDetails({
+            currentProject: updatedProject,
+          });
+          setIsLoading(true);
+          compileDocument(
+            updatedProject,
+            activeFile,
+            isCompiling,
+            compilationStatus,
+            compilationMessage,
+            pdfUrl,
+            latexContent,
+            isServerConnected,
+            isAuthenticated,
+          )
+            .then((response) => {
+              updateProjectDetails({
+                pdfUrl: response.pdfUrl,
+                compilationStatus: response.compilationStatus,
+                compilationMessage: response.compilationMessage,
+                pdfFileName: response.fileName,
+                logs: response.logs,
+              });
+            })
+            .catch((error) => {
+              console.error("Compilation failed:", error);
+            })
+            .finally(() => {
+              setIsLoading(false);
+            });
+        }}
+      />
 
       {/* Table Designer Modal for main Monaco editor */}
       <TableDesignerModal
