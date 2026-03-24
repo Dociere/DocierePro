@@ -102,6 +102,8 @@ function startBackend() {
       "server.js",
     );
 
+    const resourcesPath = path.join(userDataPath, "resources");
+
     const latexBinPath = path.join(
       userDataPath,
       "resources",
@@ -119,7 +121,7 @@ function startBackend() {
         ...process.env,
         USER_DATA_PATH: userDataPath,
         PATH: `${latexBinPath}${path.delimiter}${process.env.PATH}`,
-        RESOURCES_PATH: userDataPath,
+        RESOURCES_PATH: resourcesPath,
         envEncryptionKey: ENCRYPTION_KEY,
       },
     });
@@ -214,8 +216,13 @@ app.whenReady().then(async () => {
   for (const folder of asarFolders) {
     const dest = path.join(userDataPath, folder);
     const src = path.join(unpackedPath, folder);
-    if (!fs.existsSync(dest) && fs.existsSync(src)) {
-      await fs.copy(src, dest);
+    if (fs.existsSync(src)) {
+      // If destination doesn't exist, OR it exists but is empty, copy it.
+      // This handles cases where server.js might have created an empty folder first.
+      const shouldCopy = !fs.existsSync(dest) || (fs.lstatSync(dest).isDirectory() && fs.readdirSync(dest).length === 0);
+      if (shouldCopy) {
+        await fs.copy(src, dest);
+      }
     }
   }
 

@@ -29,9 +29,9 @@
     "asarUnpack": [
       "routes/**/*",
       "node_modules/**/*",
-      "projects/*",
-      "templates/*",
-      "settings/*",
+      "projects/**/*",
+      "templates/**/*",
+      "settings/**/*",
       "package.json"
     ],
     "files": [
@@ -41,7 +41,9 @@
       "public/**/*",
       "node_modules/**/*",
       "package.json",
-      "sidecar"
+      "sidecar",
+      "templates/**/*",
+      "user-templates/**/*"
     ],
     "mac": {
       "target": "dmg",
