@@ -6,6 +6,7 @@ import { exec, spawn } from "child_process";
 import { createInterface } from "readline";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
+import AdmZip from "adm-zip";
 import { PDFParse as pdfParse } from "pdf-parse";
 import axios from "axios";
 import dotenv from "dotenv";
@@ -854,12 +855,12 @@ const boilerplateUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
   fileFilter: (req, file, cb) => {
-    const allowed = [".pdf", ".txt", ".md"];
+    const allowed = [".pdf", ".txt", ".md", ".zip"];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error("Only PDF, TXT, and MD files are allowed"));
+      cb(new Error("Only PDF, TXT, MD, and ZIP files are allowed"));
     }
   },
 });
@@ -1132,6 +1133,137 @@ app.post("/api/projects/create", async (req, res) => {
   }
 });
 
+// API: Upload existing project as ZIP
+app.post(
+  "/api/projects/upload",
+  boilerplateUpload.single("file"), // Reusing boilerplateUpload memory storage limits
+  async (req, res) => {
+    try {
+      if (!req.file || !req.file.originalname.endsWith(".zip")) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Must upload a .zip file" });
+      }
+
+      const zip = new AdmZip(req.file.buffer);
+      const zipEntries = zip.getEntries();
+
+      const files = {};
+      let rootFile = null;
+      let projectTitle = req.file.originalname.replace(/\.zip$/, ""); // Fallback title
+
+      for (const entry of zipEntries) {
+        if (entry.isDirectory) continue;
+
+        const pathParts = entry.entryName.split("/");
+        // Ignore MacOS metadata and hidden files
+        if (pathParts.some((p) => p.startsWith(".") || p === "__MACOSX"))
+          continue;
+
+        const relPath = entry.entryName;
+        const ext = path.extname(relPath).toLowerCase();
+
+        const textExts = [
+          ".tex",
+          ".bib",
+          ".bst",
+          ".sty",
+          ".cls",
+          ".txt",
+          ".md",
+          ".json",
+        ];
+
+        let content;
+        let isImage = false;
+
+        if (textExts.includes(ext)) {
+          content = entry.getData().toString("utf8");
+          // Check if this is the root file
+          if (ext === ".tex" && content.includes("\\documentclass")) {
+            rootFile = relPath;
+          }
+        } else {
+          // Binary — store as base64
+          const buffer = entry.getData();
+          const mime =
+            ext === ".png"
+              ? "image/png"
+              : ext === ".jpg" || ext === ".jpeg"
+                ? "image/jpeg"
+                : ext === ".pdf"
+                  ? "application/pdf"
+                  : "application/octet-stream";
+          content = `data:${mime};base64,${buffer.toString("base64")}`;
+          isImage = true;
+        }
+
+        files[relPath] = {
+          name: path.basename(relPath),
+          content,
+          type: ext.slice(1),
+          ...(isImage && { isImage: true }),
+        };
+      }
+
+      if (Object.keys(files).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "ZIP file is empty or contains no valid files.",
+        });
+      }
+
+      // Fallback for root file if no \documentclass is found
+      if (!rootFile) {
+        if (files["main.tex"]) rootFile = "main.tex";
+        else {
+          const texFiles = Object.keys(files).filter((k) => k.endsWith(".tex"));
+          rootFile = texFiles.length > 0 ? texFiles[0] : Object.keys(files)[0];
+        }
+      }
+
+      const projectId = uuidv4();
+      const projectPath = path.join(PROJECTS_DIR, projectId);
+      await fs.ensureDir(projectPath);
+
+      // Save files to disk
+      for (const [relPath, fileData] of Object.entries(files)) {
+        const filePath = path.join(projectPath, relPath);
+        await fs.ensureDir(path.dirname(filePath));
+
+        if (fileData.isImage) {
+          const base64Data = fileData.content.split(";base64,").pop();
+          await fs.writeFile(filePath, base64Data, { encoding: "base64" });
+        } else {
+          await fs.writeFile(filePath, fileData.content);
+        }
+      }
+
+      const projectData = {
+        id: projectId,
+        title: projectTitle,
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+        owner: "",
+        files: files,
+        activeFile: rootFile,
+      };
+
+      await fs.writeJSON(path.join(projectPath, "project.json"), projectData);
+
+      console.log(`✅ Uploaded project: ${projectTitle} (${projectId})`);
+      res.json({ success: true, project: projectData });
+    } catch (error) {
+      console.error("❌ Project upload error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to upload project",
+        details: error.message,
+      });
+    }
+  },
+);
+
 // API: List all projects
 app.get("/api/projects", async (req, res) => {
   try {
@@ -1241,7 +1373,7 @@ app.get("/api/projects/:id", async (req, res) => {
 app.put("/api/projects/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { files, owner, activeFile, title } = req.body;
+    const { files, owner, activeFile, title, rootFile } = req.body;
     const projectDir = path.join(PROJECTS_DIR, id);
     const projectPath = path.join(projectDir, "project.json");
 
@@ -1262,6 +1394,7 @@ app.put("/api/projects/:id", async (req, res) => {
     projectData.owner = owner;
     projectData.title = title;
     projectData.activeFile = activeFile || projectData.activeFile;
+    if (rootFile !== undefined) projectData.rootFile = rootFile;
     projectData.modified = new Date().toISOString();
 
     // Save updated project.json
@@ -1470,7 +1603,7 @@ app.post("/api/compile", async (req, res) => {
   }
 
   try {
-    const { content, projectId, files } = req.body;
+    const { content, projectId, files, activeFile } = req.body;
 
     if (!content) {
       return res
@@ -1489,7 +1622,7 @@ app.post("/api/compile", async (req, res) => {
     console.log(`Job Directory: ${jobDir}`);
 
     // Write all project files to jobDir, preserving directory structure
-    let mainTexFile = "main.tex"; // Default to main.tex
+    let mainTexFile = activeFile || "main.tex"; // Default to activeFile from client
     for (const [relPath, file] of Object.entries(files)) {
       // Skip .gitkeep files
       if (file.name === ".gitkeep" || relPath.endsWith("/.gitkeep")) continue;
@@ -1513,11 +1646,6 @@ app.post("/api/compile", async (req, res) => {
         }
       } else {
         await fs.writeFile(filePath, file.content || "", "utf8");
-      }
-
-      // Track which file is the main tex file
-      if (relPath === "main.tex" || file.name === "main.tex") {
-        mainTexFile = relPath;
       }
     }
 
