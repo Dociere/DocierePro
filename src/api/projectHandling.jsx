@@ -1,5 +1,6 @@
 /*Functions in this file:
 - createProject()
+- uploadZipProject()
 - editDocumentWithAI()      //AI Chat
 - saveChatMessage()         //AI Chat
 - loadChatHistory()         //AI Chat
@@ -65,6 +66,34 @@ export const createProject = async (
   } catch (error) {
     console.error(
       "Failed to create project:",
+      error.response?.data || error.message,
+    );
+    throw error;
+  }
+};
+
+export const uploadZipProject = async (file) => {
+  if (!file) return;
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await axios.post(
+      `${API_URL}/api/projects/upload`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
+      },
+    );
+
+    console.log(
+      `Zip Project Successfully Uploaded - ${response.data.project.title}`,
+    );
+    return response.data.project.id;
+  } catch (error) {
+    console.error(
+      "Failed to upload zip project:",
       error.response?.data || error.message,
     );
     throw error;
@@ -239,6 +268,7 @@ export const saveProject = async (
       owner: currentProject.owner,
       activeFile: activeFile,
       title: currentProject.title,
+      rootFile: currentProject.rootFile,
     });
 
     if (isServerConnected && isAuthenticated) {
@@ -252,6 +282,7 @@ export const saveProject = async (
             owner: currentProject.owner,
             title: currentProject.title,
             activeFile: activeFile,
+            rootFile: currentProject.rootFile,
           },
         );
       } catch (error) {
@@ -287,7 +318,7 @@ export const compileDocument = async (
   // 1. rootFile will be the root file. Validate if the content of activeFile is valid LaTeX
   // 2. Send all the dependend file to the backend (Basically project.json via currentProject.file)
 
-  const rootFile = activeFile;
+  const rootFile = currentProject.rootFile || activeFile || "main.tex";
 
   //For Debugging (FIXME: Delete Later)
   console.log("currentProject", currentProject);
@@ -316,6 +347,7 @@ export const compileDocument = async (
         content: contentToCompile,
         files: currentProject.files,
         projectId: currentProject.id,
+        activeFile: rootFile,
       },
       { responseType: "blob" },
     ); // <-- Handle binary stream

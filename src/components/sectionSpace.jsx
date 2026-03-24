@@ -111,6 +111,42 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
 
   const isDark = settings.appearance.mode === "dark";
 
+  const [menuState, setMenuState] = useState(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = () => setMenuState(null);
+    document.addEventListener("click", handleClickOutside);
+    document.addEventListener("scroll", handleClickOutside, true);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      document.removeEventListener("scroll", handleClickOutside, true);
+    };
+  }, []);
+
+  const handleSetMainFile = async (e, fileName) => {
+    e.stopPropagation();
+    setMenuState(null);
+
+    const updatedProject = {
+      ...currentProject,
+      rootFile: fileName,
+    };
+
+    updateProjectDetails({
+      currentProject: updatedProject,
+    });
+
+    await saveProject(
+      updatedProject,
+      activeFile,
+      compilationStatus,
+      compilationMessage,
+      isServerConnected,
+      isAuthenticated,
+    );
+    showToast(`Set "${fileName}" as the main root file`);
+  };
+
   const handleFileClick = (fileName) => {
     // If switching files, save the current file content back to the project first?
     // The textEditor usually updates the 'latexContent' in context.
@@ -195,11 +231,6 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
   const handleDeleteFile = async (e, fileName) => {
     e.stopPropagation(); // Prevent file selection when clicking delete
 
-    if (fileName === "main.tex") {
-      setAlertMessage("Cannot delete the main root file.");
-      return;
-    }
-
     setConfirmModal({
       isOpen: true,
       title: "Delete File",
@@ -217,18 +248,42 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
           );
 
           if (response.data.success) {
+            let updatedProject = response.data.project;
+            let needsSave = false;
+
+            if (updatedProject.rootFile === fileName) {
+              updatedProject.rootFile = null;
+              needsSave = true;
+            }
+
             // Determine next file to focus if we deleted the active one
             let nextActiveFile = activeFile;
             if (activeFile === fileName) {
-              nextActiveFile = "main.tex";
+              const texFiles = Object.keys(updatedProject.files).filter((f) =>
+                f.endsWith(".tex"),
+              );
+              nextActiveFile = texFiles.length > 0 ? texFiles[0] : null;
             }
 
             updateProjectDetails({
-              currentProject: response.data.project,
+              currentProject: updatedProject,
               activeFile: nextActiveFile,
-              latexContent:
-                response.data.project.files[nextActiveFile]?.content || "",
+              latexContent: nextActiveFile
+                ? updatedProject.files[nextActiveFile]?.content || ""
+                : "",
             });
+
+            if (needsSave) {
+              await saveProject(
+                updatedProject,
+                nextActiveFile,
+                compilationStatus,
+                compilationMessage,
+                isServerConnected,
+                isAuthenticated,
+              );
+            }
+
             showToast(`Deleted ${fileName}`);
           }
         } catch (err) {
@@ -376,13 +431,19 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
 
       const updatedProject = { ...currentProject, files: updatedFiles };
 
+      if (updatedProject.rootFile === oldName) {
+        updatedProject.rootFile = newName;
+      }
+
       // If the renamed file was active, switch active to new name
       const nextActive = activeFile === oldName ? newName : activeFile;
 
       updateProjectDetails({
         currentProject: updatedProject,
         activeFile: nextActive,
-        latexContent: updatedProject.files[nextActive]?.content || "",
+        latexContent: nextActive
+          ? updatedProject.files[nextActive]?.content || ""
+          : "",
       });
 
       await saveProject(
@@ -555,13 +616,24 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
           filesInFolder.forEach((f) => delete updatedFiles[f]);
           const updatedProject = { ...currentProject, files: updatedFiles };
 
+          if (updatedProject.rootFile?.startsWith(prefix)) {
+            updatedProject.rootFile = null;
+          }
+
           let nextActive = activeFile;
-          if (activeFile?.startsWith(prefix)) nextActive = "main.tex";
+          if (activeFile?.startsWith(prefix)) {
+            const texFiles = Object.keys(updatedProject.files).filter((f) =>
+              f.endsWith(".tex"),
+            );
+            nextActive = texFiles.length > 0 ? texFiles[0] : null;
+          }
 
           updateProjectDetails({
             currentProject: updatedProject,
             activeFile: nextActive,
-            latexContent: updatedProject.files[nextActive]?.content || "",
+            latexContent: nextActive
+              ? updatedProject.files[nextActive]?.content || ""
+              : "",
           });
           await saveProject(
             updatedProject,
@@ -615,7 +687,7 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
       <div
         key={fileName}
         onClick={() => handleFileClick(fileName)}
-        className={`${indentClass} px-3 py-1.5 text-[13px] cursor-pointer flex items-center gap-3 rounded-md border transition-all duration-200 group truncate mb-0.5 ${
+        className={`${indentClass} px-3 py-1.5 text-[13px] cursor-pointer flex items-center gap-3 rounded-md border transition-all duration-200 group mb-0.5 relative ${
           activeFile === fileName
             ? isDark
               ? "bg-[#333] border-[#555] text-white shadow-sm"
@@ -708,50 +780,112 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
         )}
 
         {/* Actions Area */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {fileName !== "main.tex" && (
-            <>
-              <button
-                onClick={(e) => handleRenameStart(e, fileName)}
-                className={`p-1 rounded hover:bg-blue-500/10 hover:text-blue-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
-                title="Rename File"
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => handleDeleteFile(e, fileName)}
-                className={`p-1 rounded hover:bg-red-500/10 hover:text-red-500 transition-colors ${isDark ? "text-gray-500" : "text-gray-400"}`}
-                title="Delete File"
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
-            </>
-          )}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (menuState?.fileName === fileName) {
+                setMenuState(null);
+              } else {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setMenuState({
+                  fileName,
+                  x: rect.right + 8,
+                  y: rect.top,
+                });
+              }
+            }}
+            className={`p-1 rounded transition-colors ${isDark ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"}`}
+            title="Options"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+            </svg>
+          </button>
         </div>
+
+        {/* Floating Menu Portal-like */}
+        {menuState?.fileName === fileName && (
+          <div
+            className={`fixed w-36 rounded shadow-xl border z-[99999] text-[13px] overflow-hidden ${isDark ? "bg-[#333] border-[#444]" : "bg-white border-gray-200"}`}
+            style={{ left: menuState.x, top: menuState.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isTex && (
+              <button
+                onClick={(e) => handleSetMainFile(e, fileName)}
+                className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2 ${
+                  currentProject?.rootFile === fileName
+                    ? isDark
+                      ? "text-blue-400 bg-[#444] font-medium"
+                      : "text-blue-600 bg-blue-50 font-medium"
+                    : isDark
+                      ? "text-gray-200 hover:bg-[#444]"
+                      : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                Set as root file
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                setMenuState(null);
+                handleRenameStart(e, fileName);
+              }}
+              className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2 ${isDark ? "text-gray-200 hover:bg-[#444]" : "text-gray-700 hover:bg-gray-100"}`}
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+              Rename
+            </button>
+            <button
+              onClick={(e) => {
+                setMenuState(null);
+                handleDeleteFile(e, fileName);
+              }}
+              className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2 text-red-500 ${isDark ? "hover:bg-[#444]" : "hover:bg-red-50"}`}
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete
+            </button>
+          </div>
+        )}
 
         {/* Active Indicator Dot */}
         {activeFile === fileName && (
