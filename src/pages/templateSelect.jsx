@@ -9,14 +9,7 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000";
 
-// Built-in templates that always appear (keyed by folder name)
-const BUILT_IN_FOLDERS = [
-  "IEEE Conference",
-  "IEEE Journal",
-  "ACM Manuscript",
-  "MLA Format",
-  "Resume",
-];
+// Built-in templates are now fetched dynamically
 
 const SignInModal = ({ isOpen, onClose, onSignIn }) => {
   if (!isOpen) return null;
@@ -53,6 +46,7 @@ function TemplateSelect() {
   const isDark = settings.appearance.mode === "dark";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
+  const [builtInTemplates, setBuiltInTemplates] = useState([]);
   const [userTemplates, setUserTemplates] = useState([]);
 
   useEffect(() => {
@@ -60,11 +54,8 @@ function TemplateSelect() {
       try {
         const res = await axios.get(`${API_URL}/api/templates`);
         if (res.data.success) {
-          // Filter out built-in folders to get user-saved templates
-          const custom = res.data.templates.filter(
-            (t) => !BUILT_IN_FOLDERS.includes(t),
-          );
-          setUserTemplates(custom);
+          setBuiltInTemplates(res.data.builtInTemplates || []);
+          setUserTemplates(res.data.userTemplates || []);
         }
       } catch (err) {
         console.error("Failed to fetch templates:", err);
@@ -140,7 +131,7 @@ function TemplateSelect() {
             >
               <TemplateCards title="Blank Document" />
             </Link>
-            {BUILT_IN_FOLDERS.map((folder) => (
+            {builtInTemplates.map((folder) => (
               <Link
                 key={folder}
                 to={`/template/preview/${folder}`}

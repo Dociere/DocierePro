@@ -18,8 +18,8 @@ import crypto from "crypto";
 dotenv.config();
 
 //DEV Mode means using local pdflatex while PROD Mode means TinyTex
-// const projMode = "DEV";
-const projMode = "PROD";
+const projMode = "DEV";
+// const projMode = "PROD";
 
 const envEncryptionKey = process.env.ENCRYPTION_KEY;
 const ENCRYPTION_KEY = Buffer.from(envEncryptionKey, "utf8");
@@ -114,6 +114,7 @@ const OUTPUT_DIR = join(baseDir, "projects/output");
 const EQUATIONS_DIR = join(baseDir, "projects/equations");
 const CITATIONS_DIR = join(baseDir, "projects/citations");
 const TEMPLATES_DIR = join(baseDir, "templates");
+const USER_TEMPLATES_DIR = join(baseDir, "user-templates");
 const jobDir = TEMP_DIR;
 
 //Create all Directories
@@ -125,6 +126,7 @@ const jobDir = TEMP_DIR;
   EQUATIONS_DIR,
   CITATIONS_DIR,
   TEMPLATES_DIR,
+  USER_TEMPLATES_DIR,
 ].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -766,9 +768,24 @@ async function getTemplateFiles(templatePath) {
 // API: List all local template folder names
 app.get("/api/templates", async (req, res) => {
   try {
-    const entries = await fs.readdir(TEMPLATES_DIR, { withFileTypes: true });
-    const templates = entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    res.json({ success: true, templates });
+    const builtInEntries = await fs.readdir(TEMPLATES_DIR, {
+      withFileTypes: true,
+    });
+    const builtInTemplates = builtInEntries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+
+    let userTemplates = [];
+    if (await fs.pathExists(USER_TEMPLATES_DIR)) {
+      const userEntries = await fs.readdir(USER_TEMPLATES_DIR, {
+        withFileTypes: true,
+      });
+      userTemplates = userEntries
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name);
+    }
+
+    res.json({ success: true, builtInTemplates, userTemplates });
   } catch (error) {
     console.error("❌ Template list error:", error);
     res.status(500).json({ success: false, error: "Failed to list templates" });
@@ -792,7 +809,7 @@ app.post("/api/templates/save", async (req, res) => {
         .json({ success: false, error: "No files to save" });
     }
 
-    const templateDir = path.join(TEMPLATES_DIR, name.trim());
+    const templateDir = path.join(USER_TEMPLATES_DIR, name.trim());
 
     if (await fs.pathExists(templateDir)) {
       return res.status(409).json({
@@ -959,7 +976,11 @@ app.post("/api/projects/create", async (req, res) => {
       };
 
       const folderName = keyToFolder[templateType] || templateType;
-      const templatePath = path.join(TEMPLATES_DIR, folderName);
+      const builtInPath = path.join(TEMPLATES_DIR, folderName);
+      const userPath = path.join(USER_TEMPLATES_DIR, folderName);
+
+      const isBuiltIn = await fs.pathExists(builtInPath);
+      const templatePath = isBuiltIn ? builtInPath : userPath;
 
       console.log(`📂 Reading template from: ${templatePath}`);
       files = await getTemplateFiles(templatePath);

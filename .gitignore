@@ -32,6 +32,7 @@ temp
 equations
 citations
 projects
+user-templates
 
 # Environment Variables
 *.env
