@@ -222,22 +222,22 @@ const getPdflatexPath = () => {
 
   const tinyTexBaseDir = isDev
     ? path.join(
-        __dirname,
-        "resources",
-        "TinyTex",
-        process.platform === "win32"
-          ? "win"
-          : process.platform === "darwin"
-            ? "mac"
-            : "linux",
-      )
+      __dirname,
+      "resources",
+      "TinyTex",
+      process.platform === "win32"
+        ? "win"
+        : process.platform === "darwin"
+          ? "mac"
+          : "linux",
+    )
     : effectiveResourcesPath
       ? path.join(effectiveResourcesPath, "TinyTex")
       : (() => {
-          throw new Error(
-            "CRITICAL: RESOURCES_PATH is missing in production! IGNORE if in developement mode",
-          );
-        })();
+        throw new Error(
+          "CRITICAL: RESOURCES_PATH is missing in production! IGNORE if in developement mode",
+        );
+      })();
 
   let binaryName = "pdflatex";
   let archFolder = "";
@@ -706,9 +706,9 @@ async function getTemplateFiles(templatePath) {
     const entries = await fs.readdir(currentPath, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name);
-      const relPath = relativePath
+      const relPath = (relativePath
         ? path.join(relativePath, entry.name)
-        : entry.name;
+        : entry.name).replace(/\\/g, "/");
 
       if (entry.isDirectory()) {
         // Create a .gitkeep so the folder is tracked
@@ -904,7 +904,7 @@ app.post(
           });
         } finally {
           // Clean up temp file
-          await fs.remove(tempPdfPath).catch(() => {});
+          await fs.remove(tempPdfPath).catch(() => { });
         }
       } else {
         // .txt or .md — read as UTF-8 string
@@ -1680,7 +1680,7 @@ app.post("/api/compile", async (req, res) => {
     try {
       await fs.remove(pdfPath);
       await fs.remove(path.join(OUTPUT_DIR, `${filename}.synctex.gz`));
-    } catch (e) {}
+    } catch (e) { }
 
     console.log("🔄 Running PDFLaTeX...");
 
@@ -2029,7 +2029,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch (logErr) {}
+      } catch (logErr) { }
 
       throw new Error(`PDF compilation failed. Log: ${logContent.slice(-500)}`);
     }
@@ -2514,7 +2514,7 @@ app.post("/api/citation/compile", async (req, res) => {
     // Delete old PDF if exists
     try {
       await fs.remove(pdfFilePath);
-    } catch (e) {}
+    } catch (e) { }
 
     // Run pdflatex
     console.log("🔄 Compiling citation...");
@@ -2530,7 +2530,7 @@ app.post("/api/citation/compile", async (req, res) => {
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch {}
+      } catch { }
 
       console.error("❌ Citation compilation failed - no PDF");
       throw new Error(`PDF not generated. Log:\n${logContent.slice(-500)}`);
