@@ -1,3 +1,10 @@
+/*
+Few points:
+- This function is not currentlt in use as extractPreamble in splitIntoChunks in compileParallel is not defined
+- This function only works for UNIX system (example, sysconf to find host OS specifications). Make it cross-platform
+- The server.js only intends to send files with multi-file structure to the sidecar. This should not be the case as this file is intended for all types of files.
+*/
+
 #include <iostream>
 #include <string>
 #include <vector>

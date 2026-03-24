@@ -40,7 +40,8 @@
       "scripts/**/*",
       "public/**/*",
       "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "sidecar"
     ],
     "mac": {
       "target": "dmg",
@@ -58,7 +59,13 @@
     },
     "linux": {
       "target": "AppImage",
-      "icon": "public/dociereLogo6.png"
+      "icon": "public/dociereLogo6.png",
+      "extraResources": [
+        {
+          "from": "sidecar/build/libs",
+          "to": "bin/libs"
+        }
+      ]
     },
     "extraResources": [
       {
@@ -68,6 +75,14 @@
       {
         "from": "renderStrategies.js",
         "to": "app.asar.unpacked/renderStrategies.js"
+      },
+      {
+        "from": "sidecar/build",
+        "to": "bin",
+        "filter": [
+          "sidecar",
+          "sidecar.exe"
+        ]
       }
     ]
   },

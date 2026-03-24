@@ -4,6 +4,7 @@ const { spawn } = require("child_process");
 
 let backendProcess = null;
 let mainWindow = null;
+const ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
 let splashWindow;
 
 const platform = process.platform;
@@ -15,9 +16,59 @@ const archFolder =
       : "x86_64-linux";
 const binaryName = platform === "win32" ? "pdflatex.exe" : "pdflatex";
 
+const isDev = !app.isPackaged;
+
 async function runSetupTinyTex(userDataPath, onProgress) {
   const { setupTinyTex } = await import("../scripts/setup-tinytex.js");
   await setupTinyTex(userDataPath, onProgress);
+}
+
+function getSidecarPath() {
+  const isDev = !app.isPackaged;
+  const platform = process.platform;
+
+  // Binary name is platform-dependent
+  const binaryName = platform === "win32" ? "sidecar.exe" : "sidecar";
+
+  if (isDev) {
+    // __dirname is application/electron, so we go up one level to application/sidecar
+    return path.join(__dirname, "..", "sidecar", "build", binaryName);
+  }
+
+  return path.join(process.resourcesPath, "bin", binaryName);
+}
+
+function startSidecar(userDataPath) {
+  const sidecarBin = getSidecarPath();
+  const platform = process.platform;
+  const libsDir = !app.isPackaged
+    ? path.join(__dirname, "..", "sidecar", "build", "libs")
+    : path.join(process.resourcesPath, "bin", "libs");
+
+  const ldPath =
+    platform === "linux"
+      ? `${libsDir}${path.delimiter}${process.env.LD_LIBRARY_PATH || ""}`
+      : process.env.LD_LIBRARY_PATH;
+
+  const sidecarProcess = spawn(sidecarBin, [], {
+    cwd: userDataPath,
+    stdio: ["pipe", "pipe", "inherit"],
+    env: {
+      ...process.env,
+      USER_DATA_PATH: userDataPath,
+      ...(platform === "linux" && { LD_LIBRARY_PATH: ldPath }),
+    },
+  });
+
+  sidecarProcess.on("error", (err) => {
+    console.error("Sidecar failed to start:", err);
+  });
+
+  sidecarProcess.on("exit", (code) => {
+    console.log("Sidecar exited with code:", code);
+  });
+
+  return sidecarProcess;
 }
 
 function startBackend() {
@@ -25,25 +76,25 @@ function startBackend() {
   const userDataPath = app.getPath("userData");
 
   if (isDev) {
-    const latexBinPath = path.join(
-      process.cwd(),
-      "resources",
-      "TinyTex",
-      platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
-      "bin",
-      archFolder,
-    );
-    backendProcess = spawn("npm", ["start"], {
-      shell: true,
-      cwd: __dirname.replace("/electron", ""),
-      stdio: "inherit",
-      windowsHide: true,
-      env: {
-        ...process.env,
-        USER_DATA_PATH: userDataPath,
-        PATH: `${latexBinPath}${path.delimiter}${process.env.PATH}`,
-      },
-    });
+    // const latexBinPath = path.join(
+    //   process.cwd(),
+    //   "resources",
+    //   "TinyTex",
+    //   platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
+    //   "bin",
+    //   archFolder,
+    // );
+    // backendProcess = spawn("npm", ["start"], {
+    //   shell: true,
+    //   cwd: __dirname.replace("/electron", ""),
+    //   stdio: "inherit",
+    //   env: {
+    //     ...process.env,
+    //     USER_DATA_PATH: userDataPath,
+    //     PATH: `${latexBinPath}${path.delimiter}${process.env.PATH}`,
+    //   },
+    // });
+    startSidecar(userDataPath);
   } else {
     const backendPath = path.join(
       process.resourcesPath,
@@ -69,8 +120,11 @@ function startBackend() {
         USER_DATA_PATH: userDataPath,
         PATH: `${latexBinPath}${path.delimiter}${process.env.PATH}`,
         RESOURCES_PATH: userDataPath,
+        envEncryptionKey: ENCRYPTION_KEY,
       },
     });
+
+    startSidecar(userDataPath);
   }
 }
 
@@ -87,8 +141,6 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     },
   });
-
-  const isDev = !app.isPackaged;
 
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
@@ -146,9 +198,9 @@ app.whenReady().then(async () => {
     binaryName,
   );
 
-  console.log("pdflatexPath", pdflatexPath);
-  console.log("userDataPath", userDataPath);
-  console.log("checkDir", checkDir);
+  console.log("pdflatexPath from main.cjs", pdflatexPath);
+  console.log("userDataPath from main.cjs", userDataPath);
+  console.log("checkDir from main.cjs", checkDir);
 
   const isFirstRun = !require("fs").existsSync(pdflatexPath);
   createSplashWindow(isFirstRun);
@@ -172,7 +224,7 @@ app.whenReady().then(async () => {
   //   await setupTinyTex(userDataPath);
   // }
 
-  await runSetupTinyTex(userDataPath, (msg) => {
+  await runSetupTinyTex(userDataPath, isDev, (msg) => {
     if (splashWindow && !splashWindow.isDestroyed()) {
       splashWindow.webContents.send("setup-progress", msg);
     }

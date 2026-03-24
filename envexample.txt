@@ -1,0 +1,9 @@
+# Frontend
+VITE_admin_server=http://localhost:5025
+VITE_ws_server=ws://localhost:5001
+
+# VITE_admin_server=http://10.18.99.254:5025
+# VITE_ws_server=ws://10.18.99.254:5001
+
+# Backend
+ENCRYPTION_KEY=0123456789abcdef0543656789abcdef

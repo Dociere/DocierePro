@@ -20,6 +20,18 @@ const SPECIAL_ENVS = [
 const SPECIAL_ENVS_PATTERN = SPECIAL_ENVS.join("|");
 
 // Matches start of section or special env — used for detecting body start
+
+// Notes
+// What this does is that it converts:
+// This: \maketitle\begin{abstract}This is the intro.\section{First}Hello\section{Second}World
+// Into this:
+// [
+//   "\\maketitle",
+//   "\\begin{abstract}This is the intro.",
+//   "\\section{First}Hello",
+//   "\\section{Second}World"
+// ]
+
 const BODY_START_REGEX = new RegExp(
   `(\\\\(?:section|subsection|subsubsection)\\*?\\{[^}]*\\}|\\\\begin\\{(?:${SPECIAL_ENVS_PATTERN})\\}(?:\\{[^}]*\\})?)`,
   "i",
@@ -32,6 +44,8 @@ export const isMainFile = (fileName) => {
   const normalized = fileName.replace(/\\/g, "/").toLowerCase();
   return normalized === "main.tex" || normalized.endsWith("/main.tex");
 };
+
+
 
 export const resolveFileContent = (inputName, fileMap) => {
   if (!fileMap || !inputName) return null;

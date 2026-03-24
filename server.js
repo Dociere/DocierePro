@@ -22,8 +22,9 @@ dotenv.config();
 const projMode = "DEV";
 // const projMode = "PROD";
 
-const envEncryptionKey = process.env.ENCRYPTION_KEY;
-const ENCRYPTION_KEY = Buffer.from(envEncryptionKey, "utf8");
+// const envEncryptionKey = process.env.ENCRYPTION_KEY;
+// const ENCRYPTION_KEY = Buffer.from(envEncryptionKey, "utf8");
+const ENCRYPTION_KEY = process.env.envEncryptionKey;
 const IV_LENGTH = 16;
 
 function encrypt(text) {
@@ -133,6 +134,12 @@ const jobDir = TEMP_DIR;
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+//Uncomment it when the data flow for sidecar is ready
+// function extractPreamble(texContent) {
+//   const match = texContent.match(/^([\s\S]*?)\\begin\{document\}/);
+//   return match ? match[1].trim() : "";
+// }
 
 function splitIntoChunks(texContent, files) {
   const preamble = extractPreamble(texContent);
