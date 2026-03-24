@@ -5,12 +5,15 @@ import fs from "fs-extra";
 import path from "path";
 import * as tar from "tar";
 import admZip from "adm-zip";
+// const { app } = require("electron");
+import app from "electron";
 
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
-
-export async function setupTinyTex(userDataPath, onProgress = () => {}) {
-  const isDev = !userDataPath;
+export async function setupTinyTex(
+  userDataPath,
+  isDevMode,
+  onProgress = () => {},
+) {
+  const isDev = isDevMode;
   const platform = process.platform;
   const baseDir = isDev ? process.cwd() : userDataPath;
   const destDir = path.join(
@@ -38,6 +41,7 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
     "pdflatexPath status from setup-latex.js",
     fs.existsSync(pdflatexPath),
   );
+  console.log("isDev from setup-latex.js", isDev);
 
   const tlmgrPath = path.join(
     destDir,
@@ -94,11 +98,11 @@ export async function setupTinyTex(userDataPath, onProgress = () => {}) {
     onProgress(`Downloading TinyTeX-0...`);
 
     const response = await axios({ url, responseType: "stream" });
-    // const tempFile = path.join(__dirname, `tinytex_temp${path.extname(url)}`);
-    const tempFile = path.join(
-      userDataPath,
-      `tinytex_temp${path.extname(url)}`,
-    );
+    const tempFile = path.join(baseDir, `tinytex_temp${path.extname(url)}`);
+    // const tempFile = path.join(
+    //   userDataPath,
+    //   `tinytex_temp${path.extname(url)}`,
+    // );
     const writer = fs.createWriteStream(tempFile);
     response.data.pipe(writer);
 
