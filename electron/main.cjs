@@ -25,24 +25,24 @@ function startBackend() {
   const userDataPath = app.getPath("userData");
 
   if (isDev) {
-    const latexBinPath = path.join(
-      process.cwd(),
-      "resources",
-      "TinyTex",
-      platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
-      "bin",
-      archFolder,
-    );
-    backendProcess = spawn("npm", ["start"], {
-      shell: true,
-      cwd: __dirname.replace("/electron", ""),
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        USER_DATA_PATH: userDataPath,
-        PATH: `${latexBinPath}${path.delimiter}${process.env.PATH}`,
-      },
-    });
+    // const latexBinPath = path.join(
+    //   process.cwd(),
+    //   "resources",
+    //   "TinyTex",
+    //   platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
+    //   "bin",
+    //   archFolder,
+    // );
+    // backendProcess = spawn("npm", ["start"], {
+    //   shell: true,
+    //   cwd: __dirname.replace("/electron", ""),
+    //   stdio: "inherit",
+    //   env: {
+    //     ...process.env,
+    //     USER_DATA_PATH: userDataPath,
+    //     PATH: `${latexBinPath}${path.delimiter}${process.env.PATH}`,
+    //   },
+    // });
   } else {
     const backendPath = path.join(
       process.resourcesPath,

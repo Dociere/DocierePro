@@ -131,6 +131,12 @@ const jobDir = TEMP_DIR;
   }
 });
 
+//Uncomment it when the data flow for sidecar is ready
+// function extractPreamble(texContent) {
+//   const match = texContent.match(/^([\s\S]*?)\\begin\{document\}/);
+//   return match ? match[1].trim() : "";
+// }
+
 function splitIntoChunks(texContent, files) {
   const preamble = extractPreamble(texContent);
 
