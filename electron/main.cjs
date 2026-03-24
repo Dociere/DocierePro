@@ -37,6 +37,7 @@ function startBackend() {
       shell: true,
       cwd: __dirname.replace("/electron", ""),
       stdio: "inherit",
+      windowsHide: true,
       env: {
         ...process.env,
         USER_DATA_PATH: userDataPath,
@@ -62,6 +63,7 @@ function startBackend() {
     backendProcess = spawn("node", [backendPath], {
       cwd: userDataPath,
       stdio: "inherit",
+      windowsHide: true,
       env: {
         ...process.env,
         USER_DATA_PATH: userDataPath,
@@ -155,7 +157,7 @@ app.whenReady().then(async () => {
   const unpackedPath = isDev
     ? process.cwd()
     : path.join(process.resourcesPath, "app.asar.unpacked");
-  const asarFolders = ["projects", "templates", "settings"];
+  const asarFolders = ["projects", "templates", "user-templates", "settings"];
 
   for (const folder of asarFolders) {
     const dest = path.join(userDataPath, folder);
