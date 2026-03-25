@@ -33,6 +33,11 @@ const NavBar = ({ onStartTour }) => {
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
   const hasProject = projectDetails.currentProject !== null;
   // File Menu Actions
@@ -66,7 +71,11 @@ const NavBar = ({ onStartTour }) => {
 
   const handleSaveProject = async () => {
     if (!projectDetails.currentProject || !projectDetails.activeFile) {
-      alert("No project to save");
+      setAlertModal({
+        isOpen: true,
+        title: "No Project",
+        message: "No project to save",
+      });
       return;
     }
 
@@ -271,7 +280,11 @@ const NavBar = ({ onStartTour }) => {
     const pdfUrl = projectDetails.pdfUrl;
     const fileTitle = projectDetails.currentProject.title;
     if (!pdfUrl) {
-      alert("Please compile your document first to generate a PDF");
+      setAlertModal({
+        isOpen: true,
+        title: "PDF Not Found",
+        message: "Please compile your document first to generate a PDF",
+      });
       return;
     }
 
@@ -316,7 +329,11 @@ const NavBar = ({ onStartTour }) => {
       }
     } catch (error) {
       console.error("Error during PDF export:", error);
-      alert(`An error occurred during PDF export: ${error.message}`);
+      setAlertModal({
+        isOpen: true,
+        title: "Export Error",
+        message: `An error occurred during PDF export: ${error.message}`,
+      });
     }
   };
 
@@ -364,14 +381,12 @@ const NavBar = ({ onStartTour }) => {
   };
 
   const handleAbout = () => {
-    alert(
-      "Docière Pro v1.0\nLaTeX Editor Redefined\n\n" +
-        "A modern LaTeX editor with intuitive interfaces:\n" +
-        "• Full Code View with Monaco Editor\n" +
-        "• Rich Text Editor for WYSIWYG editing\n" +
-        "• Section-based editing for structured documents\n\n" +
-        "Created with ❤️ for seamless document creation",
-    );
+    setAlertModal({
+      isOpen: true,
+      title: "About Docière Pro",
+      message:
+        "Docière Pro v1.0\nLaTeX Editor Redefined\n\nA modern LaTeX editor with intuitive interfaces:\n• Full Code View with Monaco Editor\n• Rich Text Editor for WYSIWYG editing\n• Section-based editing for structured documents\n\nCreated with ❤️ for seamless document creation",
+    });
   };
 
   // Menu Configurations
@@ -680,14 +695,22 @@ const NavBar = ({ onStartTour }) => {
       shortcut: "Ctrl+Shift+P",
       action: () => {
         // Open command palette
-        alert("Command Palette - Coming in next update");
+        setAlertModal({
+          isOpen: true,
+          title: "Coming Soon",
+          message: "Command Palette - Coming in next update",
+        });
       },
     },
     { divider: true },
     {
       label: "Check for Updates",
       action: () => {
-        alert("You are using the latest version of Docière Pro v1.0");
+        setAlertModal({
+          isOpen: true,
+          title: "Up to Date",
+          message: "You are using the latest version of Docière Pro v1.0",
+        });
       },
     },
     {
