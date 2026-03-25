@@ -13,16 +13,20 @@ const StatusBar = () => {
   const { isServerConnected } = useAuth();
   const { projectDetails } = useContext(projectContext);
   const { settings } = useSettings();
-  const [progress, setProgress] = useState("Intializing...");
-  // useEffect(() => {
-  //   const removeListener = window.electronAPI.onSetupProgress(
-  //     (event, message) => {
-  //       setProgress(message);
-  //     },
-  //   );
+  const [progress, setProgress] = useState("");
+  React.useEffect(() => {
+    const removeListener = window.electronAPI.onSetupProgress((message) => {
+      setProgress(message);
+      // Clear message after completion
+      if (message === "LaTeX Setup Complete!") {
+        setTimeout(() => setProgress(""), 3000);
+      }
+    });
 
-  //   return () => removeListener();
-  // }, []);
+    return () => {
+      if (typeof removeListener === "function") removeListener();
+    };
+  }, []);
   return (
     <>
       <div
@@ -59,7 +63,7 @@ const StatusBar = () => {
             <SyncIcon style={{ fill: "#BD7E00" }} className="w-4 h-4" />
             <p>Sync</p> */}
           </div>
-          <div>{progress}</div>
+          <div className="-ml-20">{progress}</div>
           <div className="flex flex-row gap-5">
             {projectDetails?.currentProject?.id && (
               <LayoutIcon

@@ -23,6 +23,11 @@ async function runSetupTinyTex(userDataPath, onProgress) {
   await setupTinyTex(userDataPath, onProgress);
 }
 
+async function runSetupExtraPackages(userDataPath, isDev, onProgress) {
+  const { setupExtraPackages } = await import("../scripts/setup-init-pkg.js");
+  await setupExtraPackages(userDataPath, isDev, onProgress);
+}
+
 function getSidecarPath() {
   const isDev = !app.isPackaged;
   const platform = process.platform;
@@ -242,6 +247,13 @@ app.whenReady().then(async () => {
   mainWindow.once("ready-to-show", () => {
     splashWindow.close();
     mainWindow.show();
+
+    // Start background package installation after the window is shown
+    runSetupExtraPackages(userDataPath, isDev, (msg) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("setup-progress", msg);
+      }
+    });
   });
 });
 
