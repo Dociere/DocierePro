@@ -13,7 +13,7 @@ import ConfirmModal from "./confirmModal";
 
 const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
   const { updateProjectDetails } = useContext(projectContext);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isServerConnected } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [input, setInput] = useState("");
@@ -27,6 +27,13 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
 
   // Derived: input should be disabled when loading or streaming
   const isBusy = isLoading || streamingMsgId !== null;
+
+  // Auth context for cloud sync
+  const syncOptions = {
+    isServerConnected,
+    isAuthenticated,
+    userId: user?.userId,
+  };
 
   // ---- Typewriter effect component ----
   const TypewriterText = ({ text, onComplete }) => {
@@ -110,7 +117,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
   // 1. Load History on Mount
   useEffect(() => {
     if (projectId) {
-      loadChatHistory(projectId).then((history) => {
+      loadChatHistory(projectId, syncOptions).then((history) => {
         if (history.length > 0) {
           setMessages(history);
         } else {
@@ -124,7 +131,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
             }),
           };
           setMessages([welcomeMsg]);
-          saveChatMessage(projectId, welcomeMsg);
+          saveChatMessage(projectId, welcomeMsg, syncOptions);
         }
       });
     }
@@ -139,7 +146,7 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
   // Helper to add message to state AND save to backend
   const addMessage = (msg) => {
     setMessages((prev) => [...prev, msg]);
-    saveChatMessage(projectId, msg);
+    saveChatMessage(projectId, msg, syncOptions);
   };
 
   const handleSend = async (e) => {
@@ -237,7 +244,11 @@ const AIChatPanel = ({ projectDetails, sections, onApplyChanges, onClose }) => {
         };
         setMessages((prev) => [...prev, aiMsg]);
         setStreamingMsgId(aiMsgId); // Start typewriter
-        saveChatMessage(projectId, { ...aiMsg, isStreaming: false });
+        saveChatMessage(
+          projectId,
+          { ...aiMsg, isStreaming: false },
+          syncOptions,
+        );
       }
     } catch (error) {
       if (error.name === "AbortError") {
