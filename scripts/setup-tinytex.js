@@ -8,12 +8,21 @@ import admZip from "adm-zip";
 // const { app } = require("electron");
 import app from "electron";
 
-export async function setupTinyTex(
-  userDataPath,
-  isDevMode,
-  onProgress = () => {},
-) {
-  const isDev = isDevMode;
+export let isDev = true;
+export let platform;
+export let baseDir;
+export let destDir;
+export let archFolder;
+export let tlmgrPath;
+
+/**
+ * Calculates the path to a TinyTex binary.
+ * @param {string} userDataPath - Application user data path
+ * @param {boolean} isDev - Whether the app is in development mode
+ * @param {string} binaryName - Name of the binary (e.g., 'pdflatex' or 'tlmgr')
+ * @returns {string} - Absolute path to the binary
+ */
+export function getTinyTexBinPath(userDataPath, isDev, binaryName) {
   const platform = process.platform;
   const baseDir = isDev ? process.cwd() : userDataPath;
   const destDir = path.join(
@@ -23,9 +32,39 @@ export async function setupTinyTex(
     platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
   );
 
+  const archFolder =
+    platform === "win32"
+      ? "windows"
+      : platform === "darwin"
+        ? "universal-darwin"
+        : "x86_64-linux";
+
+  const fullBinaryName =
+    platform === "win32"
+      ? binaryName + (binaryName === "tlmgr" ? ".bat" : ".exe")
+      : binaryName;
+
+  return path.join(destDir, "bin", archFolder, fullBinaryName);
+}
+
+export async function setupTinyTex(
+  userDataPath,
+  isDevMode,
+  onProgress = () => {},
+) {
+  isDev = isDevMode;
+  platform = process.platform;
+  baseDir = isDev ? process.cwd() : userDataPath;
+  destDir = path.join(
+    baseDir,
+    "resources",
+    "TinyTex",
+    platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
+  );
+
   const binaryName = platform === "win32" ? "pdflatex.exe" : "pdflatex";
 
-  const archFolder =
+  archFolder =
     platform === "win32"
       ? "windows"
       : platform === "darwin"
@@ -43,7 +82,7 @@ export async function setupTinyTex(
   );
   console.log("isDev from setup-latex.js", isDev);
 
-  const tlmgrPath = path.join(
+  tlmgrPath = path.join(
     destDir,
     "bin",
     archFolder,
@@ -130,61 +169,7 @@ export async function setupTinyTex(
     }
   }
 
-  const essentials = [
-    "latex-bin",
-    "amsmath",
-    "geometry",
-    "xcolor",
-    "graphics",
-    "tools",
-    "etoolbox",
-    "hyperref",
-    "microtype",
-    "fancyhdr",
-    "enumitem",
-    "setspace",
-    "titlesec",
-    "pgf",
-    "float",
-    "caption",
-    "booktabs",
-    "listings",
-    "tcolorbox",
-    "cleveref",
-    "biblatex",
-    "graphics-def",
-    "amsfonts",
-    "natbib",
-    "url",
-    "xstring",
-    "logreq",
-    "biber",
-    "parskip",
-    "mathtools",
-    "physics",
-    "mhchem",
-    "babel",
-    "fontspec",
-    "lm",
-    "multirow",
-    "tocloft",
-    "pdflscape",
-    "pgfplots",
-    "pdfpages",
-    "fancyvrb",
-    "csquotes",
-    "latexmk",
-    "algorithms",
-    "cite",
-  ];
-
-  // try {
-  //   console.log("Checking for tlmgr updates...");
-  //   onProgress("Checking for updates...");
-  //   await runCommand(tlmgrPath, ["update", "--self"]);
-  // } catch (error) {
-  //   console.log("tlmgr is already up to date or update skipped.");
-  // }
+  const essentials = ["latex-bin", "lm"];
 
   try {
     console.log("Checking for missing LaTeX packages...");
@@ -213,13 +198,6 @@ export async function setupTinyTex(
     console.log("Error during package check/install", error);
   }
 
-  // try {
-  //   console.log("Installing essential LaTeX packages...");
-  //   onProgress("Preparing to install packages...");
-  //   await runCommand(tlmgrPath, ["install", ...essentials]);
-  // } catch (error) {
-  //   console.log("There was an error when installing LaTeX packages", error);
-  // }
   console.log("✅ TinyTex Setup Complete!");
   onProgress("✅ Setup Complete!");
 }
