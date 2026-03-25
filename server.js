@@ -222,22 +222,22 @@ const getPdflatexPath = () => {
 
   const tinyTexBaseDir = isDev
     ? path.join(
-      __dirname,
-      "resources",
-      "TinyTex",
-      process.platform === "win32"
-        ? "win"
-        : process.platform === "darwin"
-          ? "mac"
-          : "linux",
-    )
+        __dirname,
+        "resources",
+        "TinyTex",
+        process.platform === "win32"
+          ? "win"
+          : process.platform === "darwin"
+            ? "mac"
+            : "linux",
+      )
     : effectiveResourcesPath
       ? path.join(effectiveResourcesPath, "TinyTex")
       : (() => {
-        throw new Error(
-          "CRITICAL: RESOURCES_PATH is missing in production! IGNORE if in developement mode",
-        );
-      })();
+          throw new Error(
+            "CRITICAL: RESOURCES_PATH is missing in production! IGNORE if in developement mode",
+          );
+        })();
 
   let binaryName = "pdflatex";
   let archFolder = "";
@@ -706,9 +706,9 @@ async function getTemplateFiles(templatePath) {
     const entries = await fs.readdir(currentPath, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name);
-      const relPath = (relativePath
-        ? path.join(relativePath, entry.name)
-        : entry.name).replace(/\\/g, "/");
+      const relPath = (
+        relativePath ? path.join(relativePath, entry.name) : entry.name
+      ).replace(/\\/g, "/");
 
       if (entry.isDirectory()) {
         // Create a .gitkeep so the folder is tracked
@@ -904,7 +904,7 @@ app.post(
           });
         } finally {
           // Clean up temp file
-          await fs.remove(tempPdfPath).catch(() => { });
+          await fs.remove(tempPdfPath).catch(() => {});
         }
       } else {
         // .txt or .md — read as UTF-8 string
@@ -1680,7 +1680,7 @@ app.post("/api/compile", async (req, res) => {
     try {
       await fs.remove(pdfPath);
       await fs.remove(path.join(OUTPUT_DIR, `${filename}.synctex.gz`));
-    } catch (e) { }
+    } catch (e) {}
 
     console.log("🔄 Running PDFLaTeX...");
 
@@ -2029,7 +2029,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch (logErr) { }
+      } catch (logErr) {}
 
       throw new Error(`PDF compilation failed. Log: ${logContent.slice(-500)}`);
     }
@@ -2075,14 +2075,19 @@ ${cleanLatex.replace(/[‹›]/g, "")}
 app.post("/api/equations/save", async (req, res) => {
   console.log("💾 Received equation save request");
   try {
-    const { fileName, latex } = req.body;
+    const { fileName, latex, projectId } = req.body;
     if (!fileName || !latex) {
       return res.status(400).json({ error: "fileName and latex are required" });
     }
 
+    const targetDir = projectId
+      ? path.join(PROJECTS_DIR, String(projectId), "equations")
+      : EQUATIONS_DIR;
+    await fs.ensureDir(targetDir);
+
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9_-]/g, "_");
     const fullFileName = `${sanitizedFileName}.tex`;
-    const filePath = path.join(EQUATIONS_DIR, fullFileName);
+    const filePath = path.join(targetDir, fullFileName);
 
     await fs.writeFile(filePath, latex, "utf8");
     console.log("✅ Equation saved successfully:", sanitizedFileName);
@@ -2105,13 +2110,19 @@ app.post("/api/equations/save", async (req, res) => {
 app.get("/api/equations/list", async (req, res) => {
   console.log("📋 Received request to list equations");
   try {
-    const files = await fs.readdir(EQUATIONS_DIR);
+    const { projectId } = req.query;
+    const targetDir = projectId
+      ? path.join(PROJECTS_DIR, String(projectId), "equations")
+      : EQUATIONS_DIR;
+    await fs.ensureDir(targetDir);
+
+    const files = await fs.readdir(targetDir);
     const texFiles = files.filter((file) => file.endsWith(".tex"));
     console.log(`📚 Found ${texFiles.length} equation files`);
 
     const equations = await Promise.all(
       texFiles.map(async (file) => {
-        const filePath = path.join(EQUATIONS_DIR, file);
+        const filePath = path.join(targetDir, file);
         const content = await fs.readFile(filePath, "utf8");
         const stats = await fs.stat(filePath);
         const fileName = path.basename(file, ".tex");
@@ -2143,9 +2154,13 @@ app.get("/api/equations/load/:filename", async (req, res) => {
   console.log("📖 Received request to load equation:", req.params.filename);
   try {
     const { filename } = req.params;
+    const { projectId } = req.query;
+    const targetDir = projectId
+      ? path.join(PROJECTS_DIR, String(projectId), "equations")
+      : EQUATIONS_DIR;
     const sanitizedFileName = filename.replace(/[^a-zA-Z0-9_-]/g, "_");
     const fullFileName = `${sanitizedFileName}.tex`;
-    const filePath = path.join(EQUATIONS_DIR, fullFileName);
+    const filePath = path.join(targetDir, fullFileName);
 
     try {
       await fs.access(filePath);
@@ -2178,9 +2193,13 @@ app.delete("/api/equations/:filename", async (req, res) => {
   console.log("🗑️ Received request to delete equation:", req.params.filename);
   try {
     const { filename } = req.params;
+    const { projectId } = req.query;
+    const targetDir = projectId
+      ? path.join(PROJECTS_DIR, String(projectId), "equations")
+      : EQUATIONS_DIR;
     const sanitizedFileName = filename.replace(/[^a-zA-Z0-9_-]/g, "_");
     const fullFileName = `${sanitizedFileName}.tex`;
-    const filePath = path.join(EQUATIONS_DIR, fullFileName);
+    const filePath = path.join(targetDir, fullFileName);
 
     await fs.unlink(filePath);
     console.log("✅ Equation deleted successfully:", sanitizedFileName);
@@ -2514,7 +2533,7 @@ app.post("/api/citation/compile", async (req, res) => {
     // Delete old PDF if exists
     try {
       await fs.remove(pdfFilePath);
-    } catch (e) { }
+    } catch (e) {}
 
     // Run pdflatex
     console.log("🔄 Compiling citation...");
@@ -2530,7 +2549,7 @@ app.post("/api/citation/compile", async (req, res) => {
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch { }
+      } catch {}
 
       console.error("❌ Citation compilation failed - no PDF");
       throw new Error(`PDF not generated. Log:\n${logContent.slice(-500)}`);
@@ -2578,7 +2597,7 @@ app.post("/api/citation/compile", async (req, res) => {
 app.post("/api/citation/save", async (req, res) => {
   console.log("💾 Received citation save request");
   try {
-    const { fileName, citationData, latexCode } = req.body;
+    const { fileName, citationData, latexCode, projectId } = req.body;
 
     if (!citationData || !latexCode) {
       return res
@@ -2593,9 +2612,15 @@ app.post("/api/citation/save", async (req, res) => {
     // Ensure unique filename by appending timestamp
     const uniqueFileName = `${sanitizedFileName}_${Date.now()}`;
     const fullFileName = `${uniqueFileName}.json`;
-    const filePath = path.join(CITATIONS_DIR, fullFileName);
 
-    const existingFiles = await fs.readdir(CITATIONS_DIR);
+    const targetDir = projectId
+      ? path.join(PROJECTS_DIR, String(projectId), "citations")
+      : CITATIONS_DIR;
+    await fs.ensureDir(targetDir);
+
+    const filePath = path.join(targetDir, fullFileName);
+
+    const existingFiles = await fs.readdir(targetDir);
     const jsonFiles = existingFiles.filter((f) => f.endsWith(".json"));
     const citationNumber = jsonFiles.length + 1;
 
@@ -2629,12 +2654,18 @@ app.post("/api/citation/save", async (req, res) => {
 app.get("/api/citation/list", async (req, res) => {
   console.log("📋 Received request to list citations");
   try {
-    const files = await fs.readdir(CITATIONS_DIR);
+    const { projectId } = req.query;
+    const targetDir = projectId
+      ? path.join(PROJECTS_DIR, String(projectId), "citations")
+      : CITATIONS_DIR;
+    await fs.ensureDir(targetDir);
+
+    const files = await fs.readdir(targetDir);
     const jsonFiles = files.filter((file) => file.endsWith(".json"));
 
     const citations = await Promise.all(
       jsonFiles.map(async (file) => {
-        const filePath = path.join(CITATIONS_DIR, file);
+        const filePath = path.join(targetDir, file);
         const content = await fs.readFile(filePath, "utf8");
         const data = JSON.parse(content);
         return data;
@@ -2656,9 +2687,13 @@ app.delete("/api/citation/:filename", async (req, res) => {
   console.log("🗑️ Received request to delete citation:", req.params.filename);
   try {
     const { filename } = req.params;
+    const { projectId } = req.query;
+    const targetDir = projectId
+      ? path.join(PROJECTS_DIR, String(projectId), "citations")
+      : CITATIONS_DIR;
     const sanitizedFileName = filename.replace(/[^a-zA-Z0-9_-]/g, "_");
     const fullFileName = `${sanitizedFileName}.json`;
-    const filePath = path.join(CITATIONS_DIR, fullFileName);
+    const filePath = path.join(targetDir, fullFileName);
 
     await fs.unlink(filePath);
 

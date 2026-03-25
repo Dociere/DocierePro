@@ -29,7 +29,13 @@ const initialFormData = {
   format: "IEEE",
 };
 
-const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
+const CitationManager = ({
+  onClose,
+  onInsert,
+  showInsertButton,
+  isModal,
+  projectId,
+}) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("create");
@@ -40,11 +46,17 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
   const [savedCitations, setSavedCitations] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [citationToDelete, setCitationToDelete] = useState(null);
-  const [alertModal, setAlertModal] = useState({ isOpen: false, title: "", message: "" });
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
   const [copiedItem, setCopiedItem] = useState(null);
 
-  const showAlert = (title, message) => setAlertModal({ isOpen: true, title, message });
-  const closeAlert = () => setAlertModal({ isOpen: false, title: "", message: "" });
+  const showAlert = (title, message) =>
+    setAlertModal({ isOpen: true, title, message });
+  const closeAlert = () =>
+    setAlertModal({ isOpen: false, title: "", message: "" });
 
   // Fetch citations only when on saved tab
   useEffect(() => {
@@ -56,7 +68,9 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
 
   const loadSavedCitations = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/citation/list`);
+      const res = await fetch(
+        `${API_BASE_URL}/api/citation/list?projectId=${projectId || ""}`,
+      );
       const data = await res.json();
       setSavedCitations(data);
     } catch (err) {
@@ -72,7 +86,10 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
   const compileCitation = useCallback(async () => {
     const { authors, title, year } = formData;
     if (!authors || !title || !year) {
-      showAlert("Missing Fields", "Please fill in at least Authors, Title, and Year");
+      showAlert(
+        "Missing Fields",
+        "Please fill in at least Authors, Title, and Year",
+      );
       return;
     }
     setIsCompiling(true);
@@ -88,7 +105,10 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
         setPreviewUrl(`${API_BASE_URL}${data.previewUrl}?t=${Date.now()}`);
         setLatexCode(data.latexCode);
       } else {
-        showAlert("Compilation Failed", "Compilation failed: " + (data.error || "Unknown error"));
+        showAlert(
+          "Compilation Failed",
+          "Compilation failed: " + (data.error || "Unknown error"),
+        );
       }
     } catch (err) {
       console.error("Compilation error:", err);
@@ -118,14 +138,21 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
           fileName: autoFileName,
           citationData: formData,
           latexCode,
+          projectId,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        showAlert("Citation Saved", `Citation saved as [${data.citationNumber}]`);
+        showAlert(
+          "Citation Saved",
+          `Citation saved as [${data.citationNumber}]`,
+        );
         loadSavedCitations();
       } else {
-        showAlert("Save Failed", "Save failed: " + (data.error || "Unknown error"));
+        showAlert(
+          "Save Failed",
+          "Save failed: " + (data.error || "Unknown error"),
+        );
       }
     } catch (err) {
       console.error("Save error:", err);
@@ -154,20 +181,20 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
     }
   };
 
-  const handleDeleteCitation = useCallback(
-    (fileName) => {
-      setCitationToDelete(fileName);
-      setShowDeleteConfirm(true);
-    },
-    [],
-  );
+  const handleDeleteCitation = useCallback((fileName) => {
+    setCitationToDelete(fileName);
+    setShowDeleteConfirm(true);
+  }, []);
 
   const confirmDelete = useCallback(async () => {
     if (!citationToDelete) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/citation/${citationToDelete}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/citation/${citationToDelete}?projectId=${projectId || ""}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (res.ok) {
         loadSavedCitations();
         setShowDeleteConfirm(false);
@@ -266,8 +293,20 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
   // --- Render ---
 
   return (
-    <div className={isModal ? "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 font-inter text-gray-800" : "flex flex-col h-full bg-[#FAFAFA] font-inter text-gray-800"}>
-      <div className={isModal ? "bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-6xl h-[90vh] flex flex-col overflow-hidden" : "flex flex-col flex-1 overflow-hidden bg-white"}>
+    <div
+      className={
+        isModal
+          ? "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 font-inter text-gray-800"
+          : "flex flex-col h-full bg-[#FAFAFA] font-inter text-gray-800"
+      }
+    >
+      <div
+        className={
+          isModal
+            ? "bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-6xl h-[90vh] flex flex-col overflow-hidden"
+            : "flex flex-col flex-1 overflow-hidden bg-white"
+        }
+      >
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center gap-6">
@@ -325,7 +364,9 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
                     <div className="flex gap-2">
                       {!isAuthenticated ? (
                         <div className="flex-1 text-center py-3">
-                          <p className="text-xs text-[#7D7D7D] font-inter mb-2">Sign in to search academic papers</p>
+                          <p className="text-xs text-[#7D7D7D] font-inter mb-2">
+                            Sign in to search academic papers
+                          </p>
                           <div className="flex gap-2 justify-center">
                             <button
                               onClick={() => navigate("/login")}
@@ -433,7 +474,8 @@ const CitationManager = ({ onClose, onInsert, showInsertButton, isModal }) => {
                       </p>
                     )}
                     <div className="text-[10px] text-gray-500 mt-3 text-center font-inter border-t border-gray-200 pt-2">
-                      Content generated by AI is purely for reference. We do not promote academic dishonesty.
+                      Content generated by AI is purely for reference. We do not
+                      promote academic dishonesty.
                     </div>
                   </div>
 
