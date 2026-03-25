@@ -15,7 +15,7 @@ const StatusBar = () => {
   const { settings } = useSettings();
   const [progress, setProgress] = useState("");
   React.useEffect(() => {
-    const removeListener = window.electronAPI.onSetupProgress((message) => {
+    const removeListener = window.electronAPI?.onSetupProgress((message) => {
       setProgress(message);
       // Clear message after completion
       if (message === "LaTeX Setup Complete!") {
