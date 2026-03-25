@@ -1,3 +1,7 @@
+import {
+  syncCitationsToCloud,
+  pullCitationsFromCloud,
+} from "../api/projectHandling";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -36,7 +40,7 @@ const CitationManager = ({
   isModal,
   projectId,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isServerConnected } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("create");
   const [formData, setFormData] = useState(initialFormData);
@@ -52,6 +56,11 @@ const CitationManager = ({
     message: "",
   });
   const [copiedItem, setCopiedItem] = useState(null);
+  const syncOptions = {
+    isServerConnected,
+    isAuthenticated,
+    userId: user?.userId,
+  };
 
   const showAlert = (title, message) =>
     setAlertModal({ isOpen: true, title, message });
@@ -72,11 +81,53 @@ const CitationManager = ({
         `${API_BASE_URL}/api/citation/list?projectId=${projectId || ""}`,
       );
       const data = await res.json();
-      setSavedCitations(data);
+      let localCitations = Array.isArray(data) ? data : [];
+
+      // --- CLOUD SYNC LOGIC ---
+      if (
+        syncOptions.isServerConnected &&
+        syncOptions.isAuthenticated &&
+        syncOptions.userId
+      ) {
+        if (localCitations.length === 0) {
+          // Pull from cloud if local is empty
+          const cloudCits = await pullCitationsFromCloud(
+            projectId,
+            syncOptions,
+          );
+
+          if (cloudCits && cloudCits.length > 0) {
+            localCitations = cloudCits;
+            // Save the pulled cloud citations to the local backend
+            for (const cit of cloudCits) {
+              await fetch(`${API_BASE_URL}/api/citation/save`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  fileName: cit.fileName,
+                  citationData: cit,
+                  latexCode: cit.latexCode,
+                  projectId,
+                }),
+              });
+            }
+          }
+        } else {
+          // Push existing local citations to cloud
+          await syncCitationsToCloud(projectId, localCitations, syncOptions);
+        }
+      }
+
+      setSavedCitations(localCitations);
     } catch (err) {
       console.error("Failed to load citations:", err);
     }
-  }, []);
+  }, [
+    projectId,
+    syncOptions.isAuthenticated,
+    syncOptions.userId,
+    syncOptions.isServerConnected,
+  ]);
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
