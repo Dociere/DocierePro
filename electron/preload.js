@@ -12,8 +12,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("window-is-maximized", () => callback()),
   onUnmaximize: (callback) =>
     ipcRenderer.on("window-is-unmaximized", () => callback()),
-  onSetupProgress: (callback) =>
-    ipcRenderer.on("setup-progress", (event, msg) => callback(msg)),
+  onSetupProgress: (callback) => {
+    const subscription = (event, msg) => callback(msg);
+    ipcRenderer.on("setup-progress", subscription);
+    return () => ipcRenderer.removeListener("setup-progress", subscription);
+  },
   savePDF: (arrayBuffer, defaultName) =>
     ipcRenderer.invoke("save-pdf", { arrayBuffer, defaultName }),
 });

@@ -6,10 +6,27 @@ import HelpIcon from "../assets/icons/helpIcon.svg?react";
 import LayoutIcon from "../assets/icons/layoutIcon.svg?react";
 import { useAuth } from "../context/useAuth";
 import { useSettings } from "../context/useSettings";
+import { useState, useContext } from "react";
+import { projectContext } from "../context/useProject";
 
 const StatusBar = () => {
   const { isServerConnected } = useAuth();
+  const { projectDetails } = useContext(projectContext);
   const { settings } = useSettings();
+  const [progress, setProgress] = useState("");
+  React.useEffect(() => {
+    const removeListener = window.electronAPI.onSetupProgress((message) => {
+      setProgress(message);
+      // Clear message after completion
+      if (message === "LaTeX Setup Complete!") {
+        setTimeout(() => setProgress(""), 3000);
+      }
+    });
+
+    return () => {
+      if (typeof removeListener === "function") removeListener();
+    };
+  }, []);
   return (
     <>
       <div
@@ -46,15 +63,18 @@ const StatusBar = () => {
             <SyncIcon style={{ fill: "#BD7E00" }} className="w-4 h-4" />
             <p>Sync</p> */}
           </div>
+          <div className="-ml-20">{progress}</div>
           <div className="flex flex-row gap-5">
-            <LayoutIcon
-              style={{
-                fill: settings.appearance.customThemes[
-                  settings.appearance.theme
-                ].text3,
-              }}
-              className="w-4 h-4"
-            />
+            {projectDetails?.currentProject?.id && (
+              <LayoutIcon
+                style={{
+                  fill: settings.appearance.customThemes[
+                    settings.appearance.theme
+                  ].text3,
+                }}
+                className="w-4 h-4"
+              />
+            )}
             <HelpIcon
               style={{
                 fill: settings.appearance.customThemes[

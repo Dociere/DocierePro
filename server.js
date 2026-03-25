@@ -16,10 +16,12 @@ import { dirname, join } from "path";
 import * as TemplateEngine from "./renderStrategies.js";
 import util from "util";
 import crypto from "crypto";
+import { installMissingPackages } from "./scripts/pkg-installer.js";
+import { getTinyTexBinPath } from "./scripts/setup-tinytex.js";
 dotenv.config();
 
 //DEV Mode means using local pdflatex while PROD Mode means TinyTex
-const projMode = "DEV";
+const projMode = "PROD";
 // const projMode = "PROD";
 
 // const envEncryptionKey = process.env.ENCRYPTION_KEY;
@@ -217,41 +219,11 @@ async function compileParallel(
 }
 
 const getPdflatexPath = () => {
-  const effectiveResourcesPath =
-    process.env.RESOURCES_PATH || process.resourcesPath;
+  return getTinyTexBinPath(process.env.USER_DATA_PATH, isDev, "pdflatex");
+};
 
-  const tinyTexBaseDir = isDev
-    ? path.join(
-        __dirname,
-        "resources",
-        "TinyTex",
-        process.platform === "win32"
-          ? "win"
-          : process.platform === "darwin"
-            ? "mac"
-            : "linux",
-      )
-    : effectiveResourcesPath
-      ? path.join(effectiveResourcesPath, "TinyTex")
-      : (() => {
-          throw new Error(
-            "CRITICAL: RESOURCES_PATH is missing in production! IGNORE if in developement mode",
-          );
-        })();
-
-  let binaryName = "pdflatex";
-  let archFolder = "";
-
-  if (process.platform === "win32") {
-    binaryName = "pdflatex.exe";
-    archFolder = "windows";
-  } else if (process.platform === "darwin") {
-    archFolder = "universal-darwin";
-  } else {
-    archFolder = "x86_64-linux";
-  }
-
-  return path.join(tinyTexBaseDir, "bin", archFolder, binaryName);
+const getTlmgrPath = () => {
+  return getTinyTexBinPath(process.env.USER_DATA_PATH, isDev, "tlmgr");
 };
 
 // Initialize directories
@@ -1738,6 +1710,28 @@ app.post("/api/compile", async (req, res) => {
     if (!usedParallel) {
       console.log("🔄 Running serial PDFLaTeX compilation...");
       result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+
+      // --- INTEGRATION: Check for missing packages ---
+      try {
+        const installed = await installMissingPackages(
+          result1.stdout,
+          getTlmgrPath(),
+          (msg) => {
+            console.log(`[Package Installer] ${msg}`);
+          },
+        );
+
+        if (installed.length > 0) {
+          console.log(
+            `📦 Installed ${installed.length} missing packages. Retrying compilation...`,
+          );
+          result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+        }
+      } catch (pkgErr) {
+        console.warn("⚠️ Package installation failed:", pkgErr.message);
+      }
+      // -----------------------------------------------
+
       pdfExists = await fs.pathExists(generatedPdfPath);
     }
 
