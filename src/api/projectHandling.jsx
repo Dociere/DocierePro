@@ -165,22 +165,84 @@ export const fetchDecryptedSecret = async (configId) => {
   }
 };
 
-export const saveChatMessage = async (projectId, message) => {
+export const saveChatMessage = async (
+  projectId,
+  message,
+  { isServerConnected, isAuthenticated, userId } = {},
+) => {
   try {
     await axios.post(`${API_URL}/api/projects/${projectId}/chat/save`, {
       message,
     });
+
+    // Sync full chat history to cloud after local save
+    if (isServerConnected && isAuthenticated && userId) {
+      try {
+        const history = await loadChatHistory(projectId);
+        await axios.put(
+          `${import.meta.env.VITE_admin_server}/api/ai-chat/${userId}/${projectId}`,
+          { messages: history },
+          { withCredentials: true },
+        );
+      } catch (syncError) {
+        console.log("Failed to sync chat to cloud:", syncError.message);
+      }
+    }
   } catch (error) {
     console.error("Failed to save chat message:", error);
   }
 };
 
-export const loadChatHistory = async (projectId) => {
+export const loadChatHistory = async (
+  projectId,
+  { isServerConnected, isAuthenticated, userId } = {},
+) => {
   try {
     const response = await axios.get(
       `${API_URL}/api/projects/${projectId}/chat`,
     );
-    return response.data.history || [];
+    const localHistory = response.data.history || [];
+
+    if (isServerConnected && isAuthenticated && userId) {
+      if (localHistory.length === 0) {
+        // Pull from cloud if local is empty (e.g. new device)
+        try {
+          const cloudRes = await axios.get(
+            `${import.meta.env.VITE_admin_server}/api/ai-chat/${userId}/${projectId}`,
+            { withCredentials: true },
+          );
+          const cloudMessages = cloudRes.data.messages || [];
+          if (cloudMessages.length > 0) {
+            for (const msg of cloudMessages) {
+              await axios.post(
+                `${API_URL}/api/projects/${projectId}/chat/save`,
+                { message: msg },
+              );
+            }
+            return cloudMessages;
+          }
+        } catch (cloudError) {
+          console.log("Failed to fetch chat from cloud:", cloudError.message);
+        }
+      } else {
+        // Push existing local history to cloud (initial sync for pre-existing chat.json)
+        try {
+          await axios.put(
+            `${import.meta.env.VITE_admin_server}/api/ai-chat/${userId}/${projectId}`,
+            { messages: localHistory },
+            { withCredentials: true },
+          );
+          console.log("✅ Synced existing chat history to cloud");
+        } catch (syncError) {
+          console.log(
+            "Failed to sync existing chat to cloud:",
+            syncError.message,
+          );
+        }
+      }
+    }
+
+    return localHistory;
   } catch (error) {
     console.error("Failed to load chat history:", error);
     return [];
