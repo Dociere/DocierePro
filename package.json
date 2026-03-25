@@ -32,6 +32,7 @@
       "projects/**/*",
       "templates/**/*",
       "settings/**/*",
+      "scripts/**/*",
       "package.json"
     ],
     "files": [

@@ -18,9 +18,9 @@ const binaryName = platform === "win32" ? "pdflatex.exe" : "pdflatex";
 
 const isDev = !app.isPackaged;
 
-async function runSetupTinyTex(userDataPath, onProgress) {
+async function runSetupTinyTex(userDataPath, isDev, onProgress) {
   const { setupTinyTex } = await import("../scripts/setup-tinytex.js");
-  await setupTinyTex(userDataPath, onProgress);
+  await setupTinyTex(userDataPath, isDev, onProgress);
 }
 
 async function runSetupExtraPackages(userDataPath, isDev, onProgress) {
@@ -224,7 +224,9 @@ app.whenReady().then(async () => {
     if (fs.existsSync(src)) {
       // If destination doesn't exist, OR it exists but is empty, copy it.
       // This handles cases where server.js might have created an empty folder first.
-      const shouldCopy = !fs.existsSync(dest) || (fs.lstatSync(dest).isDirectory() && fs.readdirSync(dest).length === 0);
+      const shouldCopy =
+        !fs.existsSync(dest) ||
+        (fs.lstatSync(dest).isDirectory() && fs.readdirSync(dest).length === 0);
       if (shouldCopy) {
         await fs.copy(src, dest);
       }

@@ -5,8 +5,6 @@ import fs from "fs-extra";
 import path from "path";
 import * as tar from "tar";
 import admZip from "adm-zip";
-// const { app } = require("electron");
-import app from "electron";
 
 export let isDev = true;
 export let platform;
