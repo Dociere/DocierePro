@@ -1,3 +1,7 @@
+import {
+  syncEquationsToCloud,
+  pullEquationsFromCloud,
+} from "../api/projectHandling";
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -25,7 +29,7 @@ import axios from "axios";
 const API_BASE_URL = "http://localhost:5000";
 
 const EasyMathInput = ({ onClose, onInsert, projectId }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isServerConnected } = useAuth();
   const navigate = useNavigate();
 
   const { settings } = useSettings();
@@ -75,6 +79,12 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
       "Greek Lowercase",
     ]),
   );
+
+  const syncOptions = {
+    isServerConnected,
+    isAuthenticated,
+    userId: user?.userId,
+  };
 
   const textareaRef = useRef(null);
 
@@ -147,14 +157,55 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
       );
       if (res.ok) {
         const data = await res.json();
-        // Ensure we set an array, otherwise default to empty []
-        setSavedEquations(Array.isArray(data) ? data : []);
+        let localEquations = Array.isArray(data) ? data : [];
+
+        // --- CLOUD SYNC LOGIC ---
+        if (
+          syncOptions.isServerConnected &&
+          syncOptions.isAuthenticated &&
+          syncOptions.userId
+        ) {
+          if (localEquations.length === 0) {
+            // Pull from cloud if local is empty
+            const cloudEqs = await pullEquationsFromCloud(
+              projectId,
+              syncOptions,
+            );
+
+            if (cloudEqs && cloudEqs.length > 0) {
+              localEquations = cloudEqs;
+              // Save the pulled cloud equations to the local backend
+              for (const eq of cloudEqs) {
+                await fetch(`${API_BASE_URL}/api/equations/save`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ...eq, projectId }),
+                });
+              }
+            }
+          } else {
+            // Push existing local history to cloud
+            await syncEquationsToCloud(projectId, localEquations, syncOptions);
+          }
+        }
+
+        setSavedEquations(localEquations);
       }
     } catch (e) {
       console.error(e);
-      setSavedEquations([]); // Fallback to empty to prevent crash
+      setSavedEquations([]);
     }
   };
+
+  // Update the useEffect to include the new dependencies
+  useEffect(() => {
+    loadSavedEquations();
+  }, [
+    projectId,
+    syncOptions.isAuthenticated,
+    syncOptions.userId,
+    syncOptions.isServerConnected,
+  ]);
 
   const compileLatex = async (latex, isTemp = true, fileName = "temp") => {
     setIsCompiling(true);

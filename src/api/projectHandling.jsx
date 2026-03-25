@@ -617,3 +617,71 @@ export const loadSettings = async () => {
     throw error;
   }
 };
+
+export const syncEquationsToCloud = async (
+  projectId,
+  equations,
+  { isServerConnected, isAuthenticated, userId } = {},
+) => {
+  if (!isServerConnected || !isAuthenticated || !userId) return;
+  try {
+    await axios.put(
+      `${import.meta.env.VITE_admin_server}/api/equations/${userId}/${projectId}`,
+      { items: equations },
+      { withCredentials: true },
+    );
+  } catch (error) {
+    console.error("Failed to sync equations to cloud:", error.message);
+  }
+};
+
+export const pullEquationsFromCloud = async (
+  projectId,
+  { isServerConnected, isAuthenticated, userId } = {},
+) => {
+  if (!isServerConnected || !isAuthenticated || !userId) return [];
+  try {
+    const res = await axios.get(
+      `${import.meta.env.VITE_admin_server}/api/equations/${userId}/${projectId}`,
+      { withCredentials: true },
+    );
+    return res.data.items || [];
+  } catch (error) {
+    console.error("Failed to pull equations from cloud:", error.message);
+    return [];
+  }
+};
+
+export const syncCitationsToCloud = async (
+  projectId,
+  citations,
+  { isServerConnected, isAuthenticated, userId } = {},
+) => {
+  if (!isServerConnected || !isAuthenticated || !userId) return;
+  try {
+    await axios.put(
+      `${import.meta.env.VITE_admin_server}/api/citations/${userId}/${projectId}`,
+      { items: citations },
+      { withCredentials: true },
+    );
+  } catch (error) {
+    console.error("Failed to sync citations to cloud:", error.message);
+  }
+};
+
+export const pullCitationsFromCloud = async (
+  projectId,
+  { isServerConnected, isAuthenticated, userId } = {},
+) => {
+  if (!isServerConnected || !isAuthenticated || !userId) return [];
+  try {
+    const res = await axios.get(
+      `${import.meta.env.VITE_admin_server}/api/citations/${userId}/${projectId}`,
+      { withCredentials: true },
+    );
+    return res.data.items || [];
+  } catch (error) {
+    console.error("Failed to pull citations from cloud:", error.message);
+    return [];
+  }
+};
