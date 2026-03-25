@@ -18,10 +18,8 @@ import MathInsertModal from "../components/MathInsertModal";
 import CitationManager from "../components/citationManager";
 import FootnotePanel from "../components/FootnotePanel";
 import CrossRefPanel from "../components/CrossRefPanel";
-import { getRichTextHandlers } from "../components/richTextToolbar.jsx";
 import GoBack from "../assets/icons/goBack.svg?react";
 import FileIcon from "../assets/icons/file.svg?react";
-import "react-quill-new/dist/quill.snow.css";
 import "../App.css";
 import {
   isMainFile,
@@ -197,7 +195,7 @@ const EditorPage = () => {
   const [editingTableData, setEditingTableData] = useState(null);
   const [editingImageData, setEditingImageData] = useState(null);
   const [editingRange, setEditingRange] = useState(null);
-  const [insertTargetQuill, setInsertTargetQuill] = useState(null);
+  const [insertTargetEditor, setInsertTargetEditor] = useState(null);
 
   // View Notice State
   const [showTextViewNotice, setShowTextViewNotice] = useState(false);
@@ -903,57 +901,37 @@ const EditorPage = () => {
     }
   };
 
-  const quillModules = useMemo(
-    () => ({
-      toolbar: {
-        container: "#richtext-main-toolbar",
-        handlers: getRichTextHandlers(),
-      },
-      clipboard: {
-        matchVisual: false,
-      },
-    }),
-    [],
-  );
-
   useEffect(() => {
     const handleInsertTable = (e) => {
-      setInsertTargetQuill(e.detail?.quill || null);
+      setInsertTargetEditor(e.detail?.editorRef?.current || null);
       setEditingTableData(null);
       setEditingRange(null);
       setShowTableModal(true);
     };
     const handleInsertImage = (e) => {
-      setInsertTargetQuill(e.detail?.quill || null);
+      setInsertTargetEditor(e.detail?.editorRef?.current || null);
       setEditingImageData(null);
       setEditingRange(null);
       setShowImageModal(true);
     };
     const handleInsertMath = (e) => {
-      setInsertTargetQuill(e.detail?.quill || null);
+      setInsertTargetEditor(e.detail?.editorRef?.current || null);
       setShowMathModal(true);
     };
-    const handleInsertCitation = (e) => {
-      const quill = e.detail?.quill;
-      if (quill) {
-        const text = prompt("Enter citation key (e.g. Smith2024):");
-        if (text) {
-          const cursorPosition = quill.getSelection()?.index || 0;
-          quill.insertEmbed(
-            cursorPosition,
-            "latex-inline",
-            { type: "citation", value: text },
-            "user",
-          );
-          quill.setSelection(cursorPosition + 1);
-        }
+    const handleOpenSidebar = (e) => {
+      setInsertTargetEditor(e.detail?.editorRef?.current || null);
+      const { panelClass } = e.detail;
+      setActiveRightView(panelClass);
+      if (!isSectionSpaceOpen) {
+        // trigger opening section space if closed (logic to simulate click on toggle)
+        document.dispatchEvent(new CustomEvent("trigger-toggle-sidebar"));
       }
     };
 
     document.addEventListener("trigger-insert-table", handleInsertTable);
     document.addEventListener("trigger-insert-image", handleInsertImage);
     document.addEventListener("trigger-insert-math", handleInsertMath);
-    document.addEventListener("trigger-insert-citation", handleInsertCitation);
+    document.addEventListener("trigger-open-sidebar", handleOpenSidebar);
 
     return () => {
       if (updateTimeout.current) clearTimeout(updateTimeout.current);
@@ -961,12 +939,9 @@ const EditorPage = () => {
       document.removeEventListener("trigger-insert-table", handleInsertTable);
       document.removeEventListener("trigger-insert-image", handleInsertImage);
       document.removeEventListener("trigger-insert-math", handleInsertMath);
-      document.removeEventListener(
-        "trigger-insert-citation",
-        handleInsertCitation,
-      );
+      document.removeEventListener("trigger-open-sidebar", handleOpenSidebar);
     };
-  }, []);
+  }, [isSectionSpaceOpen]);
 
   if (projectDetails.isLoading) {
     return (
@@ -986,33 +961,6 @@ const EditorPage = () => {
     );
   }
 
-  // Inject CSS for the new Quill Toolbar icons
-  const customToolbarCSS = `
-    .ql-snow .ql-toolbar button.ql-footnote { width: 32px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
-    .ql-snow .ql-toolbar button.ql-footnote::after { content: "Fn"; }
-    .ql-snow .ql-toolbar button.ql-citation { width: 34px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
-    .ql-snow .ql-toolbar button.ql-citation::after { content: "Cite"; }
-    .ql-snow .ql-toolbar button.ql-ref { width: 34px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
-    .ql-snow .ql-toolbar button.ql-ref::after { content: "Ref"; }
-    .ql-snow .ql-toolbar button.ql-pagebreak { width: 44px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
-    .ql-snow .ql-toolbar button.ql-pagebreak::after { content: "Break"; }
-    
-    .ql-snow .ql-toolbar button.ql-table { width: 40px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
-    .ql-snow .ql-toolbar button.ql-table::after { content: "Table"; }
-    .ql-snow .ql-toolbar button.ql-image { width: 40px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
-    .ql-snow .ql-toolbar button.ql-image::after { content: "Image"; }
-    .ql-snow .ql-toolbar button.ql-formula { width: 40px; font-weight: 600; font-size: 11px; color: #6b7280; font-family: sans-serif; }
-    .ql-snow .ql-toolbar button.ql-formula::after { content: "Math"; }
-
-    .ql-snow .ql-toolbar button.ql-footnote:hover,
-    .ql-snow .ql-toolbar button.ql-citation:hover,
-    .ql-snow .ql-toolbar button.ql-ref:hover,
-    .ql-snow .ql-toolbar button.ql-pagebreak:hover,
-    .ql-snow .ql-toolbar button.ql-table:hover,
-    .ql-snow .ql-toolbar button.ql-image:hover,
-    .ql-snow .ql-toolbar button.ql-formula:hover { color: #2563eb !important; }
-  `;
-
   const leftOffset = isDistractionFree
     ? 0
     : isSectionSpaceOpen
@@ -1030,7 +978,6 @@ const EditorPage = () => {
           settings.appearance.customThemes[settings.appearance.theme].primary,
       }}
     >
-      <style>{customToolbarCSS}</style>
       <LeaveSession projectId={projectDetails.currentProject?.id} />
       {/* Left side of the screen — hidden when PDF is fullscreen */}
       {!isPdfFullscreen && (
@@ -1242,7 +1189,6 @@ const EditorPage = () => {
                 <RichTextEditorPanel
                   value={activeRichText}
                   onChange={handleRichTextChange}
-                  quillModules={quillModules}
                   highlightLine={syncTexLine}
                   onHighlightClear={clearSyncTex}
                 />
@@ -1441,25 +1387,14 @@ const EditorPage = () => {
                 projectId={projectDetails.currentProject?.id}
                 isModal={false}
                 onClose={() => setActiveRightView("preview")}
-                showInsertButton={!!insertTargetQuill || activeView === "code"}
+                showInsertButton={!!insertTargetEditor || activeView === "code"}
                 onInsert={(latex) => {
-                  if (insertTargetQuill) {
-                    const cursorPosition =
-                      insertTargetQuill.getSelection()?.index ||
-                      insertTargetQuill.savedCursorPosition ||
-                      0;
-                    const citeWrapper = `\\cite{${latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex}}`;
-                    insertTargetQuill.insertEmbed(
-                      cursorPosition,
-                      "latex-inline",
-                      {
-                        type: "citation",
-                        value:
-                          citeWrapper.match(/\\cite\{([^}]+)\}/)?.[1] || latex,
-                      },
-                      "user",
+                  if (insertTargetEditor) {
+                    const citeKey =
+                      latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex;
+                    insertTargetEditor.insertHTML(
+                      `<span class="dc-latex-inline" data-latex-type="citation" data-latex-value="${citeKey.replace(/"/g, "&quot;")}" contenteditable="false">${citeKey}</span>&nbsp;`,
                     );
-                    insertTargetQuill.setSelection(cursorPosition + 1);
                   } else if (monacoEditorRef.current?.insertAtCursor) {
                     monacoEditorRef.current.insertAtCursor(
                       `\\cite{${latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex}}`,
@@ -1485,20 +1420,12 @@ const EditorPage = () => {
               <FootnotePanel
                 isModal={false}
                 onClose={() => setActiveRightView("preview")}
-                showInsertButton={!!insertTargetQuill || activeView === "code"}
+                showInsertButton={!!insertTargetEditor || activeView === "code"}
                 onInsert={(text) => {
-                  if (insertTargetQuill) {
-                    const cursorPosition =
-                      insertTargetQuill.getSelection()?.index ||
-                      insertTargetQuill.savedCursorPosition ||
-                      0;
-                    insertTargetQuill.insertEmbed(
-                      cursorPosition,
-                      "latex-inline",
-                      { type: "footnote", value: text },
-                      "user",
+                  if (insertTargetEditor) {
+                    insertTargetEditor.insertHTML(
+                      `<span class="dc-latex-inline" data-latex-type="footnote" data-latex-value="${text.replace(/"/g, "&quot;")}" contenteditable="false">${text}</span>&nbsp;`,
                     );
-                    insertTargetQuill.setSelection(cursorPosition + 1);
                   } else if (monacoEditorRef.current?.insertAtCursor) {
                     monacoEditorRef.current.insertAtCursor(
                       `\\footnote{${text}}`,
@@ -1525,20 +1452,12 @@ const EditorPage = () => {
                 isModal={false}
                 projectFiles={projectDetails.currentProject?.files || {}}
                 onClose={() => setActiveRightView("preview")}
-                showInsertButton={!!insertTargetQuill || activeView === "code"}
+                showInsertButton={!!insertTargetEditor || activeView === "code"}
                 onInsert={(label) => {
-                  if (insertTargetQuill) {
-                    const cursorPosition =
-                      insertTargetQuill.getSelection()?.index ||
-                      insertTargetQuill.savedCursorPosition ||
-                      0;
-                    insertTargetQuill.insertEmbed(
-                      cursorPosition,
-                      "latex-inline",
-                      { type: "ref", value: label },
-                      "user",
+                  if (insertTargetEditor) {
+                    insertTargetEditor.insertHTML(
+                      `<span class="dc-latex-inline" data-latex-type="ref" data-latex-value="${label.replace(/"/g, "&quot;")}" contenteditable="false">${label}</span>&nbsp;`,
                     );
-                    insertTargetQuill.setSelection(cursorPosition + 1);
                   } else if (monacoEditorRef.current?.insertAtCursor) {
                     monacoEditorRef.current.insertAtCursor(`\\ref{${label}}`);
                   }
@@ -1601,22 +1520,22 @@ const EditorPage = () => {
           setShowTableModal(false);
           setEditingTableData(null);
           setEditingRange(null);
-          setInsertTargetQuill(null);
+          setInsertTargetEditor(null);
         }}
         initialData={editingTableData}
-        showInsertButton={!!insertTargetQuill}
+        showInsertButton={!!insertTargetEditor}
         onInsert={(latex) => {
-          if (insertTargetQuill) {
-            const cursorPosition = insertTargetQuill.getSelection()?.index || 0;
+          if (insertTargetEditor) {
             const b64Latex = btoa(unescape(encodeURIComponent(latex)));
-            insertTargetQuill.insertEmbed(
-              cursorPosition,
-              "latex-block",
-              { type: "table", latex: b64Latex },
-              "user",
+
+            // Extract a descriptive label for the block
+            const captionMatch = latex.match(/\\caption\{([^]*?)\}/);
+            const captionTxt = captionMatch ? captionMatch[1] : "Table content";
+            const blockContentHtml = `<span class="dc-block-label">Table</span><span class="dc-block-caption">${captionTxt}</span><span class="dc-block-badge">EDIT</span>`;
+
+            insertTargetEditor.insertHTML(
+              `<div class="dc-latex-block" data-latex="${b64Latex}" data-type="table" contenteditable="false">${blockContentHtml}</div>`,
             );
-            insertTargetQuill.insertText(cursorPosition + 1, "\n", "user");
-            insertTargetQuill.setSelection(cursorPosition + 2);
           } else if (monacoEditorRef.current) {
             if (editingRange) {
               monacoEditorRef.current.replaceRange(editingRange, latex);
@@ -1634,7 +1553,7 @@ const EditorPage = () => {
           setShowImageModal(false);
           setEditingImageData(null);
           setEditingRange(null);
-          setInsertTargetQuill(null);
+          setInsertTargetEditor(null);
         }}
         initialData={editingImageData}
         projectFiles={
@@ -1644,19 +1563,21 @@ const EditorPage = () => {
               )
             : []
         }
-        showInsertButton={!!insertTargetQuill}
+        showInsertButton={!!insertTargetEditor}
         onInsert={(latex) => {
-          if (insertTargetQuill) {
-            const cursorPosition = insertTargetQuill.getSelection()?.index || 0;
+          if (insertTargetEditor) {
             const b64Latex = btoa(unescape(encodeURIComponent(latex)));
-            insertTargetQuill.insertEmbed(
-              cursorPosition,
-              "latex-block",
-              { type: "image", latex: b64Latex },
-              "user",
+
+            // Extract a descriptive label for the block
+            const captionMatch = latex.match(/\\caption\{([^]*?)\}/);
+            const captionTxt = captionMatch
+              ? captionMatch[1]
+              : "Figure content";
+            const blockContentHtml = `<span class="dc-block-label">Figure</span><span class="dc-block-caption">${captionTxt}</span><span class="dc-block-badge">EDIT</span>`;
+
+            insertTargetEditor.insertHTML(
+              `<div class="dc-latex-block" data-latex="${b64Latex}" data-type="figure" contenteditable="false">${blockContentHtml}</div>`,
             );
-            insertTargetQuill.insertText(cursorPosition + 1, "\n", "user");
-            insertTargetQuill.setSelection(cursorPosition + 2);
           } else if (monacoEditorRef.current) {
             if (editingRange) {
               monacoEditorRef.current.replaceRange(editingRange, latex);
@@ -1673,21 +1594,24 @@ const EditorPage = () => {
         isOpen={showMathModal}
         onClose={() => {
           setShowMathModal(false);
-          setInsertTargetQuill(null);
+          setInsertTargetEditor(null);
         }}
-        showInsertButton={!!insertTargetQuill}
+        showInsertButton={!!insertTargetEditor}
         onInsert={(latex) => {
-          if (insertTargetQuill) {
-            const cursorPosition = insertTargetQuill.getSelection()?.index || 0;
+          if (insertTargetEditor) {
             const b64Latex = btoa(unescape(encodeURIComponent(latex)));
-            insertTargetQuill.insertEmbed(
-              cursorPosition,
-              "latex-block",
-              { type: "equation", latex: b64Latex },
-              "user",
+
+            // Show first 20 chars of the equation math
+            let eqText = latex
+              .replace(/\\begin\{equation\}|\\end\{equation\}/g, "")
+              .trim();
+            const shortEq =
+              eqText.length > 30 ? eqText.substring(0, 30) + "..." : eqText;
+            const blockContentHtml = `<span class="dc-block-label">Equation</span><span class="dc-block-caption">${shortEq}</span><span class="dc-block-badge">EQ</span>`;
+
+            insertTargetEditor.insertHTML(
+              `<div class="dc-latex-block" data-latex="${b64Latex}" data-type="equation" contenteditable="false">${blockContentHtml}</div>`,
             );
-            insertTargetQuill.insertText(cursorPosition + 1, "\n", "user");
-            insertTargetQuill.setSelection(cursorPosition + 2);
           } else if (
             monacoEditorRef.current &&
             monacoEditorRef.current.insertAtCursor

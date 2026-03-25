@@ -1,0 +1,509 @@
+/* ================================================================
+   Dociere Canvas — Rich Text Editor Styles
+   Replaces Quill Snow theme. Uses `dc-*` prefix for all elements.
+   ================================================================ */
+
+/* ── Editor Container ── */
+.dc-canvas {
+  outline: none;
+  padding: 40px 60px;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #374151;
+  min-height: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  caret-color: #2563eb;
+}
+
+.dc-canvas:empty::before {
+  content: "Start typing…";
+  color: #9ca3af;
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* ── Typography ── */
+.dc-canvas p {
+  margin-bottom: 0.6em;
+}
+
+.dc-canvas h1,
+.dc-canvas h2,
+.dc-canvas h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #e5e7eb;
+  color: #111827;
+  font-weight: 600;
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.3;
+}
+
+.dc-canvas h1 {
+  font-size: 1.6em;
+}
+.dc-canvas h2 {
+  font-size: 1.3em;
+}
+.dc-canvas h3 {
+  font-size: 1.1em;
+  border-bottom: none;
+}
+
+/* ── Inline formatting ── */
+.dc-canvas strong {
+  font-weight: 700;
+  color: #111827;
+}
+.dc-canvas em {
+  font-style: italic;
+}
+.dc-canvas u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dc-canvas s {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+.dc-canvas code {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.88em;
+  color: #c7254e;
+}
+.dc-canvas sup {
+  font-size: 0.75em;
+  vertical-align: super;
+}
+.dc-canvas sub {
+  font-size: 0.75em;
+  vertical-align: sub;
+}
+
+/* ── Links ── */
+.dc-canvas a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.dc-canvas a:hover {
+  color: #1d4ed8;
+}
+
+/* ── Lists ── */
+.dc-canvas ul,
+.dc-canvas ol {
+  padding-left: 2em;
+  margin-bottom: 0.8em;
+}
+.dc-canvas ul {
+  list-style-type: disc;
+}
+.dc-canvas ol {
+  list-style-type: decimal;
+}
+.dc-canvas li {
+  margin-bottom: 0.3em;
+  line-height: 1.6;
+}
+
+/* ── Blockquote ── */
+.dc-canvas blockquote {
+  border-left: 4px solid #d1d5db;
+  margin: 1em 0;
+  padding: 0.6em 1.2em;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+}
+
+/* ── Code Block ── */
+.dc-canvas pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 6px;
+  padding: 16px 20px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.88em;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+/* ── Horizontal Rule / Page Break ── */
+.dc-canvas hr.dc-pagebreak {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #d1d5db, transparent);
+  margin: 2em 0;
+  position: relative;
+}
+.dc-canvas hr.dc-pagebreak::after {
+  content: "Page Break";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 0 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+/* ================================================================
+   ACADEMIC ELEMENTS
+   ================================================================ */
+
+/* ── Inline Blots: Citations, Footnotes, Refs ── */
+.dc-latex-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.82em;
+  font-weight: 600;
+  font-family: "Inter", system-ui, sans-serif;
+  vertical-align: baseline;
+  cursor: default;
+  user-select: all;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.dc-latex-inline[data-latex-type="citation"] {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+.dc-latex-inline[data-latex-type="citation"]::before {
+  content: "📖";
+  font-size: 0.9em;
+}
+
+.dc-latex-inline[data-latex-type="footnote"] {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+.dc-latex-inline[data-latex-type="footnote"]::before {
+  content: "fn";
+  font-size: 0.8em;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.dc-latex-inline[data-latex-type="ref"] {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+.dc-latex-inline[data-latex-type="ref"]::before {
+  content: "🔗";
+  font-size: 0.85em;
+}
+
+/* ================================================================
+   BLOCK ELEMENTS: Tables, Figures, Equations
+   ================================================================ */
+
+.dc-latex-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 1.2em 0;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 13px;
+  position: relative;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.dc-latex-block[data-type="table"] {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+}
+.dc-latex-block[data-type="table"]::before {
+  content: "📊";
+  font-size: 1.4em;
+}
+.dc-latex-block[data-type="table"]:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.dc-latex-block[data-type="figure"] {
+  background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+  border: 1px solid #e9d5ff;
+  color: #7e22ce;
+}
+.dc-latex-block[data-type="figure"]::before {
+  content: "🖼️";
+  font-size: 1.4em;
+}
+.dc-latex-block[data-type="figure"]:hover {
+  border-color: #c084fc;
+  box-shadow: 0 2px 8px rgba(192, 132, 252, 0.15);
+  cursor: pointer;
+}
+
+.dc-latex-block[data-type="equation"] {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+.dc-latex-block[data-type="equation"]::before {
+  content: "∑";
+  font-size: 1.4em;
+  font-weight: 700;
+}
+.dc-latex-block[data-type="equation"]:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+}
+
+.dc-latex-block .dc-block-label {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dc-latex-block .dc-block-caption {
+  font-size: 12px;
+  opacity: 0.7;
+  font-weight: 400;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dc-latex-block .dc-block-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.5;
+}
+
+/* ================================================================
+   FILE & ENV MARKERS
+   ================================================================ */
+
+.dc-file-marker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0.8em 0;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: "Inter", system-ui, sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.dc-file-marker[data-type="start"] {
+  color: #6366f1;
+  border-top: 2px solid #c7d2fe;
+}
+.dc-file-marker[data-type="start"]::before {
+  content: "📄";
+  font-size: 1em;
+}
+
+.dc-file-marker[data-type="end"] {
+  color: #a5b4fc;
+  border-bottom: 1px dashed #c7d2fe;
+  font-size: 10px;
+}
+
+.dc-env-marker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0.5em 0;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: "Inter", system-ui, sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  user-select: none;
+  border-radius: 4px;
+}
+
+.dc-env-marker[data-type="start"] {
+  color: #0891b2;
+  background: #ecfeff;
+  border-left: 3px solid #22d3ee;
+}
+
+.dc-env-marker[data-type="end"] {
+  color: #a5b4fc;
+  font-size: 10px;
+  border-left: 3px solid #e0e7ff;
+  background: #f8fafc;
+}
+
+/* ── Bibliography Items ── */
+.dc-bibitem {
+  margin-bottom: 0.6em;
+  padding-left: 1.5em;
+  text-indent: -1.5em;
+}
+.dc-bibitem strong {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+/* ── Preamble / Postamble (hidden data carriers) ── */
+.dc-latex-preamble,
+.dc-postamble-block {
+  display: none !important;
+}
+
+/* ── Selection Highlight ── */
+.dc-canvas ::selection {
+  background: #bfdbfe;
+  color: inherit;
+}
+
+/* ── SyncTeX Highlight ── */
+.dc-synctex-highlight {
+  background-color: rgba(255, 234, 0, 0.4) !important;
+  transition: background-color 0.5s ease;
+  border-radius: 2px;
+}
+
+/* ── Toolbar Styling ── */
+.dc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 4px 8px;
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.dc-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: 8px;
+  margin-right: 4px;
+  border-right: 1px solid #e5e7eb;
+}
+.dc-toolbar-group:last-child {
+  border-right: none;
+}
+
+.dc-toolbar button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.1s ease;
+}
+.dc-toolbar button:hover {
+  background: #f3f4f6;
+  color: #2563eb;
+}
+.dc-toolbar button.active {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.dc-toolbar button.dc-text-btn {
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: "Inter", system-ui, sans-serif;
+  letter-spacing: 0.3px;
+}
+
+.dc-toolbar select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: white;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: "Inter", system-ui, sans-serif;
+  color: #374151;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+}
+.dc-toolbar select:hover {
+  border-color: #d1d5db;
+}
+.dc-toolbar select:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* =========================================
+   SPECIAL ENVIRONMENTS (Abstract, Keywords)
+   ========================================= */
+.dc-env-block {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid #3b82f6; /* Tailwind blue-500 */
+  background-color: #f8fafc; /* Tailwind slate-50 */
+  border-radius: 0 0.25rem 0.25rem 0;
+  position: relative;
+}
+
+.dc-env-heading {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #3b82f6;
+  user-select: none;
+  pointer-events: none;
+}
+
+.dc-env-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #334155;
+}

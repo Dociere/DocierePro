@@ -1,95 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import MonacoEditorPanel from "./monacoEditor";
-import ReactQuill from "react-quill-new";
-import "react-quill-new/dist/quill.snow.css";
-import "../utils/latexBlots.jsx";
+import RichTextCanvas from "./RichTextCanvas.jsx";
+import "../assets/styles/canvasStyles.css";
 import latexUtility from "../utils/latexUtility";
 import TableDesignerModal from "./TableDesignerModal";
 import ImageInsertModal from "./ImageInsertModal";
 import "../assets/styles/synctex.css";
 import axios from "axios";
 import ReactDOM from "react-dom";
-import { RichTextToolbar, getRichTextHandlers } from "./richTextToolbar.jsx";
+import { RichTextToolbar } from "./richTextToolbar.jsx";
 
-// Quill modules matching the main text editor (LaTeX-compatible only)
-const SECTION_QUILL_MODULES = {
-  toolbar: {
-    container: [
-      [{ header: [2, 3, 4, false] }],
-      ["bold", "italic", "underline", "strike"],
-      [{ script: "super" }, { script: "sub" }],
-      ["blockquote", "code-block"],
-      [{ list: "ordered" }, { list: "bullet" }],
-      ["footnote", "citation", "ref"],
-      ["table", "image", "formula"],
-      ["pagebreak"],
-      ["clean"],
-    ],
-    handlers: {
-      footnote: function () {
-        const text = prompt("Enter footnote text:");
-        if (text) {
-          const cursorPosition = this.quill.getSelection()?.index || 0;
-          this.quill.insertEmbed(
-            cursorPosition,
-            "latex-inline",
-            { type: "footnote", value: text },
-            "user",
-          );
-          this.quill.setSelection(cursorPosition + 1);
-        }
-      },
-      citation: function () {
-        const text = prompt("Enter citation key (e.g. Smith2024):");
-        if (text) {
-          const cursorPosition = this.quill.getSelection()?.index || 0;
-          this.quill.insertEmbed(
-            cursorPosition,
-            "latex-inline",
-            { type: "citation", value: text },
-            "user",
-          );
-          this.quill.setSelection(cursorPosition + 1);
-        }
-      },
-      ref: function () {
-        const text = prompt("Enter reference label (e.g. fig:1):");
-        if (text) {
-          const cursorPosition = this.quill.getSelection()?.index || 0;
-          this.quill.insertEmbed(
-            cursorPosition,
-            "latex-inline",
-            { type: "ref", value: text },
-            "user",
-          );
-          this.quill.setSelection(cursorPosition + 1);
-        }
-      },
-      pagebreak: function () {
-        const cursorPosition = this.quill.getSelection()?.index || 0;
-        this.quill.insertEmbed(cursorPosition, "page-break", true, "user");
-        this.quill.setSelection(cursorPosition + 1);
-      },
-      table: function () {
-        // Dispatches to React component
-        document.dispatchEvent(new CustomEvent("trigger-insert-table"));
-      },
-      image: function () {
-        document.dispatchEvent(new CustomEvent("trigger-insert-image"));
-      },
-      formula: function () {
-        document.dispatchEvent(
-          new CustomEvent("trigger-insert-math", {
-            detail: { quill: this.quill },
-          }),
-        );
-      },
-    },
-  },
-  clipboard: {
-    matchVisual: false,
-  },
-};
+// No Quill modules needed — toolbar operates via contentEditable ref
 
 const SERVER_URL = "http://localhost:5000";
 
@@ -239,6 +160,20 @@ const DeleteIcon = () => (
     strokeWidth="2"
   >
     <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" />
+  </svg>
+);
+const TextIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <line x1="4" y1="7" x2="20" y2="7"></line>
+    <line x1="4" y1="12" x2="20" y2="12"></line>
+    <line x1="4" y1="17" x2="14" y2="17"></line>
   </svg>
 );
 const PlusIcon = () => (
@@ -505,6 +440,14 @@ const SectionEditor = ({
         content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n 1 & 2 \\\\ \\hline\n 3 & 4 \\\\ \\hline\n\\end{tabular}\n\\end{table}`,
         children: [],
       };
+    } else if (type === "regular") {
+      newSection = {
+        id: Date.now() + Math.random(),
+        type: "regular",
+        name: "",
+        content: "",
+        children: [],
+      };
     } else {
       // Standard Section
       newSection = {
@@ -581,12 +524,31 @@ const SectionEditor = ({
             );
           })}
 
-        <button
-          onClick={addRootSectionEnd}
-          className="w-full py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:bg-white transition-all flex items-center justify-center gap-2 font-semibold"
-        >
-          <PlusIcon /> Add New Main Section
-        </button>
+        <div className="flex gap-4 w-full">
+          <button
+            onClick={addRootSectionEnd}
+            className="flex-1 py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:bg-white transition-all flex items-center justify-center gap-2 font-semibold"
+          >
+            <PlusIcon /> Add New Main Section
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const newSection = {
+                id: Date.now() + Math.random(),
+                type: "regular",
+                name: "",
+                content: "",
+                children: [],
+              };
+              onSectionsChange([...sections, newSection]);
+              setFocusedSectionId(newSection.id);
+            }}
+            className="flex-1 py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-green-400 hover:text-green-500 hover:bg-white transition-all flex items-center justify-center gap-2 font-semibold"
+          >
+            <TextIcon /> Add Text Block
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -628,27 +590,9 @@ const RecursiveSection = ({
 
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // Custom editor styles for section editor (matching main editor)
-  const sectionEditorStyles = `
-    .section-quill .ql-editor {
-      padding: 20px 30px !important;
-      font-family: 'Inter', system-ui, sans-serif !important;
-      line-height: 1.6 !important;
-    }
-    .section-quill .ql-editor p {
-      margin-bottom: 1.2em !important;
-      color: #374151;
-    }
-    .section-quill .ql-editor h1, .section-quill .ql-editor h2, .section-quill .ql-editor h3 {
-      margin-top: 1.2em !important;
-      margin-bottom: 0.6em !important;
-      padding-bottom: 0.2em !important;
-      border-bottom: 1px solid #e5e7eb !important;
-      color: #111827;
-      font-weight: 600 !important;
-    }
-    .section-quill .ql-editor h3 { border-bottom: none !important; }
-  `;
+  // Ref for the canvas editor in visual mode
+  const sectionCanvasRef = useRef(null);
+
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -663,19 +607,6 @@ const RecursiveSection = ({
   const sanitizedId = useMemo(
     () => String(section.id).replace(/\./g, "-"),
     [section.id],
-  );
-
-  const sectionQuillModules = useMemo(
-    () => ({
-      toolbar: {
-        container: `#richtext-toolbar-${sanitizedId}`,
-        handlers: getRichTextHandlers(),
-      },
-      clipboard: {
-        matchVisual: false,
-      },
-    }),
-    [sanitizedId],
   );
 
   // Ref for Monaco editor to insert at cursor
@@ -847,6 +778,14 @@ const RecursiveSection = ({
         content: `\\begin{table}[h]\n\\centering\n\\begin{tabular}{|c|c|}\n\\hline\n 1 & 2 \\\\ \\hline\n 3 & 4 \\\\ \\hline\n\\end{tabular}\n\\end{table}`,
         children: [],
       };
+    } else if (specificType === "regular") {
+      newSibling = {
+        id: Date.now() + Math.random(),
+        type: "regular",
+        name: "",
+        content: "",
+        children: [],
+      };
     } else {
       newSibling = {
         id: Date.now() + Math.random(),
@@ -1005,95 +944,97 @@ const RecursiveSection = ({
             {isLoadingPreview ? <LoaderIcon /> : <PlayIcon />}
           </button>
           <span className="text-[10px] uppercase font-bold text-gray-400 [writing-mode:vertical-rl] rotate-180 mt-2 tracking-widest">
-            {section.type}
+            {section.type === "regular" ? "TEXT" : section.type}
           </span>
         </div>
 
         <div className="flex-1 p-3 sm:p-4 relative">
-          {(isEditingName || (!section.name && isFocused)) && (
-            <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-300">
-              <div className="flex flex-col gap-3">
-                {/* Section Name Input */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Section Name
-                  </label>
-                  <input
-                    value={section.name}
-                    onChange={(e) =>
-                      onUpdate({ ...section, name: e.target.value })
-                    }
-                    placeholder="Unnamed Section"
-                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => {
-                      e.stopPropagation();
-                      if (e.key === "Enter") {
-                        setIsEditingName(false);
+          {(isEditingName || (!section.name && isFocused)) &&
+            section.type !== "regular" && (
+              <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-300">
+                <div className="flex flex-col gap-3">
+                  {/* Section Name Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Section Name
+                    </label>
+                    <input
+                      value={section.name}
+                      onChange={(e) =>
+                        onUpdate({ ...section, name: e.target.value })
                       }
-                    }}
-                  />
+                      placeholder="Unnamed Section"
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded outline-none focus:border-gray-400"
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") {
+                          setIsEditingName(false);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Numbered/Unnumbered Toggle - Only for section/subsection/subsubsection */}
+                  {["section", "subsection", "subsubsection"].includes(
+                    section.type,
+                  ) &&
+                    section.subtype !== "env" && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-gray-600">
+                          Numbering:
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdate({ ...section, subtype: "standard" });
+                            }}
+                            className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                              section.subtype !== "starred"
+                                ? "bg-black text-white"
+                                : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                            }`}
+                          >
+                            Numbered
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdate({ ...section, subtype: "starred" });
+                            }}
+                            className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
+                              section.subtype === "starred"
+                                ? "bg-black text-white"
+                                : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                            }`}
+                          >
+                            Unnumbered
+                          </button>
+                        </div>
+                      </div>
+                    )}
                 </div>
 
-                {/* Numbered/Unnumbered Toggle - Only for section/subsection/subsubsection */}
-                {["section", "subsection", "subsubsection"].includes(
-                  section.type,
-                ) && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-gray-600">
-                      Numbering:
-                    </span>
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUpdate({ ...section, subtype: "standard" });
-                        }}
-                        className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
-                          section.subtype !== "starred"
-                            ? "bg-black text-white"
-                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                        }`}
-                      >
-                        Numbered
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUpdate({ ...section, subtype: "starred" });
-                        }}
-                        className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
-                          section.subtype === "starred"
-                            ? "bg-black text-white"
-                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                        }`}
-                      >
-                        Unnumbered
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Done button */}
+                <div className="flex justify-end mt-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingName(false);
+                    }}
+                    className="px-3 py-1 text-xs bg-gray-800 text-white rounded hover:bg-black"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
-
-              {/* Done button */}
-              <div className="flex justify-end mt-3">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditingName(false);
-                  }}
-                  className="px-3 py-1 text-xs bg-gray-800 text-white rounded hover:bg-black"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          )}
-          {section.name && !isEditingName && (
+            )}
+          {section.name && !isEditingName && section.type !== "regular" && (
             <div className="mb-2 text-sm font-semibold text-gray-700 flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <span>{section.name}</span>
@@ -1196,8 +1137,6 @@ const RecursiveSection = ({
           {/* Removed Visual / Code mode toggle from here - moved up */}
 
           <div className="relative group/resize">
-            <style>{sectionEditorStyles}</style>
-
             {/* Resizable Container */}
             <div
               className="resize-y overflow-hidden border border-gray-200 rounded w-full bg-white relative flex flex-col h-[300px] min-h-[300px]"
@@ -1205,13 +1144,16 @@ const RecursiveSection = ({
             >
               {isVisualMode ? (
                 /* Visual / Rich Text View */
-                <div className="section-quill flex-1 flex flex-col h-full overflow-hidden">
-                  <RichTextToolbar id={`richtext-toolbar-${sanitizedId}`} />
-                  <ReactQuill
-                    theme="snow"
-                    value={richTextValue}
-                    onChange={(content, delta, source) => {
-                      if (source === "user") {
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
+                  <RichTextToolbar
+                    id={`richtext-toolbar-${sanitizedId}`}
+                    editorRef={sectionCanvasRef}
+                  />
+                  <div className="flex-1 overflow-y-auto">
+                    <RichTextCanvas
+                      ref={sectionCanvasRef}
+                      value={richTextValue}
+                      onChange={(content) => {
                         setRichTextValue(content);
                         // Live-sync back to LaTeX (Debounced)
                         if (updateTimeoutRef.current)
@@ -1222,11 +1164,9 @@ const RecursiveSection = ({
                             : latexUtility.richTextToLatex(content);
                           onUpdate({ ...section, content: latex });
                         }, 500);
-                      }
-                    }}
-                    modules={sectionQuillModules}
-                    className="h-full flex flex-col flex-1 min-h-0"
-                  />
+                      }}
+                    />
+                  </div>
                 </div>
               ) : (
                 /* Code View (Monaco) */
@@ -1344,6 +1284,15 @@ const RecursiveSection = ({
           className="px-4 py-1.5 bg-transparent border border-gray-300 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all duration-150 outline-none flex items-center gap-1"
         >
           <PlusIcon /> {getSiblingLabel()}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddAfter("regular");
+          }}
+          className="px-4 py-1.5 bg-transparent border border-gray-300 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all duration-150 outline-none flex items-center gap-1"
+        >
+          <TextIcon /> Add Text Block
         </button>
         {/* Removed Add Table pill button - Table is now in toolbar */}
 
