@@ -712,7 +712,7 @@ const SettingsPage = () => {
                           <span
                             className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
                           >
-                            Local Machine (Self-hosted)
+                            Self-hosted
                           </span>
                         </div>
                       </label>
@@ -728,7 +728,7 @@ const SettingsPage = () => {
                           <span
                             className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
                           >
-                            Remote Machine (Cloud-based Hosting)
+                            Cloud-based Hosting
                           </span>
                         </div>
                       </label>

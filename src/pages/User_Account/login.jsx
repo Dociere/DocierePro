@@ -1,9 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useOutletContext } from "react-router-dom";
 
 function Login() {
   const navigate = useNavigate();
+  const { isSectionSpaceOpen } = useOutletContext();
   const [password, setPassword] = useState("");
   const [emailId, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -42,7 +43,9 @@ function Login() {
   };
 
   return (
-    <div className="h-screen bg-[#eaeaea] relative overflow-hidden">
+    <div
+      className={`h-[calc(100vh-2.75rem)] bg-[#eaeaea] relative overflow-hidden mt-11 flex flex-col transition-all duration-300 ${isSectionSpaceOpen ? "ml-96" : "ml-12"}`}
+    >
       <div className="absolute top-6 left-6 z-10">
         <div className="text-[#0C2340] font-playfair text-2xl">
           <p>Docière Pro</p>
