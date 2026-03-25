@@ -24,7 +24,7 @@ import axios from "axios";
 
 const API_BASE_URL = "http://localhost:5000";
 
-const EasyMathInput = ({ onClose, onInsert }) => {
+const EasyMathInput = ({ onClose, onInsert, projectId }) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -142,7 +142,9 @@ const EasyMathInput = ({ onClose, onInsert }) => {
   // --- API HANDLERS ---
   const loadSavedEquations = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/equations/list`);
+      const res = await fetch(
+        `${API_BASE_URL}/api/equations/list?projectId=${projectId || ""}`,
+      );
       if (res.ok) {
         const data = await res.json();
         // Ensure we set an array, otherwise default to empty []
@@ -279,7 +281,11 @@ const EasyMathInput = ({ onClose, onInsert }) => {
       await fetch(`${API_BASE_URL}/api/equations/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: saveFileName, latex: latexCode }),
+        body: JSON.stringify({
+          fileName: saveFileName,
+          latex: latexCode,
+          projectId,
+        }),
       });
       setShowSaveDialog(false);
       loadSavedEquations();
@@ -289,9 +295,12 @@ const EasyMathInput = ({ onClose, onInsert }) => {
   };
   const handleDeleteEquation = async (fileName) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/equations/${fileName}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/equations/${fileName}?projectId=${projectId || ""}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (res.ok) {
         loadSavedEquations();

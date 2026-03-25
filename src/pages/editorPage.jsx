@@ -1438,6 +1438,7 @@ const EditorPage = () => {
             </button>
             <div className="pt-12 flex-1 overflow-y-auto w-full h-full">
               <CitationManager
+                projectId={projectDetails.currentProject?.id}
                 isModal={false}
                 onClose={() => setActiveRightView("preview")}
                 showInsertButton={!!insertTargetQuill || activeView === "code"}
@@ -1668,6 +1669,7 @@ const EditorPage = () => {
 
       {/* Math Insert Modal for main Monaco editor */}
       <MathInsertModal
+        projectId={projectDetails.currentProject?.id}
         isOpen={showMathModal}
         onClose={() => {
           setShowMathModal(false);

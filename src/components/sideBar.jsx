@@ -454,12 +454,16 @@ const DynamicSideBar = ({
 
       {/* Easy Math Input Modal */}
       {isMathModalOpen && (
-        <EasyMathInput onClose={() => setIsMathModalOpen(false)} />
+        <EasyMathInput
+          projectId={projectDetails?.currentProject?.id}
+          onClose={() => setIsMathModalOpen(false)}
+        />
       )}
 
       {/* Citation Manager Modal */}
       {isCitationModalOpen && (
         <CitationManager
+          projectId={projectDetails?.currentProject?.id}
           isModal={true}
           onClose={() => setIsCitationModalOpen(false)}
         />
