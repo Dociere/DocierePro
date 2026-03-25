@@ -22,6 +22,11 @@ const StartingPage = () => {
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
   useEffect(() => {
     fetchData();
@@ -73,15 +78,22 @@ const StartingPage = () => {
         }
       } catch (err) {
         console.error("Failed to upload zip project:", err);
-        alert("Failed to upload project. Please try again.");
+        setAlertModal({
+          isOpen: true,
+          title: "Upload Failed",
+          message: "Failed to upload project. Please try again.",
+        });
       } finally {
         setIsUploading(false);
         if (fileRef.current) fileRef.current.value = "";
       }
     } else if (file.name.endsWith(".tex")) {
-      alert(
-        "Direct .tex upload is not yet supported. Please zip your project folder and upload the .zip file.",
-      );
+      setAlertModal({
+        isOpen: true,
+        title: "Unsupported Format",
+        message:
+          "Direct .tex upload is not yet supported. Please zip your project folder and upload the .zip file.",
+      });
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -233,7 +245,17 @@ const StartingPage = () => {
           title="Delete Project"
           message={`Are you sure you want to delete "${projectToDelete?.title}"? This will permanently remove the project folder (${projectToDelete?.id}) and all its contents.`}
           confirmText="Delete Project"
+          cancelText="Cancel"
           isDanger={true}
+        />
+        <ConfirmModal
+          isOpen={alertModal.isOpen}
+          title={alertModal.title}
+          message={alertModal.message}
+          confirmText="OK"
+          cancelText=""
+          onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+          onCancel={() => setAlertModal({ ...alertModal, isOpen: false })}
         />
       </div>
     </>

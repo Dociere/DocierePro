@@ -174,7 +174,11 @@ const EasyMathInput = ({ onClose, onInsert }) => {
       if (data.success && data.pdfUrl) return `${API_BASE_URL}${data.pdfUrl}`;
       throw new Error("No URL returned");
     } catch (e) {
-      alert(`Error: ${e.message}`);
+      setErrorModal({
+        isOpen: true,
+        title: "Compile Error",
+        message: `Error: ${e.message}`,
+      });
       return null;
     } finally {
       setIsCompiling(false);
@@ -263,7 +267,14 @@ const EasyMathInput = ({ onClose, onInsert }) => {
   };
 
   const handleSaveEquation = async () => {
-    if (!saveFileName.trim()) return alert("Enter filename");
+    if (!saveFileName.trim()) {
+      setErrorModal({
+        isOpen: true,
+        title: "Name Required",
+        message: "Enter filename",
+      });
+      return;
+    }
     try {
       await fetch(`${API_BASE_URL}/api/equations/save`, {
         method: "POST",
@@ -273,7 +284,7 @@ const EasyMathInput = ({ onClose, onInsert }) => {
       setShowSaveDialog(false);
       loadSavedEquations();
     } catch (e) {
-      alert(e.message);
+      setErrorModal({ isOpen: true, title: "Save Error", message: e.message });
     }
   };
   const handleDeleteEquation = async (fileName) => {
@@ -1014,7 +1025,6 @@ const EasyMathInput = ({ onClose, onInsert }) => {
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(eq.latex);
-                            alert("Copied");
                             setToastMessage("✓ Copied to clipboard");
                             setTimeout(() => setToastMessage(null), 2000);
                           }}

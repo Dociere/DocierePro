@@ -142,7 +142,7 @@ const DetailsPage = () => {
     /*
     for (const author of authorDetails) {
       if (!author.name.trim()) {
-        alert("Please enter author name.");
+        setAlertModal({ isOpen: true, title: "Missing Author", message: "Please enter author name." });
         return;
       }
     }

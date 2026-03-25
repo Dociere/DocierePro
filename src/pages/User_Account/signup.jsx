@@ -1,6 +1,7 @@
 import react, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import ConfirmModal from "../../components/confirmModal";
 
 function DynamicSignup() {
   const navigate = useNavigate();
@@ -8,6 +9,11 @@ function DynamicSignup() {
   const [password, setPassword] = useState("");
   const [emailId, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -38,7 +44,11 @@ function DynamicSignup() {
       navigate("/");
     } catch (err) {
       console.error("Signup failed:", err);
-      alert("Failed to create user. Please try again.");
+      setAlertModal({
+        isOpen: true,
+        title: "Signup Failed",
+        message: "Failed to create user. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -194,6 +204,15 @@ function DynamicSignup() {
           <p>© 2025 Dociere. All rights reserved.</p>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="OK"
+        cancelText=""
+        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+        onCancel={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
     </div>
   );
 }

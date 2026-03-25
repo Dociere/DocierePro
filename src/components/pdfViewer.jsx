@@ -659,6 +659,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "../assets/styles/pdfViewer.css";
 import { useSettings } from "../context/useSettings";
+import ConfirmModal from "./confirmModal";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.js";
 
@@ -694,6 +695,11 @@ const PdfViewer = ({
   const scaleRef = useRef(scale);
   const scrollToPageAfterZoomRef = useRef(null);
   const { settings } = useSettings();
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
   const ESTIMATED_PAGE_HEIGHT = 842;
   const GAP = 16;
@@ -839,7 +845,11 @@ const PdfViewer = ({
 
   const handleExportPDF = async () => {
     if (!pdfUrl) {
-      alert("Please compile your document first to generate a PDF");
+      setAlertModal({
+        isOpen: true,
+        title: "PDF Not Found",
+        message: "Please compile your document first to generate a PDF",
+      });
       return;
     }
     try {
@@ -867,7 +877,11 @@ const PdfViewer = ({
         window.URL.revokeObjectURL(downloadUrl);
       }
     } catch (error) {
-      alert(`An error occurred during PDF export: ${error.message}`);
+      setAlertModal({
+        isOpen: true,
+        title: "Export Error",
+        message: `An error occurred during PDF export: ${error.message}`,
+      });
     }
   };
 
@@ -1269,6 +1283,15 @@ const PdfViewer = ({
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="OK"
+        cancelText=""
+        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+        onCancel={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
     </div>
   );
 };
