@@ -337,6 +337,57 @@ const NavBar = ({ onStartTour }) => {
     }
   };
 
+  const handleExportZip = async () => {
+    if (!projectDetails.currentProject) return;
+
+    const projectId = projectDetails.currentProject.id;
+    const projectTitle = projectDetails.currentProject.title;
+    const exportUrl = `${API_URL}/api/projects/${projectId}/export-zip`;
+
+    try {
+      const response = await fetch(exportUrl);
+      if (!response.ok) throw new Error("Failed to generate ZIP");
+
+      const blob = await response.blob();
+      const defaultName = `${projectTitle || "project"}.zip`;
+
+      // Electron Save Dialog
+      if (
+        window.electronAPI &&
+        typeof window.electronAPI.savePDF === "function"
+      ) {
+        // Reuse savePDF logic but for zip (it just saves a buffer to a file)
+        const arrayBuffer = await blob.arrayBuffer();
+        const result = await window.electronAPI.savePDF(
+          arrayBuffer,
+          defaultName,
+        );
+        if (result.success) {
+          console.log("ZIP saved successfully to:", result.filePath);
+        } else if (!result.canceled) {
+          throw new Error(result.error || "Failed to save ZIP");
+        }
+      } else {
+        // Browser Download
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = defaultName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      }
+    } catch (error) {
+      console.error("Error during ZIP export:", error);
+      setAlertModal({
+        isOpen: true,
+        title: "Export Error",
+        message: `An error occurred during ZIP export: ${error.message}`,
+      });
+    }
+  };
+
   const handleCloseProject = () => {
     setShowCloseConfirm(true);
   };
@@ -427,8 +478,8 @@ const NavBar = ({ onStartTour }) => {
     },
     {
       label: "Export as .zip",
-      action: handleExportPDF,
-      disabled: !hasProject || !projectDetails.pdfUrl,
+      action: handleExportZip,
+      disabled: !hasProject,
     },
     { divider: true },
     {
@@ -679,29 +730,24 @@ const NavBar = ({ onStartTour }) => {
           "_blank",
         ),
     },
-    {
-      label: "Table Generator",
-      action: () =>
-        window.open("https://www.tablesgenerator.com/latex_tables", "_blank"),
-    },
     { divider: true },
     {
       label: "Keyboard Shortcuts",
       shortcut: "?",
       action: handleShowShortcuts,
     },
-    {
-      label: "Command Palette",
-      shortcut: "Ctrl+Shift+P",
-      action: () => {
-        // Open command palette
-        setAlertModal({
-          isOpen: true,
-          title: "Coming Soon",
-          message: "Command Palette - Coming in next update",
-        });
-      },
-    },
+    // {
+    //   label: "Command Palette",
+    //   shortcut: "Ctrl+Shift+P",
+    //   action: () => {
+    //     // Open command palette
+    //     setAlertModal({
+    //       isOpen: true,
+    //       title: "Coming Soon",
+    //       message: "Command Palette - Coming in next update",
+    //     });
+    //   },
+    // },
     { divider: true },
     {
       label: "Check for Updates",
@@ -717,7 +763,7 @@ const NavBar = ({ onStartTour }) => {
       label: "Report an Issue",
       action: () => {
         const mailto =
-          "mailto:support@dociere.pro?subject=Bug Report&body=Please describe the issue:";
+          "mailto:help@dociere.com?subject=Bug Report&body=Please describe the issue:";
         window.location.href = mailto;
       },
     },
@@ -725,7 +771,7 @@ const NavBar = ({ onStartTour }) => {
       label: "Suggest a Feature",
       action: () => {
         const mailto =
-          "mailto:support@dociere.pro?subject=Feature Request&body=Please describe your feature idea:";
+          "mailto:help@dociere.com?subject=Feature Request&body=Please describe your feature idea:";
         window.location.href = mailto;
       },
     },

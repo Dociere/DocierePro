@@ -1487,8 +1487,8 @@ app.delete("/api/projects/:id/files/:filename", async (req, res) => {
   }
 });
 
-// API: Delete project
-app.delete("/api/projects/:id", async (req, res) => {
+// API: Export project as ZIP
+app.get("/api/projects/:id/export-zip", async (req, res) => {
   try {
     const { id } = req.params;
     const projectDir = path.join(PROJECTS_DIR, id);
@@ -1499,14 +1499,41 @@ app.delete("/api/projects/:id", async (req, res) => {
         .json({ success: false, error: "Project not found" });
     }
 
-    await fs.remove(projectDir);
-    console.log(`✅ Deleted project: ${id}`);
-    res.json({ success: true, message: "Project deleted successfully" });
+    const projectData = await fs.readJSON(path.join(projectDir, "project.json"));
+    const zip = new AdmZip();
+
+    // Add files to ZIP from project.json list
+    for (const fileName of Object.keys(projectData.files)) {
+      const filePath = path.join(projectDir, fileName);
+      if (await fs.pathExists(filePath)) {
+        zip.addLocalFile(filePath);
+      }
+    }
+
+    // Include the project configuration itself
+    zip.addLocalFile(path.join(projectDir, "project.json"));
+
+    const zipBuffer = zip.toBuffer();
+    const zipName = `${projectData.title || "project"}.zip`;
+
+    console.log(`📦 Exporting project ${id} as ${zipName}`);
+
+    res.set({
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${zipName}"`,
+      "Content-Length": zipBuffer.length,
+    });
+
+    res.send(zipBuffer);
   } catch (error) {
-    console.error("❌ Project deletion error:", error);
-    res.status(500).json({ success: false, error: "Failed to delete project" });
+    console.error("❌ ZIP Export Error:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to export project as ZIP" });
   }
 });
+
+// API: Delete project
 
 // server.js - Add these new routes
 

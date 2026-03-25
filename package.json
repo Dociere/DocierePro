@@ -1,7 +1,7 @@
 {
   "name": "dociere-pro",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -44,7 +44,8 @@
       "package.json",
       "sidecar",
       "templates/**/*",
-      "user-templates/**/*"
+      "user-templates/**/*",
+      "!node_modules/@napi-rs/canvas-linux-x64-musl/**"
     ],
     "mac": {
       "target": "dmg",
