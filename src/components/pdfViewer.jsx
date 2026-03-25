@@ -1234,7 +1234,16 @@ const PdfViewer = ({
           <Document
             file={pdfUrl}
             onLoadSuccess={onDocumentLoadSuccess}
-            loading={null} // <--- CHANGE THIS: Stop the "Loading..." text flash
+            loading={
+              <div
+                className="relative mx-auto"
+                style={{
+                  height: `${(numPages || 0) * itemHeightRef.current}px`,
+                  width: "100%",
+                  maxWidth: "min-content",
+                }}
+              />
+            } // <--- CHANGE THIS: Stop the "Loading..." text flash while preserving height so scroll doesn't collapse to 0
             error={<div className="p-4 text-red-600">Failed to load PDF.</div>}
           >
             <div
