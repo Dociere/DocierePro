@@ -159,6 +159,7 @@ const TemplateCards = ({ title, onDeleteClick }) => {
 
       {/* Card Visual */}
       <div
+        // className={`w-[13vw] h-[16.5vw] border-2 flex-shrink-0 rounded-md transition-colors ${
         className={`w-44 h-56 border-2 flex-shrink-0 rounded-md transition-colors ${
           isDark
             ? "bg-[#2d2d2d] border-[#404040] group-hover:border-[#ffffff]"

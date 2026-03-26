@@ -211,7 +211,7 @@ const SettingsPage = () => {
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className={`flex gap-2 pl-4 mt-1 pt-2 py-2 w-32 h-9 rounded-xl font-inter text-sm transition-colors`}
+          className={`flex gap-2 pl-4 mt-2 pt-2 py-2 w-32 h-9 rounded-xl font-inter text-sm transition-colors`}
           style={{
             color:
               settings.appearance.customThemes[settings.appearance.theme].text1,
@@ -240,7 +240,7 @@ const SettingsPage = () => {
               Settings
             </h1>
             <p
-              className={`text-base font-medium font-inter ml-1 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+              className={`text-base font-normal font-inter ml-1 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
             >
               Customize your DocierePro experience
             </p>
@@ -248,7 +248,7 @@ const SettingsPage = () => {
 
           {/* Tabs Navigation */}
           <div
-            className={`flex gap-2 border-b mb-6 ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}
+            className={`flex gap-2 border-b mb-6 ${isDark ? "border-[#404040]" : "border-gray-500"}`}
           >
             {tabs?.map((tab) => (
               <button
@@ -269,7 +269,7 @@ const SettingsPage = () => {
 
           {/* Tab Content */}
           <div
-            className={`rounded-lg border p-8 ${isDark ? "bg-[#252525] border-[#404040]" : "bg-white border-[#CFCFCF]"}`}
+            className={`rounded-lg border p-8 ${isDark ? "bg-[#252525] border-[#404040]" : "border-gray-500"}`}
           >
             {/* Editor Tab */}
             {activeTab === "editor" && (
@@ -952,14 +952,14 @@ const SettingsPage = () => {
 
           {/* Reset Button */}
           <div
-            className={`mt-8 pt-6 border-t ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}
+            className={`mt-8 pt-6 border-t ${isDark ? "border-[#404040]" : "border-gray-500"}`}
           >
             <button
               onClick={handleResetSettings}
               className={`px-6 py-2 border rounded-md font-inter text-sm transition-colors ${
                 isDark
                   ? "border-[#404040] text-[#a0a0a0] hover:bg-[#2d2d2d] hover:text-[#e5e5e5]"
-                  : "border-[#CFCFCF] text-[#7D7D7D] hover:bg-[#F9F9F9] hover:text-[#212121]"
+                  : "border-gray-500 text-gray-700 hover:bg-[#F9F9F9] hover:text-[#212121]"
               }`}
             >
               Reset All Settings to Defaults

@@ -1148,6 +1148,13 @@ const EditorPage = () => {
                   type="application/pdf"
                   className="w-full h-full rounded border border-[#CFCFCF]"
                 />
+                {/* <PdfViewer
+                  pdfUrl={
+                    projectDetails.currentProject?.files[
+                      projectDetails.activeFile
+                    ]?.content || ""
+                  }
+                /> */}
               </div>
             )}
 

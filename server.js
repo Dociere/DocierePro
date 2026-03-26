@@ -51,7 +51,7 @@ function decrypt(text) {
 
 const execAsync = util.promisify(exec);
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 const AI_SERVICE_URL = "http://localhost:5025";
 
 // Middleware
@@ -1499,7 +1499,9 @@ app.get("/api/projects/:id/export-zip", async (req, res) => {
         .json({ success: false, error: "Project not found" });
     }
 
-    const projectData = await fs.readJSON(path.join(projectDir, "project.json"));
+    const projectData = await fs.readJSON(
+      path.join(projectDir, "project.json"),
+    );
     const zip = new AdmZip();
 
     // Add files to ZIP from project.json list

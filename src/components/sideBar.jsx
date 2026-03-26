@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
@@ -38,14 +38,37 @@ const DynamicSideBar = ({
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [isProfileActive, setIsProfileActive] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { projectDetails} = useContext(projectContext);
+  const { projectDetails } = useContext(projectContext);
   const { user, isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
+  const menuRefs = useRef({});
   const navigate = useNavigate();
 
   console.log("user", user);
   console.log("isServerConnected", isServerConnected);
   console.log("projectDetails", projectDetails);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const menuElement = menuRefs.current.file;
+
+      if (menuElement && document.body.contains(menuElement)) {
+        if (!menuElement.contains(event.target)) {
+          setIsMathModalOpen(false);
+          setIsCitationModalOpen(false);
+          setIsTableModalOpen(false);
+          setIsImageModalOpen(false);
+          setIsShareModalOpen(false);
+          setIsVersionModalOpen(false);
+          setIsProfileActive(false);
+          setShowAuthModal(false);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleMathIconClick = (e) => {
     e.preventDefault();
@@ -434,7 +457,10 @@ const DynamicSideBar = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="absolute ml-14 z-50 bottom-4 h-10 w-40 bg-[#F9F9F9] border-[#CFCFCF] border-[1px]">
+                  <div
+                    className="absolute ml-14 z-50 bottom-4 h-10 w-40 bg-[#F9F9F9] border-[#CFCFCF] border-[1px]"
+                    ref={(el) => (menuRefs.current.file = el)}
+                  >
                     <div className="font-inter py-2">
                       <Link to="/signup">
                         <div className="flex flex-row justify-between">

@@ -11,7 +11,7 @@ import { projectContext } from "../context/useProject";
 
 const StatusBar = () => {
   const { isServerConnected } = useAuth();
-  const { projectDetails } = useContext(projectContext);
+  const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const { settings } = useSettings();
   const [progress, setProgress] = useState("");
   React.useEffect(() => {
@@ -73,6 +73,15 @@ const StatusBar = () => {
                   ].text3,
                 }}
                 className="w-4 h-4"
+                onClick={() => {
+                  // Fire Ctrl+P as a key event so editorPage picks it up
+                  const evt = new KeyboardEvent("keydown", {
+                    key: "p",
+                    ctrlKey: true,
+                    bubbles: true,
+                  });
+                  window.dispatchEvent(evt);
+                }}
               />
             )}
             <HelpIcon
