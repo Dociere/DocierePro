@@ -46,11 +46,6 @@ function Login() {
     <div
       className={`h-[calc(100vh-2.75rem)] bg-[#eaeaea] relative overflow-hidden mt-11 flex flex-col transition-all duration-300 ${isSectionSpaceOpen ? "ml-96" : "ml-12"}`}
     >
-      <div className="absolute top-6 left-6 z-10">
-        <div className="text-[#0C2340] font-playfair text-2xl">
-          <p>Docière Pro</p>
-        </div>
-      </div>
       <div className="flex flex-col h-full">
         <div className="flex-1 flex items-center justify-center p-3">
           <div className="relative z-10 w-full max-w-sm">
@@ -312,9 +307,9 @@ function Login() {
         </div>
 
         {/* Fixed footer at bottom with minimal spacing */}
-        <div className="flex-shrink-0 py-3 text-center text-black/60 text-xs">
+        {/* <div className="flex-shrink-0 py-3 text-center text-black/60 text-xs">
           <p>© 2025 Dociere. All rights reserved.</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

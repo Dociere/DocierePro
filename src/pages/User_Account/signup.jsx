@@ -63,12 +63,12 @@ function DynamicSignup() {
     <div
       className={`h-[calc(100vh-2.75rem)] bg-[#eaeaea] relative overflow-hidden mt-11 flex flex-col transition-all duration-300 ${isSectionSpaceOpen ? "ml-96" : "ml-12"}`}
     >
-      {/* Branding - smaller */}
-      <div className="absolute top-6 left-6 z-10">
+      {/* Branding */}
+      {/* <div className="absolute top-6 left-6 z-10">
         <div className="text-[#0C2340] font-medium font-playfair text-2xl">
           <p>Docière Pro</p>
         </div>
-      </div>
+      </div> */}
 
       {/* Main content container */}
       <div className="flex flex-col h-full">
@@ -203,9 +203,9 @@ function DynamicSignup() {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 py-3 text-center text-black/60 text-xs">
+        {/* <div className="flex-shrink-0 py-3 text-center text-black/60 text-xs">
           <p>© 2025 Dociere. All rights reserved.</p>
-        </div>
+        </div> */}
       </div>
       <ConfirmModal
         isOpen={alertModal.isOpen}

@@ -11,6 +11,7 @@ import {
 import { useSettings } from "../context/useSettings";
 import ConfirmModal from "../components/confirmModal.jsx";
 import LinearLoading from "../components/loading/linearLoading";
+import { TbX } from "react-icons/tb";
 
 const StartingPage = () => {
   const [projectData, setProjectData] = useState([]);
@@ -28,9 +29,18 @@ const StartingPage = () => {
     message: "",
   });
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setRefreshKey(1);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [refreshKey]);
 
   const fetchData = async () => {
     const { Projects } = await loadProjects();
@@ -212,17 +222,17 @@ const StartingPage = () => {
               {/* Close button */}
               <button
                 onClick={() => setProjectModal(false)}
-                className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"
+                className="absolute top-4 right-3 text-gray-500 hover:text-gray-800"
               >
-                ✕
+                <TbX size={20} />
               </button>
+              <h2 className="text-2xl font-inter font-semibold mb-2">
+                Recent Projects
+              </h2>
+              <SearchBar data={projectData} />
 
               {/* Modal content with scroll */}
-              <div className="overflow-auto h-[80vh] mr-5">
-                <h2 className="text-2xl font-inter font-semibold mb-2">
-                  Recent Projects
-                </h2>
-                <SearchBar data={projectData} />
+              <div className="overflow-auto h-[65vh] mt-4">
                 <div className="flex flex-row mt-10 gap-8 flex-wrap">
                   {(projectData || [])?.map((project) => (
                     <Link key={project.id} to={`/canvas?project=${project.id}`}>
