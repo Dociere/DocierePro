@@ -13,10 +13,11 @@ const PageLayout = () => {
   const location = useLocation();
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
   const isSectionSpaceOpen = projectDetails.isSectionSpaceOpen;
-  
+
   const setIsSectionSpaceOpen = (val) => {
     updateProjectDetails({
-      isSectionSpaceOpen: typeof val === "function" ? val(isSectionSpaceOpen) : val
+      isSectionSpaceOpen:
+        typeof val === "function" ? val(isSectionSpaceOpen) : val,
     });
   };
 
@@ -55,35 +56,45 @@ const PageLayout = () => {
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
-  const handleStartSectionDrag = useCallback((e) => {
-    e.preventDefault();
-    isDraggingSection.current = true;
-    sectionDragStartX.current = e.clientX;
-    sectionDragStartWidth.current = sectionSpaceWidth;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
+  const handleStartSectionDrag = useCallback(
+    (e) => {
+      e.preventDefault();
+      isDraggingSection.current = true;
+      sectionDragStartX.current = e.clientX;
+      sectionDragStartWidth.current = sectionSpaceWidth;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
 
-    const onMouseMove = (moveEvent) => {
-      if (!isDraggingSection.current) return;
-      const delta = moveEvent.clientX - sectionDragStartX.current;
-      const newWidth = Math.min(480, Math.max(160, sectionDragStartWidth.current + delta));
-      setSectionSpaceWidth(newWidth);
-    };
+      const onMouseMove = (moveEvent) => {
+        if (!isDraggingSection.current) return;
+        const delta = moveEvent.clientX - sectionDragStartX.current;
+        const newWidth = Math.min(
+          480,
+          Math.max(160, sectionDragStartWidth.current + delta),
+        );
+        setSectionSpaceWidth(newWidth);
+      };
 
-    const onMouseUp = () => {
-      isDraggingSection.current = false;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
+      const onMouseUp = () => {
+        isDraggingSection.current = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+      };
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-  }, [sectionSpaceWidth]);
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    },
+    [sectionSpaceWidth],
+  );
 
-  const handleStartTour = () => { startTour(); };
-  const handleOpenAIChat = () => { setIsAIChatOpen(true); };
+  const handleStartTour = () => {
+    startTour();
+  };
+  const handleOpenAIChat = () => {
+    setIsAIChatOpen(true);
+  };
 
   return (
     <div
@@ -108,9 +119,14 @@ const PageLayout = () => {
         )}
 
         {/* Section Space panel with resize handle */}
-        {!isDistractionFree && isSectionSpaceOpen && (
-          <SectionSpace width={sectionSpaceWidth} onDragStart={handleStartSectionDrag} />
-        )}
+        {!isDistractionFree &&
+          isSectionSpaceOpen &&
+          projectDetails?.currentProject?.id && (
+            <SectionSpace
+              width={sectionSpaceWidth}
+              onDragStart={handleStartSectionDrag}
+            />
+          )}
 
         <div className="w-full h-auto">
           <Outlet
