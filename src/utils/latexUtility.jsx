@@ -45,8 +45,6 @@ export const isMainFile = (fileName) => {
   return normalized === "main.tex" || normalized.endsWith("/main.tex");
 };
 
-
-
 export const resolveFileContent = (inputName, fileMap) => {
   if (!fileMap || !inputName) return null;
   const variations = [
@@ -249,20 +247,7 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
       inSpecialEnv = false;
     }
 
-    const inputMatch = trimmed.match(/^\\input\{([^}]+)\}$/i);
-    if (!inSpecialEnv && inputMatch) {
-      if (buffer.length > 0) {
-        segments.push({ type: "inline", content: buffer.join("\n") });
-        buffer = [];
-      }
-      segments.push({
-        type: "input",
-        rawName: inputMatch[1],
-        fileName: canonicalFileName(inputMatch[1]),
-      });
-    } else {
-      buffer.push(line);
-    }
+    buffer.push(line);
   });
   if (buffer.length > 0)
     segments.push({ type: "inline", content: buffer.join("\n") });
@@ -271,116 +256,40 @@ export const latexToSections = (latexDoc, fileMap = {}) => {
   let currentSubsection = null;
 
   segments.forEach((seg) => {
-    if (seg.type === "inline") {
-      const { blocks, leadingContent } = parseBodyIntoBlocks(seg.content);
+    // Since input resolution is removed, all segments are "inline"
+    const { blocks, leadingContent } = parseBodyIntoBlocks(seg.content);
 
-      if (leadingContent.trim()) {
-        if (!currentSection) {
-          sections[0].content += "\n" + leadingContent;
-        } else {
-          currentSection.content += "\n" + leadingContent;
-        }
-      }
-
-      blocks.forEach((block) => {
-        if (block.type === "section") {
-          sections.push(block);
-          currentSection = block;
-          currentSubsection = null;
-        } else if (block.type === "subsection") {
-          if (currentSection) {
-            currentSection.children.push(block);
-            currentSubsection = block;
-          } else {
-            sections.push(block);
-            currentSection = block;
-          }
-        } else if (block.type === "subsubsection") {
-          if (currentSubsection) {
-            currentSubsection.children.push(block);
-          } else if (currentSection) {
-            currentSection.children.push(block);
-          } else {
-            sections.push(block);
-          }
-        }
-
-        if (
-          block.subtype === "env" &&
-          block.content.trim().match(/^\\input\{([^}]+)\}$/i)
-        ) {
-          const inputMatch = block.content
-            .trim()
-            .match(/^\\input\{([^}]+)\}$/i);
-          const fName = canonicalFileName(inputMatch[1]);
-          const fContent = resolveFileContent(fName, fileMap);
-          if (fContent !== null) {
-            block.content = fContent;
-            block.contentFileName = fName;
-            block.source = "file";
-            block.fileName = fName;
-          }
-        }
-      });
-    } else {
-      const fileContent = resolveFileContent(seg.rawName, fileMap);
-      if (fileContent === null) {
-        const placeholder = {
-          id: Math.random().toString(36).substr(2, 9),
-          type: "section",
-          subtype: "standard",
-          name: seg.rawName,
-          content: "",
-          source: "file",
-          fileName: seg.fileName,
-          children: [],
-        };
-        sections.push(placeholder);
-        currentSection = placeholder;
-        currentSubsection = null;
+    if (leadingContent.trim()) {
+      if (!currentSection) {
+        sections[0].content += "\n" + leadingContent;
       } else {
-        const { blocks, leadingContent } = parseBodyIntoBlocks(fileContent);
-
-        if (
-          currentSection &&
-          !currentSection.fileName &&
-          currentSection.content.trim() === ""
-        ) {
-          currentSection.content = leadingContent.trim();
-          currentSection.source = "file";
-          currentSection.fileName = seg.fileName;
-        } else if (leadingContent.trim() && currentSection) {
-          currentSection.content += "\n" + leadingContent;
-        }
-
-        blocks.forEach((block) => {
-          block.source = "file";
-          block.fileName = seg.fileName;
-
-          if (block.type === "section") {
-            sections.push(block);
-            currentSection = block;
-            currentSubsection = null;
-          } else if (block.type === "subsection") {
-            if (currentSection) {
-              currentSection.children.push(block);
-              currentSubsection = block;
-            } else {
-              sections.push(block);
-              currentSection = block;
-            }
-          } else if (block.type === "subsubsection") {
-            if (currentSubsection) {
-              currentSubsection.children.push(block);
-            } else if (currentSection) {
-              currentSection.children.push(block);
-            } else {
-              sections.push(block);
-            }
-          }
-        });
+        currentSection.content += "\n" + leadingContent;
       }
     }
+
+    blocks.forEach((block) => {
+      if (block.type === "section") {
+        sections.push(block);
+        currentSection = block;
+        currentSubsection = null;
+      } else if (block.type === "subsection") {
+        if (currentSection) {
+          currentSection.children.push(block);
+          currentSubsection = block;
+        } else {
+          sections.push(block);
+          currentSection = block;
+        }
+      } else if (block.type === "subsubsection") {
+        if (currentSubsection) {
+          currentSubsection.children.push(block);
+        } else if (currentSection) {
+          currentSection.children.push(block);
+        } else {
+          sections.push(block);
+        }
+      }
+    });
   });
 
   sections.push({
@@ -516,19 +425,6 @@ export const latexToRichText = (latexBody, fileMap = {}, options = {}) => {
   );
   protect(/\$\$[\s\S]*?\$\$/g, "BLOCK");
   protect(/\$[^$]+\$/g, "BLOCK");
-
-  // 2. Resolve \input
-  processed = processed.replace(
-    /^\\input\{([^}]+)\}$/gm,
-    (match, inputName) => {
-      const fName = canonicalFileName(inputName);
-      const content = resolveFileContent(fName, fileMap);
-      if (content === null) return match;
-
-      const encodedFile = btoa(unescape(encodeURIComponent(fName)));
-      return `<span class="ql-file-marker" data-file="${encodedFile}" data-type="start">&#8203;</span>\n${content}\n<span class="ql-file-marker" data-type="end">&#8203;</span>\n`;
-    },
-  );
 
   // 3. Convert academic elements
   processed = processed.replace(
@@ -708,27 +604,6 @@ export const richTextToLatex = (richTextHtml, options = {}) => {
     },
   );
 
-  const fileTokens = [];
-  content = content.replace(
-    /<[^>]+class="[^"]*ql-file-marker[^"]*"[^>]*data-file="([^"]*)"[^>]*data-type="start"[^>]*>/gi,
-    (m, file) => {
-      try {
-        const fName = decodeURIComponent(escape(atob(file)));
-        const token = `__FILESTART_${fileTokens.length}__`;
-        fileTokens.push({ fileName: fName });
-        return token;
-      } catch (e) {
-        return m;
-      }
-    },
-  );
-
-  let endIdx = 0;
-  content = content.replace(
-    /<[^>]+class="[^"]*ql-file-marker[^"]*"[^>]*data-type="end"[^>]*>/gi,
-    () => `__FILEEND_${endIdx++}__`,
-  );
-
   content = content.replace(
     /<[^>]+class="[^"]*ql-env-marker[^"]*"[^>]*data-env="([^"]*)"[^>]*data-type="start"[^>]*>/gi,
     (m, data) => {
@@ -812,21 +687,6 @@ export const richTextToLatex = (richTextHtml, options = {}) => {
     if (b.type === "ref") return `\\ref{${b.val}}`;
     return "";
   });
-
-  content = content.replace(
-    /__FILESTART_(\d+)__([\s\S]*?)__FILEEND_\1__/g,
-    (_, idx, fileBody) => {
-      const { fileName } = fileTokens[parseInt(idx)];
-      let cleanBody = fileBody.trim();
-
-      cleanBody = cleanBody.replace(/^\\begin\{[^}]+\}(\{[^}]*\})?\s*/i, "");
-      cleanBody = cleanBody.replace(/\s*\\end\{[^}]+\}\s*$/i, "");
-
-      fileUpdates[fileName] = cleanBody.trim();
-      const inputName = fileName.replace(/\.tex$/, "");
-      return `\\input{${inputName}}\n\n`;
-    },
-  );
 
   content = content.replace(
     /\\begin\{thebibliography\}(\{[^}]*\})?(.*?)\\end\{thebibliography\}/gs,
