@@ -13,6 +13,7 @@ export const ProjectProvider = (props) => {
     pdfUrl: "",
     latexContent: "",
     richTextContent: "",
+    globalAst: null,
     activeView: "code",
     isSectionSpaceOpen: false,
   });

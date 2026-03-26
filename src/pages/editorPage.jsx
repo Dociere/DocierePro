@@ -38,6 +38,19 @@ import {
   richTextToSection,
 } from "../utils/latexUtility.jsx";
 import {
+  parseLatexToAst,
+  printAstToLatex,
+  getAstSections,
+  sectionsToAstBody,
+  applyBodyToAst,
+  isMainFileAst,
+  getDocumentBody,
+  contentNodesToText,
+  textToContentNodes,
+  getSectionTitle,
+  setSectionTitle,
+} from "../utils/latexAstEngine.jsx";
+import {
   loadProjects,
   loadProject,
   saveProject,
@@ -56,27 +69,39 @@ const RootFileModal = ({ isOpen, files, onSelect, onClose, isDark }) => {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
-        className={`rounded-xl shadow-xl p-6 max-w-md w-full mx-4 border ${isDark ? "bg-[#252525] border-[#404040]" : "bg-white border-gray-200"}`}
+        className={`rounded-xl shadow-xl p-6 max-w-md w-full mx-4 border ${
+          isDark ? "bg-[#252525] border-[#404040]" : "bg-white border-gray-200"
+        }`}
       >
         <h3
-          className={`text-lg font-semibold mb-2 ${isDark ? "text-white" : "text-gray-900"}`}
+          className={`text-lg font-semibold mb-2 ${
+            isDark ? "text-white" : "text-gray-900"
+          }`}
         >
           Select Main Document
         </h3>
         <p
-          className={`text-sm mb-4 ${isDark ? "text-gray-400" : "text-gray-600"}`}
+          className={`text-sm mb-4 ${
+            isDark ? "text-gray-400" : "text-gray-600"
+          }`}
         >
           We couldn't find a default <code>main.tex</code> file. Please select
           the primary LaTeX file to compile:
         </p>
         <div
-          className={`max-h-60 overflow-y-auto mb-4 rounded border ${isDark ? "border-[#404040]" : "border-gray-200"}`}
+          className={`max-h-60 overflow-y-auto mb-4 rounded border ${
+            isDark ? "border-[#404040]" : "border-gray-200"
+          }`}
         >
           {files.map((f) => (
             <button
               key={f}
               onClick={() => onSelect(f)}
-              className={`w-full text-left px-4 py-3 text-sm transition-colors border-b last:border-0 ${isDark ? "border-[#404040] text-gray-200 hover:bg-[#333]" : "border-gray-100 text-gray-700 hover:bg-gray-50"}`}
+              className={`w-full text-left px-4 py-3 text-sm transition-colors border-b last:border-0 ${
+                isDark
+                  ? "border-[#404040] text-gray-200 hover:bg-[#333]"
+                  : "border-gray-100 text-gray-700 hover:bg-gray-50"
+              }`}
             >
               <div className="flex items-center gap-2">
                 <svg
@@ -100,7 +125,11 @@ const RootFileModal = ({ isOpen, files, onSelect, onClose, isDark }) => {
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className={`px-4 py-2 rounded font-medium ${isDark ? "text-gray-300 hover:bg-[#333]" : "text-gray-600 hover:bg-gray-100"}`}
+            className={`px-4 py-2 rounded font-medium ${
+              isDark
+                ? "text-gray-300 hover:bg-[#333]"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
           >
             Cancel Compile
           </button>
@@ -217,6 +246,9 @@ const EditorPage = () => {
     latexContent,
   } = projectDetails;
 
+  // Global AST — the single source of truth for the document
+  const globalAst = projectDetails.globalAst;
+
   // 2. Add helper function to log messages:
   const addDebugLog = (message, type = "info", details = null) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -316,8 +348,9 @@ const EditorPage = () => {
         // Inline local loading logic
         const loadLocal = async () => {
           updateProjectDetails({ isLoading: true });
-          const { CurrentProject, ActiveFile, Error } =
-            await loadProject(projectIdFromUrl);
+          const { CurrentProject, ActiveFile, Error } = await loadProject(
+            projectIdFromUrl,
+          );
 
           if (Error) {
             updateProjectDetails({
@@ -505,6 +538,12 @@ const EditorPage = () => {
       sectionsInitialized.current = true;
       lastSyncedLatex.current = latexDoc;
 
+      // ===== AST INITIALIZATION =====
+      const ast = parseLatexToAst(latexDoc);
+      if (ast) {
+        updateProjectDetails({ globalAst: ast });
+      }
+
       if (isMainFile(activeFile)) {
         const bodyContent = extractLatexBody(latexDoc);
         setSections(latexToSections(latexDoc, files));
@@ -612,6 +651,87 @@ const EditorPage = () => {
     if (ext === "pdf") return "pdf";
     return "readonly"; // cls, sty, txt, etc.
   }, [projectDetails.activeFile]);
+
+  // ============ AST-DERIVED STATE ============
+
+  /** Sections derived from the global AST (for Phase 3 Section Editor) */
+  const astSections = useMemo(() => {
+    if (!globalAst) return [];
+    return getAstSections(globalAst);
+  }, [globalAst]);
+
+  /**
+   * Master AST update function.
+   * All editors call this with a new AST. It:
+   * 1. Sets globalAst in context
+   * 2. Derives the string and updates latexContent + files
+   * 3. Debounces auto-save
+   */
+  const handleDocumentUpdate = useCallback(
+    (newAst) => {
+      if (!newAst) return;
+
+      const newLatexString = printAstToLatex(newAst);
+      if (!newLatexString) return;
+
+      lastSyncedLatex.current = newLatexString;
+
+      // Update files
+      const updatedFiles = { ...projectDetails.currentProject.files };
+      updatedFiles[projectDetails.activeFile] = {
+        ...updatedFiles[projectDetails.activeFile],
+        content: newLatexString,
+      };
+
+      const updatedProject = {
+        ...projectDetails.currentProject,
+        files: updatedFiles,
+      };
+
+      updateProjectDetails({
+        globalAst: newAst,
+        latexContent: newLatexString,
+        currentProject: updatedProject,
+      });
+
+      // Also update legacy editors (sections + rich text) from the new string
+      const files = updatedProject.files;
+      if (isMainFile(projectDetails.activeFile)) {
+        const bodyContent = extractLatexBody(newLatexString);
+        setSections(latexToSections(newLatexString, files));
+        updateProjectDetails({
+          richTextContent: latexToRichText(bodyContent, files, {
+            isFragment: false,
+          }),
+        });
+      } else {
+        const nameHint = getSectionNameForFile(projectDetails.activeFile);
+        setSections(
+          fileToSections(
+            newLatexString,
+            projectDetails.activeFile,
+            nameHint,
+            files,
+          ),
+        );
+        updateProjectDetails({
+          richTextContent: latexToRichText(newLatexString, files, {
+            isFragment: true,
+          }),
+        });
+      }
+
+      // Debounced auto-save
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current);
+      }
+      saveTimeout.current = setTimeout(() => {
+        addDebugLog("💾 Auto-saving (AST path)");
+        saveProjectToServer(updatedProject, projectDetails.activeFile);
+      }, 1000);
+    },
+    [projectDetails, updateProjectDetails],
+  );
 
   // ============ UNIFIED UPDATE HANDLER ============
 
@@ -797,6 +917,12 @@ const EditorPage = () => {
       setActiveEditor("monaco");
       updateProjectDetails({ latexContent: value });
       updateAllEditors("monaco", value);
+
+      // Also update AST (debounced via updateAllEditors timeout)
+      const newAst = parseLatexToAst(value);
+      if (newAst) {
+        updateProjectDetails({ globalAst: newAst });
+      }
     },
     [updateAllEditors],
   );
@@ -857,17 +983,27 @@ const EditorPage = () => {
   };
 
   const handleCompile = async () => {
-    // Check if root file requires intervention
-    const hasMainTex = !!currentProject?.files["main.tex"];
-    const hasRootFile = !!currentProject?.rootFile;
+    if (!currentProject?.files) return;
 
-    if (!hasRootFile && !hasMainTex && currentProject?.files) {
+    const rootFileName = currentProject.rootFile || "main.tex";
+    const rootFileContent = currentProject.files[rootFileName]?.content || "";
+
+    const hasDocumentClass = rootFileContent.includes("\\documentclass");
+
+    if (!hasDocumentClass) {
+      const validRootFiles = Object.keys(currentProject.files).filter(
+        (f) =>
+          f.endsWith(".tex") &&
+          currentProject.files[f].content.includes("\\documentclass"),
+      );
+
       const texFiles = Object.keys(currentProject.files).filter((f) =>
         f.endsWith(".tex"),
       );
-      if (texFiles.length > 0) {
-        // Find if any tex file actually has a \documentclass just to be sure, or just list all
-        setAvailableRootFiles(texFiles);
+      const filesToShow = validRootFiles.length > 0 ? validRootFiles : texFiles;
+
+      if (filesToShow.length > 0) {
+        setAvailableRootFiles(filesToShow);
         setShowRootFileModal(true);
         return; // Pause compile until user picks a root
       }
@@ -875,9 +1011,10 @@ const EditorPage = () => {
 
     setIsLoading(true);
     try {
+      const rootFileToCompile = currentProject?.rootFile || "main.tex";
       const response = await compileDocument(
         currentProject,
-        activeFile,
+        rootFileToCompile,
         isCompiling,
         compilationStatus,
         compilationMessage,
@@ -1016,8 +1153,8 @@ const EditorPage = () => {
   const leftOffset = isDistractionFree
     ? 0
     : isSectionSpaceOpen
-      ? 40 + sectionSpaceWidth
-      : 40;
+    ? 40 + sectionSpaceWidth
+    : 40;
 
   return (
     <div
@@ -1109,8 +1246,8 @@ const EditorPage = () => {
                 {activeFileType === "image"
                   ? "Image Preview"
                   : activeFileType === "pdf"
-                    ? "PDF Preview"
-                    : "Read Only"}
+                  ? "PDF Preview"
+                  : "Read Only"}
               </span>
             )}
           </div>
@@ -1328,8 +1465,14 @@ const EditorPage = () => {
                     fileUpdates[activeFile]
                   ) {
                     updateAllEditors("monaco", fileUpdates[activeFile]);
+                    // Re-parse active file content into AST
+                    const newAst = parseLatexToAst(fileUpdates[activeFile]);
+                    if (newAst) updateProjectDetails({ globalAst: newAst });
                   } else {
                     updateAllEditors("monaco", newContent);
+                    // Re-parse root content into AST
+                    const newAst = parseLatexToAst(newContent);
+                    if (newAst) updateProjectDetails({ globalAst: newAst });
                   }
                 }}
                 onClose={() => setShowAIChat(false)}
@@ -1411,8 +1554,8 @@ const EditorPage = () => {
                         isError
                           ? "border-red-500 bg-red-50 text-red-900"
                           : isWarning
-                            ? "border-yellow-400 bg-yellow-50 text-yellow-800"
-                            : "border-green-400 bg-gray-50"
+                          ? "border-yellow-400 bg-yellow-50 text-yellow-800"
+                          : "border-green-400 bg-gray-50"
                       }`}
                     >
                       {log}
@@ -1448,7 +1591,9 @@ const EditorPage = () => {
                       insertTargetQuill.getSelection()?.index ||
                       insertTargetQuill.savedCursorPosition ||
                       0;
-                    const citeWrapper = `\\cite{${latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex}}`;
+                    const citeWrapper = `\\cite{${
+                      latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex
+                    }}`;
                     insertTargetQuill.insertEmbed(
                       cursorPosition,
                       "latex-inline",
@@ -1462,7 +1607,9 @@ const EditorPage = () => {
                     insertTargetQuill.setSelection(cursorPosition + 1);
                   } else if (monacoEditorRef.current?.insertAtCursor) {
                     monacoEditorRef.current.insertAtCursor(
-                      `\\cite{${latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex}}`,
+                      `\\cite{${
+                        latex.match(/\\cite\{([^}]+)\}/)?.[1] || latex
+                      }}`,
                     );
                   }
                   setActiveRightView("preview");
@@ -1567,7 +1714,7 @@ const EditorPage = () => {
           setIsLoading(true);
           compileDocument(
             updatedProject,
-            activeFile,
+            selectedRoot,
             isCompiling,
             compilationStatus,
             compilationMessage,
