@@ -7,12 +7,10 @@ import {
 } from "slate";
 import { Slate, Editable, withReact, useSlate } from "slate-react";
 import { withHistory } from "slate-history";
-
-// Import your translators from the AST Engine
 import { astToSlate, slateToAst } from "../utils/latexAstEngine";
 
 // ==========================================
-// 1. SLATE PLUGINS & CONFIGURATION
+// 1. SLATE PLUGINS
 // ==========================================
 
 const withLatexBlocks = (editor) => {
@@ -24,28 +22,32 @@ const withLatexBlocks = (editor) => {
 };
 
 // ==========================================
-// 2. CUSTOM RENDERERS
+// 2. PREMIUM UI RENDERERS
 // ==========================================
 
 const Element = ({ attributes, children, element }) => {
   switch (element.type) {
     case "heading":
       const Tag = `h${element.level || 1}`;
+      const sizeClass =
+        element.level === 1
+          ? "text-2xl border-b pb-2"
+          : element.level === 2
+          ? "text-xl"
+          : element.level === 3
+          ? "text-lg"
+          : element.level === 4
+          ? "text-base font-bold"
+          : "text-sm font-bold uppercase tracking-wider text-gray-500";
       return (
         <Tag
           {...attributes}
-          className={`font-semibold text-gray-900 mt-6 mb-2 ${
-            element.level === 1
-              ? "text-2xl border-b pb-2"
-              : element.level === 2
-              ? "text-xl"
-              : "text-lg"
-          }`}
+          className={`font-semibold text-gray-900 mt-8 mb-3 ${sizeClass}`}
         >
           {children}
         </Tag>
       );
-    // NEW: Render Bulleted and Numbered Lists
+
     case "bulleted-list":
       return (
         <ul
@@ -55,6 +57,7 @@ const Element = ({ attributes, children, element }) => {
           {children}
         </ul>
       );
+
     case "numbered-list":
       return (
         <ol
@@ -64,42 +67,89 @@ const Element = ({ attributes, children, element }) => {
           {children}
         </ol>
       );
+
     case "list-item":
       return <li {...attributes}>{children}</li>;
 
-    // NEW: Render Editable Environments (Abstracts, Keywords)
+    case "editable-macro":
+      const macroColors = {
+        title: "text-blue-800 border-blue-200 bg-blue-50/50",
+        subtitle: "text-blue-700 border-blue-200 bg-blue-50/30",
+        author: "text-emerald-800 border-emerald-200 bg-emerald-50/50",
+        affiliation: "text-teal-800 border-teal-200 bg-teal-50/50",
+        institution: "text-teal-700 border-teal-200 bg-teal-50/30",
+        city: "text-teal-600 border-teal-100 bg-teal-50/20",
+        state: "text-teal-600 border-teal-100 bg-teal-50/20",
+        country: "text-teal-600 border-teal-100 bg-teal-50/20",
+        email: "text-amber-700 border-amber-200 bg-amber-50/50",
+        keywords: "text-purple-700 border-purple-200 bg-purple-50/50",
+        caption: "text-slate-700 border-slate-200 bg-slate-50/50",
+        Description: "text-slate-600 border-slate-200 bg-slate-50/30",
+        default: "text-indigo-700 border-indigo-200 bg-indigo-50/50",
+      };
+      const mTheme = macroColors[element.macro] || macroColors.default;
+
+      return (
+        <div
+          {...attributes}
+          className={`my-5 p-4 border rounded-xl shadow-sm relative transition-all ${mTheme}`}
+        >
+          <span
+            contentEditable={false}
+            className="absolute -top-3 left-4 bg-white px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest border rounded-full shadow-sm"
+          >
+            ✏️ \{element.macro}
+          </span>
+          <div className="font-medium">{children}</div>
+        </div>
+      );
+
     case "editable-env":
       return (
         <div
           {...attributes}
-          className="my-6 p-5 border border-gray-200 bg-white shadow-sm rounded relative"
+          className="my-6 p-5 border border-purple-200 bg-purple-50/30 shadow-sm rounded-xl relative transition-all"
         >
           <span
             contentEditable={false}
-            className="absolute -top-3 left-4 bg-white px-2 text-xs font-bold text-blue-600 uppercase tracking-widest"
+            className="absolute -top-3 left-4 bg-white px-3 py-0.5 text-[10px] font-bold text-purple-600 uppercase tracking-widest border border-purple-100 rounded-full shadow-sm"
           >
-            {element.env}
+            📄 {element.env}
           </span>
-          {children}
+          <div className="text-gray-700">{children}</div>
         </div>
       );
 
     case "latex-block":
+      const isInput = element.env === "\\input" || element.env === "\\include";
+      const isStructure =
+        element.env === "\\maketitle" ||
+        element.env === "\\newpage" ||
+        element.env === "\\tableofcontents" ||
+        element.env === "\\clearpage";
+
       return (
         <div
           {...attributes}
           contentEditable={false}
-          className="my-4 p-3 bg-gray-50 border-l-4 border-blue-500 rounded shadow-sm select-none"
+          className="my-3 p-3 bg-gray-50 border border-gray-200 rounded-xl shadow-sm select-none flex flex-col gap-2 transition-all hover:border-gray-300 hover:shadow-md cursor-default"
         >
-          <div className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
-            📦 {element.env || "LaTeX Block"} (Read-Only in Visual Mode)
+          <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+            {isInput ? "🔗" : isStructure ? "📐" : "⚙️"}{" "}
+            {element.env || "LaTeX Block"}
+            <span className="font-normal text-[10px] text-gray-400 normal-case ml-auto bg-white px-2 py-0.5 rounded border border-gray-200">
+              Read-Only Structure
+            </span>
           </div>
-          <pre className="text-xs font-mono text-gray-700 overflow-x-auto whitespace-pre-wrap">
-            {element.rawLatex}
-          </pre>
+          {!isStructure && (
+            <pre className="text-[11px] font-mono text-gray-600 overflow-x-auto whitespace-pre-wrap bg-white p-2.5 rounded-lg border border-gray-100">
+              {element.rawLatex}
+            </pre>
+          )}
           <div className="hidden">{children}</div>
         </div>
       );
+
     default:
       return (
         <p {...attributes} className="mb-3 text-gray-700 leading-relaxed">
@@ -115,44 +165,16 @@ const Leaf = ({ attributes, children, leaf }) => {
   if (leaf.underline) children = <u>{children}</u>;
   if (leaf.code)
     children = (
-      <code className="bg-gray-100 px-1 rounded text-red-500 font-mono text-sm">
+      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-red-500 font-mono text-sm border border-gray-200">
         {children}
       </code>
     );
   return <span {...attributes}>{children}</span>;
 };
 
-const MarkButton = ({ format, icon }) => {
-  const editor = useSlate();
-  const isActive = isMarkActive(editor, format);
-  return (
-    <button
-      onMouseDown={(e) => {
-        e.preventDefault();
-        toggleMark(editor, format);
-      }}
-      className={`px-3 py-1 text-sm font-semibold rounded hover:bg-gray-200 transition-colors ${
-        isActive ? "bg-gray-200 text-blue-600" : "text-gray-600"
-      }`}
-    >
-      {icon}
-    </button>
-  );
-};
-
-const isMarkActive = (editor, format) => {
-  const marks = Editor.marks(editor);
-  return marks ? marks[format] === true : false;
-};
-
-const toggleMark = (editor, format) => {
-  const isActive = isMarkActive(editor, format);
-  if (isActive) {
-    Editor.removeMark(editor, format);
-  } else {
-    Editor.addMark(editor, format, true);
-  }
-};
+// ==========================================
+// 3. TOOLBAR LOGIC
+// ==========================================
 
 const isBlockActive = (editor, format) => {
   const [match] = Editor.nodes(editor, {
@@ -194,14 +216,48 @@ const BlockButton = ({ format, icon }) => {
         e.preventDefault();
         toggleBlock(editor, format);
       }}
-      className={`px-3 py-1 text-sm font-semibold rounded hover:bg-gray-200 transition-colors ${
-        isActive ? "bg-gray-200 text-blue-600" : "text-gray-600"
+      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+        isActive
+          ? "bg-gray-200 text-blue-700"
+          : "text-gray-600 hover:bg-gray-100"
       }`}
     >
       {icon}
     </button>
   );
 };
+
+const isMarkActive = (editor, format) => {
+  const marks = Editor.marks(editor);
+  return marks ? marks[format] === true : false;
+};
+
+const toggleMark = (editor, format) => {
+  const isActive = isMarkActive(editor, format);
+  if (isActive) Editor.removeMark(editor, format);
+  else Editor.addMark(editor, format, true);
+};
+
+const MarkButton = ({ format, icon }) => {
+  const editor = useSlate();
+  const isActive = isMarkActive(editor, format);
+  return (
+    <button
+      onMouseDown={(e) => {
+        e.preventDefault();
+        toggleMark(editor, format);
+      }}
+      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+        isActive
+          ? "bg-gray-200 text-blue-700"
+          : "text-gray-600 hover:bg-gray-100"
+      }`}
+    >
+      {icon}
+    </button>
+  );
+};
+
 // ==========================================
 // 4. MAIN EDITOR COMPONENT
 // ==========================================
@@ -213,7 +269,6 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
   );
   const isInternalChange = useRef(false);
 
-  // FIX 1: Extract ONLY the body contents for Slate
   const bodyNodes = useMemo(() => {
     if (!globalAst) return [];
     const contentArray =
@@ -235,8 +290,6 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
     }
 
     const newSlateValue = astToSlate(bodyNodes);
-
-    // FIX 2: Clear selection before swapping to prevent Ghost Cursor crash
     Transforms.deselect(editor);
     editor.children = newSlateValue;
     editor.onChange();
@@ -249,10 +302,8 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
 
     if (isAstChange) {
       isInternalChange.current = true;
-
       const updatedBodyNodes = slateToAst(newValue);
 
-      // Merge the updated body back into the global AST (preserving preamble)
       let clonedAst = globalAst
         ? structuredClone(globalAst)
         : { type: "root", content: [] };
@@ -262,14 +313,10 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
         (n) => n.type === "environment" && n.env === "document",
       );
 
-      if (docEnv) {
-        docEnv.content = updatedBodyNodes;
-      } else {
-        if (clonedAst.type === "root") {
-          clonedAst.content = updatedBodyNodes;
-        } else {
-          clonedAst = updatedBodyNodes;
-        }
+      if (docEnv) docEnv.content = updatedBodyNodes;
+      else {
+        if (clonedAst.type === "root") clonedAst.content = updatedBodyNodes;
+        else clonedAst = updatedBodyNodes;
       }
 
       onAstChange(clonedAst);
@@ -283,12 +330,20 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
         initialValue={initialValue}
         onChange={handleChange}
       >
-        {/* Simple Toolbar */}
-        <div className="flex gap-1 p-2 border-b border-gray-200 bg-gray-50 sticky top-0 z-10 flex-wrap items-center">
-          <MarkButton format="bold" icon="B" />
-          <MarkButton format="italic" icon="I" />
-          <MarkButton format="underline" icon="U" />
-          <div className="w-px h-5 bg-gray-300 mx-2" />
+        <div className="flex gap-1 p-3 border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex-wrap items-center shadow-sm">
+          <MarkButton
+            format="bold"
+            icon={<span className="font-bold">B</span>}
+          />
+          <MarkButton
+            format="italic"
+            icon={<span className="italic">I</span>}
+          />
+          <MarkButton
+            format="underline"
+            icon={<span className="underline">U</span>}
+          />
+          <div className="w-px h-6 bg-gray-300 mx-2" />
 
           <button
             onMouseDown={(e) => {
@@ -296,8 +351,10 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               toggleBlock(editor, "heading");
               Transforms.setNodes(editor, { level: 1 });
             }}
-            className={`px-3 py-1 text-sm font-semibold rounded hover:bg-gray-200 text-gray-600 ${
-              isBlockActive(editor, "heading") ? "bg-gray-200" : ""
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+              isBlockActive(editor, "heading")
+                ? "bg-gray-200 text-blue-700"
+                : "text-gray-600 hover:bg-gray-100"
             }`}
           >
             H1
@@ -308,18 +365,27 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               toggleBlock(editor, "heading");
               Transforms.setNodes(editor, { level: 2 });
             }}
-            className={`px-3 py-1 text-sm font-semibold rounded hover:bg-gray-200 text-gray-600`}
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors text-gray-600 hover:bg-gray-100`}
           >
             H2
           </button>
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              toggleBlock(editor, "heading");
+              Transforms.setNodes(editor, { level: 3 });
+            }}
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors text-gray-600 hover:bg-gray-100`}
+          >
+            H3
+          </button>
 
-          <div className="w-px h-5 bg-gray-300 mx-2" />
+          <div className="w-px h-6 bg-gray-300 mx-2" />
           <BlockButton format="bulleted-list" icon="• List" />
           <BlockButton format="numbered-list" icon="1. List" />
         </div>
 
-        {/* Editable Canvas */}
-        <div className="flex-1 overflow-y-auto p-8 lg:px-24">
+        <div className="flex-1 overflow-y-auto p-10 lg:px-32">
           <Editable
             renderElement={useCallback(
               (props) => (
@@ -333,9 +399,9 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               ),
               [],
             )}
-            placeholder="Start typing your document..."
+            placeholder="Start writing your document..."
             spellCheck
-            className="min-h-full outline-none"
+            className="min-h-full outline-none pb-32"
             onKeyDown={(event) => {
               if (!event.ctrlKey && !event.metaKey) return;
               switch (event.key) {
