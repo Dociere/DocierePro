@@ -1106,7 +1106,9 @@ const RecursiveSection = ({
                   section.contentFileName) && (
                   <span
                     className="text-[10px] px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded text-blue-600 flex items-center gap-1"
-                    title={`Sourced from ${section.fileName || section.contentFileName}`}
+                    title={`Sourced from ${
+                      section.fileName || section.contentFileName
+                    }`}
                   >
                     <svg
                       width="10"
