@@ -11,6 +11,7 @@ import Login from "./pages/User_Account/login";
 import SettingsPage from "./pages/settingsPage";
 import TemplatePreview from "./pages/templatePreview";
 import TemplateBrowse from "./pages/templateBrowse";
+import TestSlatePage from "./pages/TestSlatePage";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/detailPage/:templateTitle" element={<DetailsPage />} />
         <Route path="/canvas" element={<CanvasPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/test-slate" element={<TestSlatePage />} />
       </Route>
     </Routes>
   );
