@@ -21,7 +21,7 @@ import { getTinyTexBinPath } from "./scripts/setup-tinytex.js";
 dotenv.config();
 
 //DEV Mode means using local pdflatex while PROD Mode means TinyTex
-const projMode = "PROD";
+const projMode = "DEV";
 // const projMode = "PROD";
 
 // const envEncryptionKey = process.env.ENCRYPTION_KEY;
@@ -570,7 +570,9 @@ app.post("/api/edit", async (req, res) => {
 
     const aiConfig = frontendConfig || (await getActiveAIConfig());
     console.log(
-      `📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || "default"}`,
+      `📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${
+        aiConfig?.provider || "default"
+      }`,
     );
 
     const aiResponse = await axios.post(
@@ -718,10 +720,10 @@ async function getTemplateFiles(templatePath) {
             ext === ".png"
               ? "image/png"
               : ext === ".jpg" || ext === ".jpeg"
-                ? "image/jpeg"
-                : ext === ".pdf"
-                  ? "application/pdf"
-                  : "application/octet-stream";
+              ? "image/jpeg"
+              : ext === ".pdf"
+              ? "application/pdf"
+              : "application/octet-stream";
           files[relPath] = {
             name: entry.name,
             content: `data:${mime};base64,${buffer.toString("base64")}`,
@@ -998,7 +1000,9 @@ app.post("/api/projects/create", async (req, res) => {
         const { apiKey: _k, ...activeConfig } = rawConfig || {};
 
         console.log(
-          `🤖 Boilerplate aiConfig: provider=${activeConfig?.provider}, id=${activeConfig?.id}, hasKey=${!!rawConfig?.apiKey}`,
+          `🤖 Boilerplate aiConfig: provider=${activeConfig?.provider}, id=${
+            activeConfig?.id
+          }, hasKey=${!!rawConfig?.apiKey}`,
         );
 
         if (!activeConfig?.provider) {
@@ -1169,10 +1173,10 @@ app.post(
             ext === ".png"
               ? "image/png"
               : ext === ".jpg" || ext === ".jpeg"
-                ? "image/jpeg"
-                : ext === ".pdf"
-                  ? "application/pdf"
-                  : "application/octet-stream";
+              ? "image/jpeg"
+              : ext === ".pdf"
+              ? "application/pdf"
+              : "application/octet-stream";
           content = `data:${mime};base64,${buffer.toString("base64")}`;
           isImage = true;
         }
@@ -1705,36 +1709,36 @@ app.post("/api/compile", async (req, res) => {
     let pdfExists = false;
     let usedParallel = false;
 
-    try {
-      // Attempt parallel compilation first
-      const parallelOutput = await compileParallel(
-        content,
-        files,
-        jobDir,
-        generatedPdfPath,
-        (event) => {
-          if (event.chunk !== undefined) {
-            console.log(
-              `[Sidecar] Chunk ${event.chunk}/${event.total}: ${event.status}`,
-            );
-          }
-        },
-      );
+    // try {
+    //   // Attempt parallel compilation first
+    //   const parallelOutput = await compileParallel(
+    //     content,
+    //     files,
+    //     jobDir,
+    //     generatedPdfPath,
+    //     (event) => {
+    //       if (event.chunk !== undefined) {
+    //         console.log(
+    //           `[Sidecar] Chunk ${event.chunk}/${event.total}: ${event.status}`,
+    //         );
+    //       }
+    //     },
+    //   );
 
-      if (parallelOutput) {
-        console.log(
-          `🚀 Parallel compilation successful using sidecar! Output: ${parallelOutput}`,
-        );
-        usedParallel = true;
-        pdfExists = await fs.pathExists(generatedPdfPath);
-        result1.stdout = "Successfully compiled using C++ sidecar.\n"; // Stub log to skip serial rerun
-      }
-    } catch (err) {
-      console.error(
-        "Parallel compilation error, falling back to serial:",
-        err.message,
-      );
-    }
+    //   if (parallelOutput) {
+    //     console.log(
+    //       `🚀 Parallel compilation successful using sidecar! Output: ${parallelOutput}`,
+    //     );
+    //     usedParallel = true;
+    //     pdfExists = await fs.pathExists(generatedPdfPath);
+    //     result1.stdout = "Successfully compiled using C++ sidecar.\n"; // Stub log to skip serial rerun
+    //   }
+    // } catch (err) {
+    //   console.error(
+    //     "Parallel compilation error, falling back to serial:",
+    //     err.message,
+    //   );
+    // }
 
     if (!usedParallel) {
       console.log("🔄 Running serial PDFLaTeX compilation...");
