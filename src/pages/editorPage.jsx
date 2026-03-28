@@ -2039,7 +2039,7 @@ const RootFileModal = ({ isOpen, files, onSelect, onClose, isDark }) => {
 // ==========================================
 // TEST FLAG: Toggle between Slate and Legacy Quill
 // ==========================================
-const ENABLE_SLATE_TEST = false;
+const ENABLE_SLATE_TEST = true;
 
 const EditorPage = () => {
   const { projectDetails, updateProjectDetails } = useContext(projectContext);
@@ -2107,7 +2107,8 @@ const EditorPage = () => {
   const updateTimeout = useRef(null);
   const saveTimeout = useRef(null);
   const lastSyncedLatex = useRef("");
-  const sectionsInitialized = useRef(false);
+  const lastInitKey = useRef(null);
+  const [astSyncFile, setAstSyncFile] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [activeView, setActiveView] = useState("code");
@@ -2420,78 +2421,58 @@ const EditorPage = () => {
 
   // Initialize Sections and Rich Text
   useEffect(() => {
-    if (
-      projectDetails.currentProject &&
-      projectDetails.activeFile &&
-      projectDetails.currentProject.files[projectDetails.activeFile] &&
-      !sectionsInitialized.current
-    ) {
-      const activeFile = projectDetails.activeFile;
-      const fileEntry = projectDetails.currentProject.files[activeFile];
-      const latexDoc = fileEntry.content;
-      const files = projectDetails.currentProject.files;
+    if (!projectDetails.currentProject || !projectDetails.activeFile) return;
 
-      // Gate on having more than just one file if we're expecting \input resolution
-      // or if it's main.tex, ensure it looks like a valid document
-      if (isMainFile(activeFile) && !latexDoc.includes("\\begin{document}")) {
-        return;
-      }
+    const currentKey = `${projectDetails.currentProject.id}-${projectDetails.activeFile}`;
+    const fileEntry =
+      projectDetails.currentProject.files[projectDetails.activeFile];
 
-      sectionsInitialized.current = true;
-      lastSyncedLatex.current = latexDoc;
+    if (!fileEntry || lastInitKey.current === currentKey) return;
 
-      // ===== AST INITIALIZATION =====
-      const ast = parseLatexToAst(latexDoc);
-      if (ast) {
-        updateProjectDetails({ globalAst: ast });
-      }
+    const activeFile = projectDetails.activeFile;
+    const latexDoc = fileEntry.content;
+    const files = projectDetails.currentProject.files;
 
-      if (isMainFile(activeFile)) {
-        const bodyContent = extractLatexBody(latexDoc);
-        setSections(latexToSections(latexDoc, files));
-        updateProjectDetails({
-          latexContent: latexDoc,
-          richTextContent: latexToRichText(bodyContent, files, {
-            isFragment: false,
-          }),
-        });
-      } else {
-        const nameHint = getSectionNameForFile(activeFile);
-        setSections(fileToSections(latexDoc, activeFile, nameHint, files));
-        updateProjectDetails({
-          latexContent: latexDoc,
-          richTextContent: latexToRichText(latexDoc, files, {
-            isFragment: true,
-          }),
-        });
-      }
+    if (isMainFile(activeFile) && !latexDoc.includes("\\begin{document}")) {
+      return;
+    }
+
+    lastInitKey.current = currentKey;
+    lastSyncedLatex.current = latexDoc;
+
+    // ===== AST INITIALIZATION =====
+    const ast = parseLatexToAst(latexDoc);
+    if (ast) {
+      // 🔥 Update everything simultaneously and mark the AST as safely synced
+      updateProjectDetails({ globalAst: ast, latexContent: latexDoc });
+      setAstSyncFile(activeFile);
+    }
+
+    // Initialize derived states (Sections / Legacy Rich Text)
+    if (isMainFile(activeFile)) {
+      const bodyContent = extractLatexBody(latexDoc);
+      setSections(latexToSections(latexDoc, files));
+      updateProjectDetails({
+        richTextContent: latexToRichText(bodyContent, files, {
+          isFragment: false,
+        }),
+      });
+    } else {
+      const nameHint = getSectionNameForFile(activeFile);
+      setSections(fileToSections(latexDoc, activeFile, nameHint, files));
+      updateProjectDetails({
+        richTextContent: latexToRichText(latexDoc, files, {
+          isFragment: true,
+        }),
+      });
     }
   }, [
     projectDetails.currentProject?.id,
     projectDetails.activeFile,
     projectDetails.currentProject?.files,
+    updateProjectDetails,
+    getSectionNameForFile,
   ]);
-
-  // Update latexContent in context when file changes
-  useEffect(() => {
-    if (
-      projectDetails.currentProject &&
-      projectDetails.activeFile &&
-      projectDetails.currentProject.files[projectDetails.activeFile]
-    ) {
-      updateProjectDetails({
-        latexContent:
-          projectDetails.currentProject.files[projectDetails.activeFile]
-            .content,
-      });
-    }
-  }, [projectDetails.currentProject, projectDetails.activeFile]);
-
-  // Reset on project change or file change
-  useEffect(() => {
-    sectionsInitialized.current = false;
-    lastSyncedLatex.current = "";
-  }, [projectDetails.currentProject?.id, projectDetails.activeFile]);
 
   // Auto-compile when project finishes loading
   useEffect(() => {
@@ -2559,8 +2540,22 @@ const EditorPage = () => {
   /** Sections derived from the global AST (for Phase 3 Section Editor) */
   const astSections = useMemo(() => {
     if (!globalAst) return [];
-    return getAstSections(globalAst);
-  }, [globalAst]);
+
+    // Determine the proper fallback name
+    const af = projectDetails.activeFile;
+    const isMain =
+      af === (projectDetails.currentProject?.rootFile || "main.tex");
+    const fallbackName = isMain
+      ? "Preamble & Setup"
+      : getSectionNameForFile(af) || "File Content";
+
+    return getAstSections(globalAst, fallbackName);
+  }, [
+    globalAst,
+    projectDetails.activeFile,
+    projectDetails.currentProject?.files,
+    getSectionNameForFile,
+  ]);
 
   /**
    * Master AST update function.
@@ -2574,7 +2569,7 @@ const EditorPage = () => {
       if (!newAst) return;
 
       const newLatexString = printAstToLatex(newAst);
-      if (!newLatexString) return;
+      if (typeof newLatexString !== "string") return;
 
       lastSyncedLatex.current = newLatexString;
 
@@ -2849,21 +2844,20 @@ const EditorPage = () => {
   );
 
   const handleSectionsChange = useCallback(
-    (updatedSections) => {
+    (updatedAstSections) => {
       setActiveEditor("sections");
-      const af = projectDetails.activeFile || "main.tex";
+      if (!globalAst) return;
 
-      if (isMainFile(af)) {
-        setSections([...updatedSections]);
-        updateAllEditors("sections", updatedSections);
-      } else {
-        // Sub-file: convert root node back to raw content
-        const result = sectionsToFile(updatedSections, af);
-        setSections([...updatedSections]);
-        updateAllEditors("monaco", result.latex);
-      }
+      // 1. Convert the updated UI section cards back into a flat array of AST nodes
+      const newBodyNodes = sectionsToAstBody(updatedAstSections);
+
+      // 2. Merge these new body nodes back into the global document wrapper
+      const newAst = applyBodyToAst(globalAst, newBodyNodes);
+
+      // 3. Fire the master document update! (This instantly syncs Monaco and the rest of the app)
+      handleDocumentUpdate(newAst);
     },
-    [updateAllEditors, projectDetails.activeFile],
+    [globalAst, handleDocumentUpdate],
   );
 
   const handlePdfLineJump = (lineNumber) => {
@@ -3150,9 +3144,7 @@ const EditorPage = () => {
               >
                 <option value="code">Code Editor</option>
                 <option value="section">Section View</option>
-                <option value="text">
-                  Text View {ENABLE_SLATE_TEST ? "(Slate Test)" : ""}
-                </option>
+                <option value="text">Text View</option>
               </select>
             )}
             {activeFileType !== "tex" && (
@@ -3295,43 +3287,54 @@ const EditorPage = () => {
               </div>
             )}
 
-            {activeFileType === "tex" && activeView === "text" && (
-              <div className="h-full w-full overflow-y-auto bg-white">
-                {ENABLE_SLATE_TEST ? (
-                  <SlateEditorPanel
-                    globalAst={globalAst}
-                    onAstChange={handleSlateChange}
-                  />
-                ) : (
-                  <RichTextEditorPanel
-                    value={activeRichText}
-                    onChange={handleRichTextChange}
-                    quillModules={quillModules}
-                    highlightLine={syncTexLine}
-                    onHighlightClear={clearSyncTex}
-                  />
-                )}
-              </div>
-            )}
+            {activeFileType === "tex" &&
+              activeView === "text" &&
+              astSyncFile === projectDetails.activeFile && (
+                <div className="h-full w-full overflow-y-auto bg-white">
+                  {console.log(
+                    "🔥 [EditorPage] Passing globalAst to Slate:",
+                    projectDetails.globalAst,
+                  )}
+                  {ENABLE_SLATE_TEST ? (
+                    <SlateEditorPanel
+                      key={`slate-${projectDetails.activeFile}`}
+                      globalAst={globalAst}
+                      onAstChange={handleSlateChange}
+                    />
+                  ) : (
+                    <RichTextEditorPanel
+                      value={activeRichText}
+                      onChange={handleRichTextChange}
+                      quillModules={quillModules}
+                      highlightLine={syncTexLine}
+                      onHighlightClear={clearSyncTex}
+                    />
+                  )}
+                </div>
+              )}
 
-            {activeFileType === "tex" && activeView === "section" && (
-              <div className="h-full w-full overflow-y-auto">
-                <SectionEditor
-                  sections={activeSections}
-                  onSectionsChange={handleSectionsChange}
-                  preamble={docPreamble}
-                  sectionToRichText={sectionToRichText}
-                  richTextToSection={richTextToSection}
-                  globalHighlightLine={syncTexLine}
-                  onHighlightClear={clearSyncTex}
-                  projectFiles={
-                    projectDetails.currentProject?.files
-                      ? Object.keys(projectDetails.currentProject.files)
-                      : []
-                  }
-                />
-              </div>
-            )}
+            {activeFileType === "tex" &&
+              activeView === "section" &&
+              astSyncFile === projectDetails.activeFile && (
+                <div className="h-full w-full overflow-y-auto">
+                  <SectionEditor
+                    key={`section-${projectDetails.activeFile}`}
+                    sections={astSections}
+                    isMainFile={isMainFile(projectDetails.activeFile)}
+                    onSectionsChange={handleSectionsChange}
+                    preamble={docPreamble}
+                    sectionToRichText={sectionToRichText}
+                    richTextToSection={richTextToSection}
+                    globalHighlightLine={syncTexLine}
+                    onHighlightClear={clearSyncTex}
+                    projectFiles={
+                      projectDetails.currentProject?.files
+                        ? Object.keys(projectDetails.currentProject.files)
+                        : []
+                    }
+                  />
+                </div>
+              )}
             {/* AI Chat Panel - Persistent & Overlay */}
             <div
               className={`absolute top-0 right-0 h-full w-full z-20 shadow-xl transition-transform duration-300 ease-in-out transform bg-white border-l border-gray-200 ${

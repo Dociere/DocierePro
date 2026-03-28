@@ -8,12 +8,15 @@ import { toString } from "@unified-latex/unified-latex-util-to-string";
 // ============ CORE PARSERS ============
 
 export const parseLatexToAst = (latexString) => {
-  if (!latexString) return null;
+  if (!latexString || latexString.trim() === "") {
+    return { type: "root", content: [] };
+  }
+
   try {
     return parse(latexString);
   } catch (e) {
     console.error("AST Parsing Failed:", e);
-    return null;
+    return { type: "root", content: [] };
   }
 };
 
@@ -35,6 +38,14 @@ const SECTION_MACROS = new Set([
   "subsubsection",
   "paragraph",
   "subparagraph",
+]);
+const TOP_LEVEL_ENVS = new Set([
+  "abstract",
+  "keywords",
+  "IEEEkeywords",
+  "thebibliography",
+  "acks",
+  "workscited",
 ]);
 
 export const isMainFileAst = (ast) => {
@@ -67,7 +78,6 @@ export const getPreambleNodes = (ast) => {
 
 export const getSectionTitle = (macroNode) => {
   if (!macroNode || !macroNode.args) return "Untitled";
-  // FIX: Find the actual text argument (starts with '{'), ignoring '*' args
   const titleArg = macroNode.args.findLast((a) => a.openMark === "{");
   if (titleArg && titleArg.content && titleArg.content.length > 0) {
     return toString({ type: "root", content: titleArg.content });
@@ -77,15 +87,16 @@ export const getSectionTitle = (macroNode) => {
 
 export const setSectionTitle = (macroNode, newTitle) => {
   if (!macroNode || !macroNode.args) return;
-  // FIX: Safely target the correct argument block
   const titleArg = macroNode.args.findLast((a) => a.openMark === "{");
   if (titleArg) titleArg.content = [{ type: "string", content: newTitle }];
 };
 
 // ============ SECTION SPLITTING ============
 
-export const getAstSections = (ast) => {
+export const getAstSections = (ast, fallbackName = "File Content") => {
   if (!ast || !ast.content) return [];
+
+  // We use this to dynamically know if we are in main.tex or a sub-file
   const isFullDoc = isMainFileAst(ast);
   const bodyNodes = isFullDoc ? getDocumentBody(ast) : ast.content;
 
@@ -97,6 +108,12 @@ export const getAstSections = (ast) => {
   const makeId = () => `ast-sec-${idCounter++}`;
 
   for (const node of bodyNodes) {
+    const safeEnvStr = node.env
+      ? typeof node.env === "string"
+        ? node.env
+        : node.env.content || ""
+      : "";
+
     if (node.type === "macro" && SECTION_MACROS.has(node.content)) {
       const level = node.content;
       const title = getSectionTitle(node);
@@ -122,14 +139,25 @@ export const getAstSections = (ast) => {
           currentSubsection = entry;
         }
       } else if (
-        level === "subsubsection" ||
-        level === "paragraph" ||
-        level === "subparagraph"
+        ["subsubsection", "paragraph", "subparagraph"].includes(level)
       ) {
         if (currentSubsection) currentSubsection.children.push(entry);
         else if (currentSection) currentSection.children.push(entry);
         else sections.push(entry);
       }
+    } else if (node.type === "environment" && TOP_LEVEL_ENVS.has(safeEnvStr)) {
+      const entry = {
+        id: makeId(),
+        type: "environment",
+        env: safeEnvStr,
+        name: safeEnvStr.charAt(0).toUpperCase() + safeEnvStr.slice(1),
+        macroNode: node,
+        contentNodes: node.content || [],
+        children: [],
+      };
+      sections.push(entry);
+      currentSection = entry;
+      currentSubsection = null;
     } else {
       if (currentSubsection) currentSubsection.contentNodes.push(node);
       else if (currentSection) currentSection.contentNodes.push(node);
@@ -137,34 +165,70 @@ export const getAstSections = (ast) => {
     }
   }
 
-  if (leadingContent.length > 0) {
+  const shouldWrapAsSubfile = !isFullDoc && fallbackName !== "Preamble & Setup";
+
+  if (shouldWrapAsSubfile) {
+    // We take EVERYTHING we found (leading content + any new subsections)
+    // and put them inside one master virtual card named after the file.
+    const allSubfileContent = [...leadingContent];
+
+    // If user added macros (like subsections), they are currently in the 'sections' array.
+    // We need to move them into the contentNodes of our virtual card.
+    return [
+      {
+        id: makeId(),
+        type: "section",
+        name: fallbackName,
+        macroNode: null, // Keeps it virtual so it doesn't save a fake \section tag
+        contentNodes: allSubfileContent,
+        children: sections, // 🔥 This moves your subsections INSIDE the virtual card
+      },
+    ];
+  }
+
+  // Fallback for the actual main.tex Preamble
+  if (isFullDoc && leadingContent.length > 0) {
     sections.unshift({
       id: makeId(),
       type: "content",
-      name: "Leading Content",
+      name: "Preamble & Setup",
       macroNode: null,
       contentNodes: leadingContent,
       children: [],
     });
   }
+
   return sections;
 };
 
 export const sectionsToAstBody = (sectionsArray) => {
-  const nodes = [];
-  const serializeSection = (sec) => {
-    if (sec.macroNode) nodes.push(sec.macroNode);
-    nodes.push(...sec.contentNodes);
-    sec.children.forEach(serializeSection);
+  const serializeSectionToNodes = (sec) => {
+    const res = [];
+    if (sec.type === "environment") {
+      const envNode = { ...sec.macroNode, content: [...sec.contentNodes] };
+      sec.children.forEach((c) =>
+        envNode.content.push(...serializeSectionToNodes(c)),
+      );
+      res.push(envNode);
+    } else {
+      if (sec.macroNode) res.push(sec.macroNode);
+      res.push(...sec.contentNodes);
+      sec.children.forEach((c) => res.push(...serializeSectionToNodes(c)));
+    }
+    return res;
   };
-  sectionsArray.forEach(serializeSection);
+
+  const nodes = [];
+  sectionsArray.forEach((sec) => nodes.push(...serializeSectionToNodes(sec)));
   return nodes;
 };
 
 export const applyBodyToAst = (ast, newBodyNodes) => {
   const cloned = structuredClone(ast);
   const docEnv = cloned.content.find(
-    (n) => n.type === "environment" && n.env === "document",
+    (n) =>
+      n.type === "environment" &&
+      (typeof n.env === "string" ? n.env : n.env?.content) === "document",
   );
   if (docEnv) docEnv.content = newBodyNodes;
   else cloned.content = newBodyNodes;
@@ -182,20 +246,8 @@ export const textToContentNodes = (latexFragment) => {
   return ast ? ast.content : [];
 };
 
-export const isMainFile = (fileName) => {
-  if (!fileName) return true;
-  const normalized = fileName.replace(/\\/g, "/").toLowerCase();
-  return normalized === "main.tex" || normalized.endsWith("/main.tex");
-};
-
-export const canonicalFileName = (inputName) => {
-  if (!inputName) return "";
-  return inputName.endsWith(".tex") ? inputName : inputName + ".tex";
-};
-
 // ============ SLATE.JS BRIDGE ============
 
-// FIX: Radically expanded to prevent custom text formatting environments from becoming read-only blocks
 const TEXT_ENVS = [
   "abstract",
   "keywords",
@@ -331,6 +383,28 @@ const VOID_MACROS = [
   "hspace*",
 ];
 
+// 🚀 BULLETPROOF SANITIZER
+const sanitizeForSlate = (nodes) => {
+  if (!Array.isArray(nodes)) return [{ text: "" }];
+
+  return nodes.map((node) => {
+    if (node.text !== undefined) {
+      return { ...node, text: String(node.text) };
+    }
+    if (node.children && Array.isArray(node.children)) {
+      return {
+        ...node,
+        children:
+          node.children.length > 0
+            ? sanitizeForSlate(node.children)
+            : [{ text: "" }],
+      };
+    }
+    console.warn("Sanitizer caught rogue node:", node);
+    return { text: node.content ? String(node.content) : "[Unsupported Node]" };
+  });
+};
+
 export const astToSlate = (astInput) => {
   const astNodes = astInput?.type === "root" ? astInput.content : astInput;
   if (!Array.isArray(astNodes) || astNodes.length === 0)
@@ -362,6 +436,29 @@ export const astToSlate = (astInput) => {
           type: "latex-block",
           env: "% Comment",
           rawLatex: "%" + node.content,
+          children: [{ text: "" }],
+        });
+      } else if (node.type === "inlinemath" || node.type === "verb") {
+        currentParagraph.children.push({
+          text: printAstToLatex(node),
+          code: true,
+        });
+      } else if (node.type === "displaymath" || node.type === "mathenv") {
+        pushCurrentParagraph();
+
+        // 🔥 SAFE ENV FIX HERE 🔥
+        let safeEnvName = "displaymath";
+        if (node.type === "mathenv") {
+          safeEnvName =
+            typeof node.env === "string"
+              ? node.env
+              : node.env?.content || "equation";
+        }
+
+        slateBlocks.push({
+          type: "latex-block",
+          env: safeEnvName,
+          rawLatex: printAstToLatex(node),
           children: [{ text: "" }],
         });
       } else if (node.type === "group") {
@@ -519,14 +616,29 @@ export const astToSlate = (astInput) => {
         }
       } else if (node.type === "environment") {
         pushCurrentParagraph();
-        const envName = (node.env || "").trim();
+
+        // 🔥 SAFE ENV FIX HERE 🔥
+        const safeEnvStr = node.env
+          ? typeof node.env === "string"
+            ? node.env
+            : node.env.content || ""
+          : "";
+        const envName = safeEnvStr.trim();
+
+        const argsLatex = node.args
+          ? printAstToLatex({ type: "root", content: node.args })
+          : "";
 
         if (TEXT_ENVS.includes(envName)) {
           const innerBlocks = parseNodes(node.content);
           slateBlocks.push({
             type: "editable-env",
             env: envName,
-            args: node.args,
+            argsLatex,
+            // Store the raw parsed arg objects so slateToAst can round-trip them
+            // exactly without re-parsing argsLatex (which loses data for envs like
+            // thebibliography whose {widest-label} arg gets misread by the dummy-env trick).
+            argsRaw: node.args ? node.args : [],
             children:
               innerBlocks.length > 0
                 ? innerBlocks
@@ -556,7 +668,6 @@ export const astToSlate = (astInput) => {
           };
 
           let itemNodes = [];
-          let hasSeenFirstItem = false;
 
           node.content.forEach((child) => {
             if (child.type === "macro" && child.content === "item") {
@@ -571,7 +682,6 @@ export const astToSlate = (astInput) => {
                 flushItem();
               }
 
-              hasSeenFirstItem = true;
               itemNodes = [];
               if (child.args) {
                 child.args.forEach((arg) => {
@@ -602,7 +712,6 @@ export const astToSlate = (astInput) => {
             }
           });
 
-          // Final flush for the trailing bullet if it has content
           const hasActualContentEnd = itemNodes.some(
             (n) =>
               n.type !== "whitespace" &&
@@ -614,13 +723,14 @@ export const astToSlate = (astInput) => {
             flushItem();
           }
 
-          if (listItems.length > 0)
+          if (listItems.length > 0) {
             slateBlocks.push({
               type: listType,
               env: envName,
-              args: node.args,
+              argsLatex,
               children: listItems,
             });
+          }
         } else {
           slateBlocks.push({
             type: "latex-block",
@@ -635,10 +745,13 @@ export const astToSlate = (astInput) => {
     return slateBlocks;
   };
 
-  const finalBlocks = parseNodes(astNodes);
-  return finalBlocks.length > 0
-    ? finalBlocks
-    : [{ type: "paragraph", children: [{ text: "" }] }];
+  const rawBlocks = parseNodes(astNodes);
+  const finalBlocks =
+    rawBlocks.length > 0
+      ? rawBlocks
+      : [{ type: "paragraph", children: [{ text: "" }] }];
+
+  return sanitizeForSlate(finalBlocks);
 };
 
 const leavesToLatexString = (leaves) => {
@@ -706,8 +819,39 @@ export const slateToAst = (slateNodes) => {
       astNodes.push({ type: "parbreak" });
     } else if (block.type === "editable-env") {
       const innerAst = slateToAst(block.children);
-      let finalArgs = block.args;
-      if (!finalArgs && block.env === "thebibliography") {
+
+      let finalArgs = [];
+      if (
+        block.argsRaw &&
+        Array.isArray(block.argsRaw) &&
+        block.argsRaw.length > 0
+      ) {
+        // Preferred: argsRaw stores the original parsed arg objects verbatim — no re-parsing needed.
+        finalArgs = block.argsRaw;
+      } else if (block.argsLatex) {
+        // Fallback: parse argsLatex as a standalone fragment.
+        // NOTE: do NOT wrap in \begin{dummy}...\end{dummy} — unified-latex would absorb
+        // the braced groups as the dummy env's own args instead of free content nodes,
+        // causing content[0].args to always come back empty.
+        const tempAst = parseLatexToAst(block.argsLatex);
+        if (tempAst?.content?.length > 0) {
+          finalArgs = tempAst.content
+            .filter((n) => n.type === "group" || n.type === "argument")
+            .map((n) =>
+              n.type === "argument"
+                ? n
+                : {
+                    type: "argument",
+                    content: n.content || [],
+                    openMark: "{",
+                    closeMark: "}",
+                  },
+            );
+        }
+      }
+
+      // Hard guarantee: thebibliography always needs a widest-label arg.
+      if (block.env === "thebibliography" && finalArgs.length === 0) {
         finalArgs = [
           {
             type: "argument",
@@ -742,10 +886,18 @@ export const slateToAst = (slateNodes) => {
         listContent.push({ type: "whitespace", content: "\n" });
       });
 
+      let finalArgs = [];
+      if (block.argsLatex) {
+        const tempAst = parseLatexToAst(
+          `\\begin{dummy}${block.argsLatex}\\end{dummy}`,
+        );
+        finalArgs = tempAst?.content[0]?.args || [];
+      }
+
       astNodes.push({
         type: "environment",
         env: envName,
-        args: block.args,
+        args: finalArgs,
         content: listContent,
       });
       astNodes.push({ type: "parbreak" });
@@ -756,6 +908,7 @@ export const slateToAst = (slateNodes) => {
   };
 
   slateNodes.forEach((block, i) => parseBlock(block, i, slateNodes.length));
+
   return astNodes.filter((node, index, arr) => {
     if (node.type === "parbreak" && arr[index - 1]?.type === "parbreak")
       return false;
