@@ -180,7 +180,9 @@ export const saveChatMessage = async (
       try {
         const history = await loadChatHistory(projectId);
         await axios.put(
-          `${import.meta.env.VITE_admin_server}/api/ai-chat/${userId}/${projectId}`,
+          `${
+            import.meta.env.VITE_admin_server
+          }/api/ai-chat/${userId}/${projectId}`,
           { messages: history },
           { withCredentials: true },
         );
@@ -208,7 +210,9 @@ export const loadChatHistory = async (
         // Pull from cloud if local is empty (e.g. new device)
         try {
           const cloudRes = await axios.get(
-            `${import.meta.env.VITE_admin_server}/api/ai-chat/${userId}/${projectId}`,
+            `${
+              import.meta.env.VITE_admin_server
+            }/api/ai-chat/${userId}/${projectId}`,
             { withCredentials: true },
           );
           const cloudMessages = cloudRes.data.messages || [];
@@ -228,7 +232,9 @@ export const loadChatHistory = async (
         // Push existing local history to cloud (initial sync for pre-existing chat.json)
         try {
           await axios.put(
-            `${import.meta.env.VITE_admin_server}/api/ai-chat/${userId}/${projectId}`,
+            `${
+              import.meta.env.VITE_admin_server
+            }/api/ai-chat/${userId}/${projectId}`,
             { messages: localHistory },
             { withCredentials: true },
           );
@@ -396,11 +402,22 @@ export const compileDocument = async (
   try {
     const contentToCompile = currentProject.files[rootFile].content;
 
-    if (
-      !contentToCompile.includes("\\begin{document}") ||
-      !contentToCompile.includes("\\end{document}")
-    ) {
-      throw new Error("Invalid LaTeX document structure");
+    const hasBegin = contentToCompile.includes("\\begin{document}");
+    const hasEnd = contentToCompile.includes("\\end{document}");
+
+    if (!hasBegin || !hasEnd) {
+      const missing =
+        !hasBegin && !hasEnd
+          ? "both tags"
+          : !hasBegin
+          ? "\\begin{document}"
+          : "\\end{document}";
+      console.error(
+        `❌ Pre-flight check failed: Missing ${missing} in ${rootFile}`,
+      );
+      throw new Error(
+        `Invalid LaTeX structure: ${rootFile} is missing required tags.`,
+      );
     }
 
     const response = await axios.post(
@@ -626,7 +643,9 @@ export const syncEquationsToCloud = async (
   if (!isServerConnected || !isAuthenticated || !userId) return;
   try {
     await axios.put(
-      `${import.meta.env.VITE_admin_server}/api/equations/${userId}/${projectId}`,
+      `${
+        import.meta.env.VITE_admin_server
+      }/api/equations/${userId}/${projectId}`,
       { items: equations },
       { withCredentials: true },
     );
@@ -642,7 +661,9 @@ export const pullEquationsFromCloud = async (
   if (!isServerConnected || !isAuthenticated || !userId) return [];
   try {
     const res = await axios.get(
-      `${import.meta.env.VITE_admin_server}/api/equations/${userId}/${projectId}`,
+      `${
+        import.meta.env.VITE_admin_server
+      }/api/equations/${userId}/${projectId}`,
       { withCredentials: true },
     );
     return res.data.items || [];
@@ -660,7 +681,9 @@ export const syncCitationsToCloud = async (
   if (!isServerConnected || !isAuthenticated || !userId) return;
   try {
     await axios.put(
-      `${import.meta.env.VITE_admin_server}/api/citations/${userId}/${projectId}`,
+      `${
+        import.meta.env.VITE_admin_server
+      }/api/citations/${userId}/${projectId}`,
       { items: citations },
       { withCredentials: true },
     );
@@ -676,7 +699,9 @@ export const pullCitationsFromCloud = async (
   if (!isServerConnected || !isAuthenticated || !userId) return [];
   try {
     const res = await axios.get(
-      `${import.meta.env.VITE_admin_server}/api/citations/${userId}/${projectId}`,
+      `${
+        import.meta.env.VITE_admin_server
+      }/api/citations/${userId}/${projectId}`,
       { withCredentials: true },
     );
     return res.data.items || [];

@@ -143,7 +143,9 @@ const Element = ({ attributes, children, element }) => {
           </div>
           {!isStructure && (
             <pre className="text-[11px] font-mono text-gray-600 overflow-x-auto whitespace-pre-wrap bg-white p-2.5 rounded-lg border border-gray-100">
-              {element.rawLatex}
+              {typeof element.rawLatex === "string"
+                ? element.rawLatex
+                : JSON.stringify(element.rawLatex)}
             </pre>
           )}
           <div className="hidden">{children}</div>
@@ -268,6 +270,14 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
     [],
   );
   const isInternalChange = useRef(false);
+  const isInitialRender = useRef(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      isInitialRender.current = false;
+    }, 150);
+    return () => clearTimeout(t);
+  }, []);
 
   const bodyNodes = useMemo(() => {
     if (!globalAst) return [];
@@ -281,21 +291,62 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
     return docEnv ? docEnv.content : contentArray;
   }, [globalAst]);
 
-  const initialValue = useMemo(() => astToSlate(bodyNodes), []);
+  const initialValue = useMemo(() => {
+    console.log("🔍 [SlateEditor] 1. Raw bodyNodes from AST:", bodyNodes);
+    const slateNodes = astToSlate(bodyNodes);
+
+    // Deep log the exact array Slate is about to render
+    console.log(
+      "🚨 [SlateEditor] 2. Final slateNodes given to React/Slate:",
+      slateNodes,
+    );
+
+    // Let's also do a manual sweep and log the exact bad object if we find it
+    const findBadNode = (nodes) => {
+      nodes.forEach((n) => {
+        if (n.type && n.content && n.position) {
+          console.error("❌ FOUND THE ROGUE NODE:", n);
+        }
+        if (n.children) findBadNode(n.children);
+      });
+    };
+    findBadNode(slateNodes);
+
+    return slateNodes;
+  }, [bodyNodes]);
 
   useEffect(() => {
+    // 1. If the change came from INSIDE this Slate editor, ignore the incoming sync
+    // to prevent cursor jumps and history crashes.
     if (isInternalChange.current) {
       isInternalChange.current = false;
       return;
     }
 
     const newSlateValue = astToSlate(bodyNodes);
-    Transforms.deselect(editor);
-    editor.children = newSlateValue;
+
+    // 2. CRITICAL: Only perform a hard reset if the content is actually different.
+    // This prevents the "Infinite Typing" bug where Slate resets on every keystroke.
+    if (JSON.stringify(editor.children) === JSON.stringify(newSlateValue)) {
+      return;
+    }
+
+    // 3. Perform a safe reset for external changes (like switching files)
+    Editor.withoutNormalizing(editor, () => {
+      editor.children = newSlateValue;
+      editor.selection = null;
+
+      // Reset history to clear out the corrupted state
+      if (editor.history) {
+        editor.history = { undo: [], redo: [] };
+      }
+    });
+
     editor.onChange();
   }, [bodyNodes, editor]);
 
   const handleChange = (newValue) => {
+    if (isInitialRender.current) return;
     const isAstChange = editor.operations.some(
       (op) => op.type !== "set_selection",
     );
@@ -313,10 +364,15 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
         (n) => n.type === "environment" && n.env === "document",
       );
 
-      if (docEnv) docEnv.content = updatedBodyNodes;
-      else {
-        if (clonedAst.type === "root") clonedAst.content = updatedBodyNodes;
-        else clonedAst = updatedBodyNodes;
+      if (docEnv) {
+        docEnv.content = updatedBodyNodes;
+      } else {
+        // 🔥 FIX: Ensure subfiles always remain valid root AST objects
+        if (clonedAst.type === "root") {
+          clonedAst.content = updatedBodyNodes;
+        } else {
+          clonedAst = { type: "root", content: updatedBodyNodes };
+        }
       }
 
       onAstChange(clonedAst);
