@@ -1825,7 +1825,7 @@ const RecursiveSection = ({
             {isEnvironment ? (
               <div className="flex items-center gap-2 select-none">
                 <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-md text-[13px] font-bold uppercase tracking-widest border border-purple-200">
-                  📄 {section.name}
+                  {section.name}
                 </span>
                 <span className="text-xs text-slate-400 font-medium">
                   Structural Block
