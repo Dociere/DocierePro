@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { checkServerConnection } from "../api/projectHandling";
+import { checkServerConnection, api } from "../api/projectHandling";
 
 const AuthContext = createContext();
 
@@ -19,12 +19,14 @@ export const AuthProvider = ({ children }) => {
       setIsServerConnected(serverRes);
       console.log("serverRes", serverRes);
       try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_admin_server}/api/check-auth`,
-          {
-            withCredentials: true,
-          }
-        );
+        // const response = await axios.get(
+        //   `${import.meta.env.VITE_admin_server}/api/check-auth`,
+        //   {
+        //     withCredentials: true,
+        //   },
+        // );
+
+        const response = await api.get(`/api/check-auth`);
 
         if (response.data.authenticated) {
           setIsAuthenticated(true);
@@ -36,7 +38,7 @@ export const AuthProvider = ({ children }) => {
         console.error("Error fetching data:", error);
         if (error.response) {
           setMessage(
-            error.response.data.message || "You are not authenticated."
+            error.response.data.message || "You are not authenticated.",
           );
         } else {
           setMessage("Failed to load message due to network issue.");

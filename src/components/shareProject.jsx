@@ -4,6 +4,7 @@ import { useAuth } from "../context/useAuth";
 import { projectContext } from "../context/useProject.jsx";
 import { saveProject } from "../api/projectHandling.jsx";
 import { useNavigate } from "react-router-dom";
+import { api } from "../api/projectHandling.jsx";
 
 const ShareProject = ({ onClose, projectId, isOwner }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,11 +42,16 @@ const ShareProject = ({ onClose, projectId, isOwner }) => {
     setMessage("");
 
     try {
-      const response = await axios.post(
-        `http://localhost:5025/api/projects/${projectId}/share`,
-        { collaboratorEmail, permissions: "edit" },
-        { withCredentials: true },
-      );
+      // const response = await axios.post(
+      //   `${import.meta.env.VITE_admin_server}/api/projects/${projectId}/share`,
+      //   { collaboratorEmail, permissions: "edit" },
+      //   { withCredentials: true },
+      // );
+
+      const response = await api.post(`/api/projects/${projectId}/share`, {
+        collaboratorEmail,
+        permissions: "edit",
+      });
 
       setShareLink(response.data.shareLink);
       setMessage("Share link generated!");

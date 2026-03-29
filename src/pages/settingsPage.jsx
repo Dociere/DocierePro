@@ -9,6 +9,7 @@ import {
   fetchAIConfigsFromCloud,
   fetchDecryptedSecret,
 } from "../api/projectHandling";
+import { MdOutlineDarkMode, MdOutlineLightMode } from "react-icons/md";
 
 const SettingsPage = () => {
   const { isSectionSpaceOpen } = useOutletContext();
@@ -20,6 +21,7 @@ const SettingsPage = () => {
   const [showToken, setShowToken] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isAddingConfig, setIsAddingConfig] = useState(false);
+  const [hostingMethod, setHostingMethod] = useState("self-hosted");
   const [newConfig, setNewConfig] = useState({
     id: "",
     name: "",
@@ -165,7 +167,10 @@ const SettingsPage = () => {
 
     // 2. If we are showing the key (Fetch and Decrypt)
     try {
-      const realKey = await fetchDecryptedSecret(configId);
+      const realKey = await fetchDecryptedSecret(
+        configId,
+        settings.server.methods[mode].backendServer,
+      );
 
       if (isForm) {
         // Update only the form's local state
@@ -240,7 +245,9 @@ const SettingsPage = () => {
               Settings
             </h1>
             <p
-              className={`text-base font-normal font-inter ml-1 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+              className={`text-base font-normal font-inter ml-1 ${
+                isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+              }`}
             >
               Customize your DocierePro experience
             </p>
@@ -248,7 +255,9 @@ const SettingsPage = () => {
 
           {/* Tabs Navigation */}
           <div
-            className={`flex gap-2 border-b mb-6 ${isDark ? "border-[#404040]" : "border-gray-500"}`}
+            className={`flex gap-2 border-b mb-6 ${
+              isDark ? "border-[#404040]" : "border-gray-500"
+            }`}
           >
             {tabs?.map((tab) => (
               <button
@@ -258,8 +267,8 @@ const SettingsPage = () => {
                   activeTab === tab.id
                     ? "border-[#AB2D2D] text-[#AB2D2D]"
                     : isDark
-                      ? "border-transparent text-[#a0a0a0] hover:text-[#e5e5e5]"
-                      : "border-transparent text-[#7D7D7D] hover:text-[#212121]"
+                    ? "border-transparent text-[#a0a0a0] hover:text-[#e5e5e5]"
+                    : "border-transparent text-[#7D7D7D] hover:text-[#212121]"
                 }`}
               >
                 {tab.label}
@@ -269,13 +278,17 @@ const SettingsPage = () => {
 
           {/* Tab Content */}
           <div
-            className={`rounded-lg border p-8 ${isDark ? "bg-[#252525] border-[#404040]" : "border-gray-500"}`}
+            className={`rounded-lg border p-8 ${
+              isDark ? "bg-[#252525] border-[#404040]" : "border-gray-500"
+            }`}
           >
             {/* Editor Tab */}
             {activeTab === "editor" && (
               <div className="space-y-6">
                 <h2
-                  className={`text-2xl font-playfair font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                  className={`text-2xl font-playfair font-semibold mb-4 ${
+                    isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                  }`}
                 >
                   Editor Settings
                 </h2>
@@ -314,18 +327,24 @@ const SettingsPage = () => {
                 {/* Font Size */}
                 <div className="space-y-2">
                   <label
-                    className={`block text-sm font-inter font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                    className={`block text-sm font-inter font-medium ${
+                      isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                    }`}
                   >
                     Font Size: {settings.editor.fontSize}px
                   </label>
                   <p
-                    className={`text-xs mb-2 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                    className={`text-xs mb-2 ${
+                      isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                    }`}
                   >
                     Adjust the editor font size for better readability
                   </p>
                   <div className="flex items-center gap-4 max-w-md">
                     <span
-                      className={`text-xs ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                      className={`text-xs ${
+                        isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                      }`}
                     >
                       10px
                     </span>
@@ -344,7 +363,9 @@ const SettingsPage = () => {
                       className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#AB2D2D]"
                     />
                     <span
-                      className={`text-xs ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                      className={`text-xs ${
+                        isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                      }`}
                     >
                       24px
                     </span>
@@ -353,24 +374,37 @@ const SettingsPage = () => {
 
                 {/* Preview */}
                 <div
-                  className={`mt-6 p-4 rounded-md border ${isDark ? "bg-[#1a1a1a] border-[#404040]" : "bg-[#F9F9F9] border-[#CFCFCF]"}`}
+                  className={`mt-6 p-4 rounded-md border ${
+                    isDark
+                      ? "bg-[#1a1a1a] border-[#404040]"
+                      : "bg-[#F9F9F9] border-[#CFCFCF]"
+                  }`}
                 >
                   <p
-                    className={`text-xs mb-2 font-inter ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                    className={`text-xs mb-2 font-inter ${
+                      isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                    }`}
                   >
                     Preview:
                   </p>
                   <div
-                    className={`font-mono p-3 rounded border ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                    className={`font-mono p-3 rounded border ${
+                      isDark
+                        ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]"
+                        : "bg-white border-[#CFCFCF] text-[#212121]"
+                    }`}
                     style={{ fontSize: `${settings.editor.fontSize}px` }}
                   >
-                    \documentclass{"{article}"}
+                    <span className="text-yellow-800">\documentclass</span>
+                    {"{article}"}
                     <br />
-                    \begin{"{document}"}
+                    <span className="text-fuchsia-800">\begin</span>
+                    {"{document}"}
                     <br />
                     &nbsp;&nbsp;Hello, LaTeX!
                     <br />
-                    \end{"{document}"}
+                    <span className="text-fuchsia-800">\end</span>
+                    {"{document}"}
                   </div>
                 </div>
               </div>
@@ -381,7 +415,9 @@ const SettingsPage = () => {
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2
-                    className={`text-2xl font-playfair font-semibold ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                    className={`text-2xl font-playfair font-semibold ${
+                      isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                    }`}
                   >
                     Configurations
                   </h2>
@@ -396,17 +432,25 @@ const SettingsPage = () => {
                 {/* Config Form Modal-like inline section */}
                 {isAddingConfig && (
                   <div
-                    className={`p-6 rounded-lg border-2 border-dashed ${isDark ? "bg-[#1a1a1a] border-[#404040]" : "bg-[#f9f9f9] border-[#CFCFCF]"}`}
+                    className={`p-6 rounded-lg border-2 border-dashed ${
+                      isDark
+                        ? "bg-[#1a1a1a] border-[#404040]"
+                        : "bg-[#f9f9f9] border-[#CFCFCF]"
+                    }`}
                   >
                     <h3
-                      className={`text-lg font-inter font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                      className={`text-lg font-inter font-semibold mb-4 ${
+                        isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                      }`}
                     >
                       New AI Configuration
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label
-                          className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                          className={`block text-xs font-inter font-bold uppercase ${
+                            isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                          }`}
                         >
                           Config Name
                         </label>
@@ -417,12 +461,18 @@ const SettingsPage = () => {
                             setNewConfig({ ...newConfig, name: e.target.value })
                           }
                           placeholder="e.g. My Gemini Pro"
-                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${
+                            isDark
+                              ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]"
+                              : "bg-white border-[#CFCFCF] text-[#212121]"
+                          }`}
                         />
                       </div>
                       <div className="space-y-2">
                         <label
-                          className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                          className={`block text-xs font-inter font-bold uppercase ${
+                            isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                          }`}
                         >
                           AI Provider
                         </label>
@@ -443,7 +493,11 @@ const SettingsPage = () => {
                                   : "",
                             });
                           }}
-                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${
+                            isDark
+                              ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]"
+                              : "bg-white border-[#CFCFCF] text-[#212121]"
+                          }`}
                         >
                           <option value="gemini">Google Gemini</option>
                           <option value="ollama">Ollama Local LLM</option>
@@ -451,7 +505,9 @@ const SettingsPage = () => {
                       </div>
                       <div className="space-y-2">
                         <label
-                          className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                          className={`block text-xs font-inter font-bold uppercase ${
+                            isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                          }`}
                         >
                           Model Name
                         </label>
@@ -469,14 +525,20 @@ const SettingsPage = () => {
                               ? "gemini-2.0-flash"
                               : "qwen2.5-coder:7b"
                           }
-                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                          className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${
+                            isDark
+                              ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]"
+                              : "bg-white border-[#CFCFCF] text-[#212121]"
+                          }`}
                         />
                       </div>
 
                       {newConfig.provider === "gemini" ? (
                         <div className="space-y-2">
                           <label
-                            className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                            className={`block text-xs font-inter font-bold uppercase ${
+                              isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                            }`}
                           >
                             API Token
                           </label>
@@ -491,7 +553,11 @@ const SettingsPage = () => {
                                 })
                               }
                               placeholder="Enter Gemini API Key"
-                              className={`w-full px-4 py-2 pr-16 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                              className={`w-full px-4 py-2 pr-16 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${
+                                isDark
+                                  ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]"
+                                  : "bg-white border-[#CFCFCF] text-[#212121]"
+                              }`}
                             />
                             {isAuthenticated && (
                               <button
@@ -519,7 +585,9 @@ const SettingsPage = () => {
                       ) : (
                         <div className="space-y-2">
                           <label
-                            className={`block text-xs font-inter font-bold uppercase ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                            className={`block text-xs font-inter font-bold uppercase ${
+                              isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                            }`}
                           >
                             Ollama URL
                           </label>
@@ -533,7 +601,11 @@ const SettingsPage = () => {
                               })
                             }
                             placeholder="http://localhost:11434/api/generate"
-                            className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${isDark ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]" : "bg-white border-[#CFCFCF] text-[#212121]"}`}
+                            className={`w-full px-4 py-2 border rounded-md font-inter text-sm focus:outline-none focus:ring-2 focus:ring-[#AB2D2D] ${
+                              isDark
+                                ? "bg-[#2d2d2d] border-[#404040] text-[#e5e5e5]"
+                                : "bg-white border-[#CFCFCF] text-[#212121]"
+                            }`}
                           />
                         </div>
                       )}
@@ -542,7 +614,7 @@ const SettingsPage = () => {
                       <button
                         onClick={handleSaveConfig}
                         disabled={!newConfig.name}
-                        className={`px-6 py-2 bg-green-600 text-white rounded-md font-inter text-sm hover:bg-green-700 transition-colors disabled:opacity-50`}
+                        className={`px-6 py-2 bg-gray-800 text-white rounded-md font-inter text-sm hover:bg-black transition-colors `}
                       >
                         {newConfig.id
                           ? "Update Configuration"
@@ -550,7 +622,11 @@ const SettingsPage = () => {
                       </button>
                       <button
                         onClick={() => setIsAddingConfig(false)}
-                        className={`px-6 py-2 border rounded-md font-inter text-sm ${isDark ? "border-[#404040] text-[#a0a0a0] hover:bg-[#2d2d2d]" : "border-[#CFCFCF] text-[#7D7D7D] hover:bg-[#f3f4f6]"}`}
+                        className={`px-6 py-2 border rounded-md font-inter text-sm ${
+                          isDark
+                            ? "border-[#404040] text-[#a0a0a0] hover:bg-[#2d2d2d]"
+                            : "border-[#CFCFCF] text-[#7D7D7D] hover:bg-[#f3f4f6]"
+                        }`}
                       >
                         Cancel
                       </button>
@@ -562,7 +638,11 @@ const SettingsPage = () => {
                 <div className="space-y-4">
                   {(settings.app?.aiConfigs || []).length === 0 ? (
                     <div
-                      className={`p-12 text-center border-2 border-dashed rounded-lg ${isDark ? "border-[#404040] text-[#a0a0a0]" : "border-[#CFCFCF] text-[#7D7D7D]"}`}
+                      className={`p-12 text-center border-2 border-dashed rounded-lg ${
+                        isDark
+                          ? "border-[#404040] text-[#a0a0a0]"
+                          : "border-[#CFCFCF] text-[#7D7D7D]"
+                      }`}
                     >
                       <p className="text-sm">
                         No AI configurations found. Add one to get started!
@@ -572,7 +652,13 @@ const SettingsPage = () => {
                     settings.app.aiConfigs?.map((config) => (
                       <div
                         key={config.id}
-                        className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${config.active ? "border-[#AB2D2D] bg-[#AB2D2D]/5" : isDark ? "border-[#404040] bg-[#1a1a1a]" : "border-[#CFCFCF] bg-white"}`}
+                        className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                          config.active
+                            ? "border-[#AB2D2D] bg-[#AB2D2D]/5"
+                            : isDark
+                            ? "border-[#404040] bg-[#1a1a1a]"
+                            : "border-[#CFCFCF] bg-white"
+                        }`}
                       >
                         <input
                           type="radio"
@@ -584,12 +670,18 @@ const SettingsPage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span
-                              className={`text-sm font-bold truncate ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                              className={`text-sm font-bold truncate ${
+                                isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                              }`}
                             >
                               {config.name}
                             </span>
                             <span
-                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${config.provider === "gemini" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                config.provider === "gemini"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-orange-100 text-orange-700"
+                              }`}
                             >
                               {config.provider === "gemini"
                                 ? "Google Gemini"
@@ -597,7 +689,9 @@ const SettingsPage = () => {
                             </span>
                           </div>
                           <div
-                            className={`text-xs font-mono flex items-center gap-2 mt-1 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                            className={`text-xs font-mono flex items-center gap-2 mt-1 ${
+                              isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                            }`}
                           >
                             <span>{config.model}</span>
                             <span className="opacity-30">|</span>
@@ -616,7 +710,9 @@ const SettingsPage = () => {
                                       : "********"
                                   }
                                   readOnly
-                                  className={`bg-transparent border-none p-0 w-24 focus:ring-0 text-xs font-mono ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                                  className={`bg-transparent border-none p-0 w-24 focus:ring-0 text-xs font-mono ${
+                                    isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                                  }`}
                                 />
                                 <button
                                   onClick={(e) => {
@@ -638,7 +734,11 @@ const SettingsPage = () => {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleEditConfig(config)}
-                            className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-[#333] text-[#a0a0a0] hover:text-blue-400" : "hover:bg-blue-50 text-[#7D7D7D] hover:text-blue-600"}`}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDark
+                                ? "hover:bg-[#333] text-[#a0a0a0] hover:text-blue-400"
+                                : "hover:bg-blue-50 text-[#7D7D7D] hover:text-blue-600"
+                            }`}
                             title="Edit Configuration"
                           >
                             <svg
@@ -659,7 +759,11 @@ const SettingsPage = () => {
 
                           <button
                             onClick={() => handleDeleteConfig(config.id)}
-                            className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-[#333] text-[#a0a0a0] hover:text-red-400" : "hover:bg-red-50 text-[#7D7D7D] hover:text-red-600"}`}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDark
+                                ? "hover:bg-[#333] text-[#a0a0a0] hover:text-red-400"
+                                : "hover:bg-red-50 text-[#7D7D7D] hover:text-red-600"
+                            }`}
                             title="Delete Configuration"
                           >
                             <svg
@@ -685,17 +789,23 @@ const SettingsPage = () => {
 
                 {/* Separator */}
                 <div
-                  className={`border-t pt-6 ${isDark ? "border-[#404040]" : "border-[#CFCFCF]"}`}
+                  className={`border-t pt-6 ${
+                    isDark ? "border-[#404040]" : "border-[#CFCFCF]"
+                  }`}
                 >
                   {/* Hosting Method */}
                   <div className="space-y-2">
                     <label
-                      className={`block text-sm font-inter font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                      className={`block text-sm font-inter font-medium ${
+                        isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                      }`}
                     >
                       Hosting Method
                     </label>
                     <p
-                      className={`text-xs mb-2 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                      className={`text-xs mb-2 ${
+                        isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                      }`}
                     >
                       Choose how you want to host your documents
                     </p>
@@ -705,12 +815,14 @@ const SettingsPage = () => {
                           type="radio"
                           name="hostingMethod"
                           value="self-hosted"
-                          className="w-4 h-4 text-[#AB2D2D] focus:ring-[#AB2D2D]"
-                          defaultChecked
+                          checked={hostingMethod === "self-hosted"}
+                          onChange={(e) => setHostingMethod(e.target.value)}
                         />
                         <div>
                           <span
-                            className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                            className={`text-sm font-inter ${
+                              isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                            }`}
                           >
                             Self-hosted
                           </span>
@@ -720,19 +832,62 @@ const SettingsPage = () => {
                         <input
                           type="radio"
                           name="hostingMethod"
-                          value="self-hosted"
-                          className="w-4 h-4 text-[#AB2D2D] focus:ring-[#AB2D2D]"
-                          defaultChecked
+                          value="cloud"
+                          checked={hostingMethod === "cloud"}
+                          onChange={(e) => setHostingMethod(e.target.value)}
                         />
                         <div>
                           <span
-                            className={`text-sm font-inter ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                            className={`text-sm font-inter ${
+                              isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                            }`}
                           >
                             Cloud-based Hosting
                           </span>
                         </div>
                       </label>
                     </div>
+                    {hostingMethod === "self-hosted" && (
+                      <div className="pt-5 space-y-5 font-inter text-sm">
+                        <div>
+                          <p className="font-medium mb-2">Backend Server</p>
+                          <input
+                            type="text"
+                            placeholder="eg, http://192.168.1.100:5025"
+                            value={
+                              settings.server.methods[settings.server.mode]
+                                .backendServer
+                            }
+                            onChange={(e) =>
+                              updateSetting(
+                                `server.methods.${settings.server.mode}.backendServer`,
+                                e.target.value,
+                              )
+                            }
+                            className="w-96 px-3 py-1 border rounded-md"
+                          />
+                        </div>
+
+                        <div>
+                          <p className="font-medium mb-2">WebSocket Server</p>
+                          <input
+                            type="text"
+                            placeholder="eg, ws://192.168.1.100:5001"
+                            value={
+                              settings.server.methods[settings.server.mode]
+                                .webSocketServer
+                            }
+                            onChange={(e) =>
+                              updateSetting(
+                                `server.methods.${settings.server.mode}.webSocketServer`,
+                                e.target.value,
+                              )
+                            }
+                            className="w-96 px-3 py-1 border rounded-md"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -742,7 +897,9 @@ const SettingsPage = () => {
             {activeTab === "appearance" && (
               <div className="space-y-6">
                 <h2
-                  className={`text-2xl font-playfair font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                  className={`text-2xl font-playfair font-semibold mb-4 ${
+                    isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                  }`}
                 >
                   Appearance
                 </h2>
@@ -750,12 +907,16 @@ const SettingsPage = () => {
                 {/* Theme Mode */}
                 <div className="space-y-2">
                   <label
-                    className={`block text-sm font-inter font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                    className={`block text-sm font-inter font-medium ${
+                      isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                    }`}
                   >
                     Theme Mode
                   </label>
                   <p
-                    className={`text-xs mb-4 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                    className={`text-xs mb-4 ${
+                      isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                    }`}
                   >
                     Choose between light and dark mode
                   </p>
@@ -769,23 +930,37 @@ const SettingsPage = () => {
                         settings.appearance.theme === "light"
                           ? "border-[#AB2D2D] bg-red-50"
                           : isDark
-                            ? "border-[#404040] hover:border-[#666] bg-[#2d2d2d]"
-                            : "border-[#CFCFCF] hover:border-[#7D7D7D]"
+                          ? "border-[#404040] hover:border-[#666] bg-[#2d2d2d]"
+                          : "border-[#CFCFCF] hover:border-[#7D7D7D]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-4xl">☀️</span>
+                        <span className="text-4xl">
+                          {<MdOutlineLightMode />}
+                        </span>
                         {settings.appearance.theme === "light" && (
                           <span className="text-[#AB2D2D] text-xl">✓</span>
                         )}
                       </div>
                       <h3
-                        className={`font-inter font-semibold mb-1 ${settings.appearance.theme === "light" ? "text-[#212121]" : isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                        className={`font-inter font-semibold mb-1 ${
+                          settings.appearance.theme === "light"
+                            ? "text-[#212121]"
+                            : isDark
+                            ? "text-[#e5e5e5]"
+                            : "text-[#212121]"
+                        }`}
                       >
                         Light Mode
                       </h3>
                       <p
-                        className={`text-xs ${settings.appearance.theme === "light" ? "text-[#7D7D7D]" : isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                        className={`text-xs ${
+                          settings.appearance.theme === "light"
+                            ? "text-[#7D7D7D]"
+                            : isDark
+                            ? "text-[#a0a0a0]"
+                            : "text-[#7D7D7D]"
+                        }`}
                       >
                         Clean and bright interface
                       </p>
@@ -800,23 +975,29 @@ const SettingsPage = () => {
                         settings.appearance.theme === "dark"
                           ? "border-[#AB2D2D] bg-[#3d2d2d]"
                           : isDark
-                            ? "border-[#404040] hover:border-[#666] bg-[#2d2d2d]"
-                            : "border-[#CFCFCF] hover:border-[#7D7D7D]"
+                          ? "border-[#404040] hover:border-[#666] bg-[#2d2d2d]"
+                          : "border-[#CFCFCF] hover:border-[#7D7D7D]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-4xl">🌙</span>
+                        <span className="text-4xl">
+                          {<MdOutlineDarkMode />}
+                        </span>
                         {settings.appearance.theme === "dark" && (
                           <span className="text-[#AB2D2D] text-xl">✓</span>
                         )}
                       </div>
                       <h3
-                        className={`font-inter font-semibold mb-1 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                        className={`font-inter font-semibold mb-1 ${
+                          isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                        }`}
                       >
                         Dark Mode
                       </h3>
                       <p
-                        className={`text-xs ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                        className={`text-xs ${
+                          isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                        }`}
                       >
                         Easier on the eyes
                       </p>
@@ -830,7 +1011,9 @@ const SettingsPage = () => {
             {activeTab === "account" && (
               <div className="space-y-6">
                 <h2
-                  className={`text-2xl font-playfair font-semibold mb-4 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                  className={`text-2xl font-playfair font-semibold mb-4 ${
+                    isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                  }`}
                 >
                   Account Settings
                 </h2>
@@ -839,46 +1022,64 @@ const SettingsPage = () => {
                   <div className="space-y-6">
                     {/* User Info */}
                     <div
-                      className={`p-4 rounded-md border ${isDark ? "bg-[#1a1a1a] border-[#404040]" : "bg-[#F9F9F9] border-[#CFCFCF]"}`}
+                      className={`p-4 rounded-md border ${
+                        isDark
+                          ? "bg-[#1a1a1a] border-[#404040]"
+                          : "bg-[#F9F9F9] border-[#CFCFCF]"
+                      }`}
                     >
                       <h3
-                        className={`font-inter font-medium mb-3 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                        className={`font-inter font-medium mb-3 ${
+                          isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                        }`}
                       >
                         Profile Information
                       </h3>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span
-                            className={`text-sm ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                            className={`text-sm ${
+                              isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                            }`}
                           >
                             Name:
                           </span>
                           <span
-                            className={`text-sm font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                            className={`text-sm font-medium ${
+                              isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                            }`}
                           >
                             {user.userName || "N/A"}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span
-                            className={`text-sm ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                            className={`text-sm ${
+                              isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                            }`}
                           >
                             Email:
                           </span>
                           <span
-                            className={`text-sm font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                            className={`text-sm font-medium ${
+                              isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                            }`}
                           >
                             {user.emailId || "N/A"}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span
-                            className={`text-sm ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                            className={`text-sm ${
+                              isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                            }`}
                           >
                             User ID:
                           </span>
                           <span
-                            className={`text-sm font-medium ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                            className={`text-sm font-medium ${
+                              isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                            }`}
                           >
                             {user.userId || "N/A"}
                           </span>
@@ -890,7 +1091,7 @@ const SettingsPage = () => {
                     <div>
                       <button
                         onClick={() => navigate("/change-password")}
-                        className="px-6 py-2 bg-[#256081] text-white rounded-md font-inter text-sm hover:bg-[#1d4a63] transition-colors"
+                        className="px-6 py-2 bg-[#812525] text-white rounded-md font-inter text-sm hover:bg-[#631d1d] transition-colors"
                       >
                         Change Password
                       </button>
@@ -898,15 +1099,23 @@ const SettingsPage = () => {
 
                     {/* Session Info */}
                     <div
-                      className={`p-4 rounded-md border ${isDark ? "bg-[#1a1a1a] border-[#404040]" : "bg-[#F9F9F9] border-[#CFCFCF]"}`}
+                      className={`p-4 rounded-md border ${
+                        isDark
+                          ? "bg-[#1a1a1a] border-[#404040]"
+                          : "bg-[#F9F9F9] border-[#CFCFCF]"
+                      }`}
                     >
                       <h3
-                        className={`font-inter font-medium mb-2 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                        className={`font-inter font-medium mb-2 ${
+                          isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                        }`}
                       >
                         Session Information
                       </h3>
                       <p
-                        className={`text-xs ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                        className={`text-xs ${
+                          isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                        }`}
                       >
                         You are currently logged in. Your session is active.
                       </p>
@@ -916,12 +1125,16 @@ const SettingsPage = () => {
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">👤</div>
                     <h3
-                      className={`font-inter font-semibold mb-2 ${isDark ? "text-[#e5e5e5]" : "text-[#212121]"}`}
+                      className={`font-inter font-semibold mb-2 ${
+                        isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                      }`}
                     >
                       Not Signed In
                     </h3>
                     <p
-                      className={`text-sm mb-6 ${isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"}`}
+                      className={`text-sm mb-6 ${
+                        isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                      }`}
                     >
                       Sign in to access account settings and sync your
                       preferences
@@ -952,7 +1165,9 @@ const SettingsPage = () => {
 
           {/* Reset Button */}
           <div
-            className={`mt-8 pt-6 border-t ${isDark ? "border-[#404040]" : "border-gray-500"}`}
+            className={`mt-8 pt-6 border-t ${
+              isDark ? "border-[#404040]" : "border-gray-500"
+            }`}
           >
             <button
               onClick={handleResetSettings}

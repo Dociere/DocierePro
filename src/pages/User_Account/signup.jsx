@@ -2,6 +2,7 @@ import react, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import ConfirmModal from "../../components/confirmModal";
+import { api } from "../../api/projectHandling";
 
 function DynamicSignup() {
   const navigate = useNavigate();
@@ -27,13 +28,15 @@ function DynamicSignup() {
     };
 
     try {
-      const res = await axios.post(
-        `http://localhost:5025/api/signup`,
-        userData,
-        {
-          withCredentials: true,
-        },
-      );
+      // const res = await axios.post(
+      //   `${import.meta.env.VITE_admin_server}/api/signup`,
+      //   userData,
+      //   {
+      //     withCredentials: true,
+      //   },
+      // );
+
+      const res = await api.post(`/api/signup`, userData);
       console.log("Signup Response:", res);
 
       // Reset form
@@ -61,7 +64,9 @@ function DynamicSignup() {
 
   return (
     <div
-      className={`h-[calc(100vh-2.75rem)] bg-[#eaeaea] relative overflow-hidden mt-11 flex flex-col transition-all duration-300 ${isSectionSpaceOpen ? "ml-96" : "ml-12"}`}
+      className={`h-[calc(100vh-2.75rem)] bg-[#eaeaea] relative overflow-hidden mt-11 flex flex-col transition-all duration-300 ${
+        isSectionSpaceOpen ? "ml-96" : "ml-12"
+      }`}
     >
       {/* Branding */}
       {/* <div className="absolute top-6 left-6 z-10">

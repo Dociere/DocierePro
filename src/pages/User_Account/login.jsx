@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link, useOutletContext } from "react-router-dom";
+import { api } from "../../api/projectHandling";
 
 function Login() {
   const navigate = useNavigate();
@@ -22,13 +23,15 @@ function Login() {
     };
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_admin_server}/api/login`,
-        userData,
-        {
-          withCredentials: true,
-        },
-      );
+      // const res = await axios.post(
+      //   `${import.meta.env.VITE_admin_server}/api/login`,
+      //   userData,
+      //   {
+      //     withCredentials: true,
+      //   },
+      // );
+
+      const res = await api.post(`/api/login`, userData);
       console.log("Login successful");
       navigate("/");
     } catch (err) {
@@ -44,7 +47,9 @@ function Login() {
 
   return (
     <div
-      className={`h-[calc(100vh-2.75rem)] bg-[#eaeaea] relative overflow-hidden mt-11 flex flex-col transition-all duration-300 ${isSectionSpaceOpen ? "ml-96" : "ml-12"}`}
+      className={`h-[calc(100vh-2.75rem)] bg-[#eaeaea] relative overflow-hidden mt-11 flex flex-col transition-all duration-300 ${
+        isSectionSpaceOpen ? "ml-96" : "ml-12"
+      }`}
     >
       <div className="flex flex-col h-full">
         <div className="flex-1 flex items-center justify-center p-3">

@@ -26,6 +26,7 @@ import { projectContext } from "../context/useProject";
 import { useAuth } from "../context/useAuth";
 import axios from "axios";
 import { useSettings } from "../context/useSettings";
+import { api } from "../api/projectHandling";
 
 const DynamicSideBar = ({
   isSectionSpaceOpen,
@@ -110,11 +111,13 @@ const DynamicSideBar = ({
   const handleLogout = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(
-        `${import.meta.env.VITE_admin_server}/api/signout`,
-        {},
-        { withCredentials: true },
-      );
+      // await axios.post(
+      //   `${import.meta.env.VITE_admin_server}/api/signout`,
+      //   {},
+      //   { withCredentials: true },
+      // );
+
+      await api.post(`/api/signout`, {});
       console.log("Successfully Logged Out");
       window.location.reload();
     } catch (error) {

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { MonacoBinding } from "y-monaco";
+import { useSettings } from "../context/useSettings";
 
 export const useYjsMonaco = (
   projectId,
@@ -15,6 +16,9 @@ export const useYjsMonaco = (
   const binding = useRef(null);
   const [users, setUsers] = useState([]);
   const [syncStatus, setSyncStatus] = useState("loading");
+  const { settings } = useSettings();
+  const mode = settings.server.mode;
+  const ws_url = settings.server.methods[mode].webSocketServer;
 
   useEffect(() => {
     if (!projectId || !token || !monacoEditor) {
@@ -29,9 +33,13 @@ export const useYjsMonaco = (
     console.log("🚀 Initializing Yjs for project:", projectId);
 
     const ytext = ydoc.current.getText("monaco");
+    // const wsUrl =
+    //   localStorage.getItem(`project_${projectId}_ws`) ||
+    //   `${import.meta.env.VITE_ws_server}`;
+
     const wsUrl =
-      localStorage.getItem(`project_${projectId}_ws`) ||
-      `${import.meta.env.VITE_ws_server}`;
+      localStorage.getItem(`project_${projectId}_ws`) || `${ws_url}`;
+
     const guestToken = localStorage.getItem(`project_${projectId}_guest_token`);
     const effectiveToken = guestToken || token;
     if (

@@ -52,7 +52,6 @@ function decrypt(text) {
 const execAsync = util.promisify(exec);
 const app = express();
 const PORT = 5000;
-const AI_SERVICE_URL = "http://localhost:5025";
 
 // Middleware
 app.use(
@@ -73,6 +72,21 @@ const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
 const SIDECAR_PATH = isDev
   ? join(__dirname, "sidecar", "build", "sidecar")
   : join(process.env.RESOURCES_PATH, "sidecar");
+
+const getServerUrl = () => {
+  const configPath = path.resolve("./config.json");
+
+  const rawData = fs.readFileSync(configPath, "utf-8");
+  const config = JSON.parse(rawData);
+
+  const mode = config.server.mode;
+  const serverUrl = config.server.methods[mode].backendServer;
+
+  return serverUrl;
+};
+
+// const AI_SERVICE_URL = "http://localhost:5025";
+const AI_SERVICE_URL = getServerUrl();
 
 async function getActiveAIConfig() {
   try {
@@ -2866,15 +2880,15 @@ app.get("/api/settings", async (req, res) => {
     const settings = await fs.readJSON(settingsDir);
 
     // Mask AI API keys before sending to frontend
-    if (settings.app && settings.app.aiConfigs) {
-      settings.configWithMaskedKeys = JSON.parse(JSON.stringify(settings)); // Clone
-      settings.app.aiConfigs = settings.app.aiConfigs.map((config) => {
-        if (config.provider === "gemini" && config.apiKey) {
-          return { ...config, apiKey: "********" };
-        }
-        return config;
-      });
-    }
+    // if (settings.app && settings.app.aiConfigs) {
+    //   settings.configWithMaskedKeys = JSON.parse(JSON.stringify(settings)); // Clone
+    //   settings.app.aiConfigs = settings.app.aiConfigs.map((config) => {
+    //     if (config.provider === "gemini" && config.apiKey) {
+    //       return { ...config, apiKey: "********" };
+    //     }
+    //     return config;
+    //   });
+    // }
 
     console.log(`✅ Loaded Settings`);
     res.json({ success: true, settings: settings });
