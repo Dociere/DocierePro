@@ -31,18 +31,18 @@ const Element = ({ attributes, children, element }) => {
       const Tag = `h${element.level || 1}`;
       const sizeClass =
         element.level === 1
-          ? "text-2xl border-b pb-2"
+          ? "text-3xl font-inter border-b pb-3"
           : element.level === 2
-          ? "text-xl"
+          ? "text-xl font-inter"
           : element.level === 3
-          ? "text-lg"
+          ? "text-lg font-inter"
           : element.level === 4
-          ? "text-base font-bold"
-          : "text-sm font-bold uppercase tracking-wider text-gray-500";
+          ? "text-base font-inter font-bold"
+          : "text-sm font-bold uppercase font-inter tracking-wider text-gray-500";
       return (
         <Tag
           {...attributes}
-          className={`font-semibold text-gray-900 mt-8 mb-3 ${sizeClass}`}
+          className={`font-normal font-inter text-gray-900 mt-8 mb-5 ${sizeClass}`}
         >
           {children}
         </Tag>
@@ -52,7 +52,7 @@ const Element = ({ attributes, children, element }) => {
       return (
         <ul
           {...attributes}
-          className="list-disc ml-8 mb-4 text-gray-700 space-y-1"
+          className="list-disc font-inter ml-8 mb-4 text-gray-700 space-y-1"
         >
           {children}
         </ul>
@@ -62,7 +62,7 @@ const Element = ({ attributes, children, element }) => {
       return (
         <ol
           {...attributes}
-          className="list-decimal ml-8 mb-4 text-gray-700 space-y-1"
+          className="list-decimal font-inter ml-8 mb-4 text-gray-700 space-y-1"
         >
           {children}
         </ol>
@@ -73,19 +73,22 @@ const Element = ({ attributes, children, element }) => {
 
     case "editable-macro":
       const macroColors = {
-        title: "text-blue-800 border-blue-200 bg-blue-50/50",
-        subtitle: "text-blue-700 border-blue-200 bg-blue-50/30",
-        author: "text-emerald-800 border-emerald-200 bg-emerald-50/50",
-        affiliation: "text-teal-800 border-teal-200 bg-teal-50/50",
-        institution: "text-teal-700 border-teal-200 bg-teal-50/30",
-        city: "text-teal-600 border-teal-100 bg-teal-50/20",
-        state: "text-teal-600 border-teal-100 bg-teal-50/20",
-        country: "text-teal-600 border-teal-100 bg-teal-50/20",
-        email: "text-amber-700 border-amber-200 bg-amber-50/50",
-        keywords: "text-purple-700 border-purple-200 bg-purple-50/50",
-        caption: "text-slate-700 border-slate-200 bg-slate-50/50",
-        Description: "text-slate-600 border-slate-200 bg-slate-50/30",
-        default: "text-indigo-700 border-indigo-200 bg-indigo-50/50",
+        title: "text-blue-800 border-blue-200 bg-blue-50/50 font-inter",
+        subtitle: "text-blue-700 border-blue-200 bg-blue-50/30 font-inter",
+        author:
+          "text-emerald-800 border-emerald-200 bg-emerald-50/50 font-inter",
+        affiliation: "text-teal-800 border-teal-200 bg-teal-50/50 font-inter",
+        institution: "text-teal-700 border-teal-200 bg-teal-50/30 font-inter",
+        city: "text-teal-600 border-teal-100 bg-teal-50/20 font-inter",
+        state: "text-teal-600 border-teal-100 bg-teal-50/20 font-inter",
+        country: "text-teal-600 border-teal-100 bg-teal-50/20 font-inter",
+        email: "text-amber-700 border-amber-200 bg-amber-50/50 font-inter",
+        keywords:
+          "text-purple-700 border-purple-200 bg-purple-50/50 font-inter",
+        caption: "text-slate-700 border-slate-200 bg-slate-50/50 font-inter",
+        Description:
+          "text-slate-600 border-slate-200 bg-slate-50/30 font-inter",
+        default: "text-indigo-700 border-indigo-200 bg-indigo-50/50 font-inter",
       };
       const mTheme = macroColors[element.macro] || macroColors.default;
 
@@ -135,7 +138,7 @@ const Element = ({ attributes, children, element }) => {
           className="my-3 p-3 bg-gray-50 border border-gray-200 rounded-xl shadow-sm select-none flex flex-col gap-2 transition-all hover:border-gray-300 hover:shadow-md cursor-default"
         >
           <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-            {isInput ? "🔗" : isStructure ? "📐" : "⚙️"}{" "}
+            {/* {isInput ? "🔗" : isStructure ? "📐" : "⚙️"}{" "} */}
             {element.env || "LaTeX Block"}
             <span className="font-normal text-[10px] text-gray-400 normal-case ml-auto bg-white px-2 py-0.5 rounded border border-gray-200">
               Read-Only Structure
@@ -154,7 +157,10 @@ const Element = ({ attributes, children, element }) => {
 
     default:
       return (
-        <p {...attributes} className="mb-3 text-gray-700 leading-relaxed">
+        <p
+          {...attributes}
+          className="mb-3 text-gray-700 leading-relaxed font-inter"
+        >
           {children}
         </p>
       );
@@ -218,7 +224,7 @@ const BlockButton = ({ format, icon }) => {
         e.preventDefault();
         toggleBlock(editor, format);
       }}
-      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+      className={`px-3 py-1.5 text-sm font-medium font-inter rounded-md transition-colors ${
         isActive
           ? "bg-gray-200 text-blue-700"
           : "text-gray-600 hover:bg-gray-100"
@@ -249,7 +255,7 @@ const MarkButton = ({ format, icon }) => {
         e.preventDefault();
         toggleMark(editor, format);
       }}
-      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+      className={`px-3 py-1.5 text-sm font-inter font-medium rounded-md transition-colors ${
         isActive
           ? "bg-gray-200 text-blue-700"
           : "text-gray-600 hover:bg-gray-100"
@@ -386,6 +392,7 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
         initialValue={initialValue}
         onChange={handleChange}
       >
+        {/* ToolBar Options */}
         <div className="flex gap-1 p-3 border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex-wrap items-center shadow-sm">
           <MarkButton
             format="bold"
@@ -407,10 +414,10 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               toggleBlock(editor, "heading");
               Transforms.setNodes(editor, { level: 1 });
             }}
-            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors font-inter ${
               isBlockActive(editor, "heading")
-                ? "bg-gray-200 text-blue-700"
-                : "text-gray-600 hover:bg-gray-100"
+                ? "bg-gray-200  text-blue-700"
+                : "text-gray-600  hover:bg-gray-100"
             }`}
           >
             H1
@@ -421,7 +428,11 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               toggleBlock(editor, "heading");
               Transforms.setNodes(editor, { level: 2 });
             }}
-            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors text-gray-600 hover:bg-gray-100`}
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors font-inter ${
+              isBlockActive(editor, "heading")
+                ? "bg-gray-200  text-blue-700"
+                : "text-gray-600  hover:bg-gray-100"
+            }`}
           >
             H2
           </button>
@@ -431,7 +442,11 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               toggleBlock(editor, "heading");
               Transforms.setNodes(editor, { level: 3 });
             }}
-            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors text-gray-600 hover:bg-gray-100`}
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors font-inter ${
+              isBlockActive(editor, "heading")
+                ? "bg-gray-200  text-blue-700"
+                : "text-gray-600  hover:bg-gray-100"
+            }`}
           >
             H3
           </button>
@@ -441,7 +456,7 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
           <BlockButton format="numbered-list" icon="1. List" />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-10 lg:px-32">
+        <div className="flex-1 overflow-y-auto p-12">
           <Editable
             renderElement={useCallback(
               (props) => (
