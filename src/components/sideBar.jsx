@@ -9,11 +9,13 @@ import ImageInsertModal from "./ImageInsertModal";
 import FileOpen from "../assets/icons/fileOpen.svg?react";
 import SectionIcon from "../assets/icons/sectionIcon.svg?react";
 import CitationIcon from "../assets/icons/citation-manager.svg?react";
+import AsteriskIcon from "../assets/icons/asteriskIcon.svg?react";
 import ShareIcon from "../assets/icons/shareIcon.svg?react";
 import DraftIcon from "../assets/icons/draftIcon.svg?react";
 import MathIcon from "../assets/icons/mathIcon.svg?react";
 import TableIcon from "../assets/icons/tableIcon.svg?react";
 import ImageIcon from "../assets/icons/imageIcon.svg?react";
+import ShuffleIcon from "../assets/icons/shuffleIcon.svg?react";
 import DraftVersionIcon from "../assets/icons/draftVersion.svg?react";
 import ExtensionIcon from "../assets/icons/extensionIcon.svg?react";
 import SettingsIcon from "../assets/icons/settings.svg?react";
@@ -308,6 +310,44 @@ const DynamicSideBar = ({
                     </div>
                   </span>
                 </div>
+
+                {/* Insert Footnote */}
+                {/* <div onClick={handleImageIconClick}>
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Insert Footnote"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <AsteriskIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </div> */}
+
+                {/* Insert Cross-References */}
+                {/* <div onClick={handleImageIconClick}>
+                  <span
+                    className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
+                    title="Insert Cross-References"
+                  >
+                    <div className="p-2 hover:bg-[#e9e9e9] rounded-md">
+                      <ShuffleIcon
+                        style={{
+                          fill: settings.appearance.customThemes[
+                            settings.appearance.theme
+                          ].icon1,
+                        }}
+                        className="w-4 h-4"
+                      />
+                    </div>
+                  </span>
+                </div> */}
 
                 {/* Draft Versioning */}
                 <div
