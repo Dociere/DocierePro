@@ -2217,6 +2217,24 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
                 Set as root file
               </button>
             )}
+
+            {/* NEW: Copy Relative Path Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuState(null);
+                navigator.clipboard.writeText(fileName);
+                showToast("Copied relative path!");
+              }}
+              className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2 ${
+                isDark
+                  ? "text-gray-200 hover:bg-[#444]"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Copy Relative Path
+            </button>
+
             <button
               onClick={(e) => {
                 setMenuState(null);
@@ -2280,7 +2298,7 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
             isDark ? "border-[#404040]" : "border-[#CFCFCF]"
           }`}
         >
-          <span className="font-medium text-black font-inter text-sm">
+          <span className="font-medium text-black font-inter text-sm truncate">
             Project Files
           </span>
           <div className="flex items-center gap-1 ml-2">
@@ -2693,6 +2711,27 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
                 No files in project
               </div>
             )}
+        </div>
+
+        {/* User Hint for Multi-Select */}
+        <div
+          className={`py-1.5 px-2 flex justify-center items-center text-[10.5px] border-t ${
+            isDark
+              ? "border-[#404040] text-gray-500 bg-[#2b2b2b]"
+              : "border-[#CFCFCF] text-gray-400 bg-gray-50/50"
+          }`}
+        >
+          Hold{" "}
+          <kbd
+            className={`mx-1 px-1 py-0.5 rounded shadow-sm border font-sans text-[9px] font-semibold ${
+              isDark
+                ? "border-gray-600 bg-gray-700 text-gray-300"
+                : "border-gray-300 bg-white text-gray-600"
+            }`}
+          >
+            Ctrl
+          </kbd>{" "}
+          to select multiple files
         </div>
       </div>
 
