@@ -17,8 +17,13 @@
 */
 
 import axios from "axios";
+import { useSettings } from "../context/useSettings";
 
 const API_URL = "http://localhost:5000";
+
+export const api = axios.create({
+  withCredentials: true,
+});
 
 export const createProject = async (
   title,
@@ -152,10 +157,15 @@ export const editDocumentWithAI = async (
   }
 };
 
-export const fetchDecryptedSecret = async (configId) => {
+export const fetchDecryptedSecret = async (configId, SERVER_API) => {
   try {
+    // const response = await axios.get(
+    //   `${import.meta.env.VITE_admin_server}/api/aiconfigs/secret/${configId}`,
+    //   { withCredentials: true },
+    // );
+
     const response = await axios.get(
-      `${import.meta.env.VITE_admin_server}/api/aiconfigs/secret/${configId}`,
+      `${SERVER_API}/api/aiconfigs/secret/${configId}`,
       { withCredentials: true },
     );
     return response.data.apiKey;
@@ -179,13 +189,16 @@ export const saveChatMessage = async (
     if (isServerConnected && isAuthenticated && userId) {
       try {
         const history = await loadChatHistory(projectId);
-        await axios.put(
-          `${
-            import.meta.env.VITE_admin_server
-          }/api/ai-chat/${userId}/${projectId}`,
-          { messages: history },
-          { withCredentials: true },
-        );
+        // await axios.put(
+        //   `${
+        //     import.meta.env.VITE_admin_server
+        //   }/api/ai-chat/${userId}/${projectId}`,
+        //   { messages: history },
+        //   { withCredentials: true },
+        // );
+        await api.put(`/api/ai-chat/${userId}/${projectId}`, {
+          messages: history,
+        });
       } catch (syncError) {
         console.log("Failed to sync chat to cloud:", syncError.message);
       }
@@ -209,12 +222,15 @@ export const loadChatHistory = async (
       if (localHistory.length === 0) {
         // Pull from cloud if local is empty (e.g. new device)
         try {
-          const cloudRes = await axios.get(
-            `${
-              import.meta.env.VITE_admin_server
-            }/api/ai-chat/${userId}/${projectId}`,
-            { withCredentials: true },
-          );
+          // const cloudRes = await axios.get(
+          //   `${
+          //     import.meta.env.VITE_admin_server
+          //   }/api/ai-chat/${userId}/${projectId}`,
+          //   { withCredentials: true },
+          // );
+
+          const cloudRes = await api.get(`/api/ai-chat/${userId}/${projectId}`);
+
           const cloudMessages = cloudRes.data.messages || [];
           if (cloudMessages.length > 0) {
             for (const msg of cloudMessages) {
@@ -231,13 +247,18 @@ export const loadChatHistory = async (
       } else {
         // Push existing local history to cloud (initial sync for pre-existing chat.json)
         try {
-          await axios.put(
-            `${
-              import.meta.env.VITE_admin_server
-            }/api/ai-chat/${userId}/${projectId}`,
-            { messages: localHistory },
-            { withCredentials: true },
-          );
+          // await axios.put(
+          //   `${
+          //     import.meta.env.VITE_admin_server
+          //   }/api/ai-chat/${userId}/${projectId}`,
+          //   { messages: localHistory },
+          //   { withCredentials: true },
+          // );
+
+          await api.put(`/api/ai-chat/${userId}/${projectId}`, {
+            messages: localHistory,
+          });
+
           console.log("✅ Synced existing chat history to cloud");
         } catch (syncError) {
           console.log(
@@ -341,18 +362,26 @@ export const saveProject = async (
 
     if (isServerConnected && isAuthenticated) {
       try {
-        await axios.put(
-          `${import.meta.env.VITE_admin_server}/api/projects/${
-            currentProject.id
-          }`,
-          {
-            files: currentProject.files,
-            owner: currentProject.owner,
-            title: currentProject.title,
-            activeFile: activeFile,
-            rootFile: currentProject.rootFile,
-          },
-        );
+        // await axios.put(
+        //   `${import.meta.env.VITE_admin_server}/api/projects/${
+        //     currentProject.id
+        //   }`,
+        //   {
+        //     files: currentProject.files,
+        //     owner: currentProject.owner,
+        //     title: currentProject.title,
+        //     activeFile: activeFile,
+        //     rootFile: currentProject.rootFile,
+        //   },
+        // );
+
+        await api.put(`/api/projects/${currentProject.id}`, {
+          files: currentProject.files,
+          owner: currentProject.owner,
+          title: currentProject.title,
+          activeFile: activeFile,
+          rootFile: currentProject.rootFile,
+        });
       } catch (error) {
         console.log("Failed to save project to DB: " + error.message);
       }
@@ -526,7 +555,8 @@ export const compileDocument = async (
 export const checkServerConnection = async () => {
   console.log("from checkServerConnection");
   try {
-    await axios.get(`${import.meta.env.VITE_admin_server}/api/health`);
+    // await axios.get(`${import.meta.env.VITE_admin_server}/api/health`);
+    await api.get(`/api/health`);
     return true;
   } catch (error) {
     console.log("Error connecting to the Backend Server", error);
@@ -554,12 +584,16 @@ export const createDraftVersion = async (
 
     if (isServerConnected && isAuthenticated) {
       try {
-        await axios.put(
-          `${import.meta.env.VITE_admin_server}/api/drafts/${projectId}`,
-          {
-            content: response.data.draftData,
-          },
-        );
+        // await axios.put(
+        //   `${import.meta.env.VITE_admin_server}/api/drafts/${projectId}`,
+        //   {
+        //     content: response.data.draftData,
+        //   },
+        // );
+
+        await api.put(`/api/drafts/${projectId}`, {
+          content: response.data.draftData,
+        });
       } catch (error) {
         console.log("Failed to save project to DB: " + error.message);
       }
@@ -584,12 +618,15 @@ export const loadDraftVersion = async (projectId) => {
 
 export const fetchAIConfigsFromCloud = async () => {
   try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_admin_server}/api/aiconfigs`,
-      {
-        withCredentials: true,
-      },
-    );
+    // const response = await axios.get(
+    //   `${import.meta.env.VITE_admin_server}/api/aiconfigs`,
+    //   {
+    //     withCredentials: true,
+    //   },
+    // );
+
+    const response = await api.get(`/api/aiconfigs`);
+
     return response.data.configs || [];
   } catch (error) {
     console.error("Failed to fetch AI configs from cloud", error);
@@ -599,11 +636,14 @@ export const fetchAIConfigsFromCloud = async () => {
 
 export const saveAIConfigsToCloud = async (configs) => {
   try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_admin_server}/api/aiconfigs`,
-      { configs },
-      { withCredentials: true },
-    );
+    // const response = await axios.post(
+    //   `${import.meta.env.VITE_admin_server}/api/aiconfigs`,
+    //   { configs },
+    //   { withCredentials: true },
+    // );
+
+    const response = await api.post(`/api/aiconfigs`, { configs });
+
     return response.data;
   } catch (error) {
     console.error("Failed to save AI configs to cloud", error);
@@ -642,13 +682,17 @@ export const syncEquationsToCloud = async (
 ) => {
   if (!isServerConnected || !isAuthenticated || !userId) return;
   try {
-    await axios.put(
-      `${
-        import.meta.env.VITE_admin_server
-      }/api/equations/${userId}/${projectId}`,
-      { items: equations },
-      { withCredentials: true },
-    );
+    // await axios.put(
+    //   `${
+    //     import.meta.env.VITE_admin_server
+    //   }/api/equations/${userId}/${projectId}`,
+    //   { items: equations },
+    //   { withCredentials: true },
+    // );
+
+    await api.put(`/api/equations/${userId}/${projectId}`, {
+      items: equations,
+    });
   } catch (error) {
     console.error("Failed to sync equations to cloud:", error.message);
   }
@@ -660,12 +704,15 @@ export const pullEquationsFromCloud = async (
 ) => {
   if (!isServerConnected || !isAuthenticated || !userId) return [];
   try {
-    const res = await axios.get(
-      `${
-        import.meta.env.VITE_admin_server
-      }/api/equations/${userId}/${projectId}`,
-      { withCredentials: true },
-    );
+    // const res = await axios.get(
+    //   `${
+    //     import.meta.env.VITE_admin_server
+    //   }/api/equations/${userId}/${projectId}`,
+    //   { withCredentials: true },
+    // );
+
+    const res = await api.get(`/api/equations/${userId}/${projectId}`);
+
     return res.data.items || [];
   } catch (error) {
     console.error("Failed to pull equations from cloud:", error.message);
@@ -680,13 +727,17 @@ export const syncCitationsToCloud = async (
 ) => {
   if (!isServerConnected || !isAuthenticated || !userId) return;
   try {
-    await axios.put(
-      `${
-        import.meta.env.VITE_admin_server
-      }/api/citations/${userId}/${projectId}`,
-      { items: citations },
-      { withCredentials: true },
-    );
+    // await axios.put(
+    //   `${
+    //     import.meta.env.VITE_admin_server
+    //   }/api/citations/${userId}/${projectId}`,
+    //   { items: citations },
+    //   { withCredentials: true },
+    // );
+
+    await api.put(`/api/citations/${userId}/${projectId}`, {
+      items: citations,
+    });
   } catch (error) {
     console.error("Failed to sync citations to cloud:", error.message);
   }
@@ -698,12 +749,14 @@ export const pullCitationsFromCloud = async (
 ) => {
   if (!isServerConnected || !isAuthenticated || !userId) return [];
   try {
-    const res = await axios.get(
-      `${
-        import.meta.env.VITE_admin_server
-      }/api/citations/${userId}/${projectId}`,
-      { withCredentials: true },
-    );
+    // const res = await axios.get(
+    //   `${
+    //     import.meta.env.VITE_admin_server
+    //   }/api/citations/${userId}/${projectId}`,
+    //   { withCredentials: true },
+    // );
+
+    const res = await api.get(`/api/citations/${userId}/${projectId}`);
     return res.data.items || [];
   } catch (error) {
     console.error("Failed to pull citations from cloud:", error.message);

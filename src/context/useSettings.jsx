@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
-import { saveSettings, loadSettings } from "../api/projectHandling";
+import { saveSettings, loadSettings, api } from "../api/projectHandling";
 
 const SettingsContext = createContext();
 
@@ -57,6 +57,16 @@ const DEFAULT_SETTINGS = {
     save: "Ctrl+S",
     compile: "Ctrl+Shift+B",
   },
+  server: {
+    mode: "",
+    methods: {
+      selfHosting: { backendServer: "", webSocketServer: "" },
+      cloudHosting: {
+        backendServer: "server.dociere.com",
+        webSocketServer: "ws.dociere.com",
+      },
+    },
+  },
 };
 
 export const SettingsProvider = ({ children }) => {
@@ -84,6 +94,26 @@ export const SettingsProvider = ({ children }) => {
     loadSetting();
   }, []);
 
+  //Load the base URL where the server is
+  useEffect(() => {
+    const mode = settings.server?.mode;
+    const serverUrl = settings.server?.methods[mode]?.backendServer;
+
+    if (!serverUrl) return;
+
+    // Add the interceptor to inject the baseURL dynamically
+    const interceptor = api.interceptors.request.use((config) => {
+      const formattedUrl = serverUrl.startsWith("http")
+        ? serverUrl
+        : `https://${serverUrl}`;
+      config.baseURL = formattedUrl;
+      return config;
+    });
+
+    // Cleanup the interceptor if settings change to avoid memory leaks/duplicates
+    return () => api.interceptors.request.eject(interceptor);
+  }, [settings.server]);
+
   // Save settings to localStorage whenever they change
   useEffect(() => {
     if (!isLoading) {
@@ -109,14 +139,47 @@ export const SettingsProvider = ({ children }) => {
   }, [settings.appearance.theme]);
 
   // Update individual setting
-  const updateSetting = (section, key, value) => {
-    setSettings((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [key]: value,
-      },
-    }));
+  // const updateSetting = (section, key, value) => {
+  //   setSettings((prev) => ({
+  //     ...prev,
+  //     [section]: {
+  //       ...prev[section],
+  //       [key]: value,
+  //     },
+  //   }));
+  // };
+
+  const updateSetting = (a, b, c) => {
+    if (c !== undefined) {
+      // old usage
+      return setSettings((prev) => ({
+        ...prev,
+        [a]: {
+          ...prev[a],
+          [b]: c,
+        },
+      }));
+    }
+
+    // new deep path usage
+    const path = a;
+    const value = b;
+
+    setSettings((prev) => {
+      const keys = path.split(".");
+      const newState = { ...prev };
+      let curr = newState;
+
+      keys.forEach((key, i) => {
+        if (i === keys.length - 1) curr[key] = value;
+        else {
+          curr[key] = { ...curr[key] };
+          curr = curr[key];
+        }
+      });
+
+      return newState;
+    });
   };
 
   // Update entire section

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { api } from "../../api/projectHandling";
 
 const ChangePassword = () => {
   const [oldPassword, setOldPassword] = useState("");
@@ -33,13 +34,15 @@ const ChangePassword = () => {
     };
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_admin_server}/api/change-password`,
-        passwordData,
-        {
-          withCredentials: true,
-        }
-      );
+      // const res = await axios.post(
+      //   `${import.meta.env.VITE_admin_server}/api/change-password`,
+      //   passwordData,
+      //   {
+      //     withCredentials: true,
+      //   },
+      // );
+
+      const res = await api.post(`/api/change-password`, passwordData);
 
       setSuccess("Password changed successfully!");
       // Clear form
@@ -50,7 +53,7 @@ const ChangePassword = () => {
       console.error("Password change failed:", err);
       setError(
         err.response?.data?.message ||
-          "Failed to change password. Please try again."
+          "Failed to change password. Please try again.",
       );
     } finally {
       setLoading(false);
