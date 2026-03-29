@@ -2433,6 +2433,13 @@ const EditorPage = () => {
     const latexDoc = fileEntry.content;
     const files = projectDetails.currentProject.files;
 
+    //Do not parse images or other non-text files into AST
+    const isTexOrBib = /\.(tex|bib|sty|cls)$/i.test(activeFile);
+    if (!isTexOrBib) {
+      lastInitKey.current = currentKey;
+      return;
+    }
+
     if (isMainFile(activeFile) && !latexDoc.includes("\\begin{document}")) {
       return;
     }
@@ -2443,7 +2450,6 @@ const EditorPage = () => {
     // ===== AST INITIALIZATION =====
     const ast = parseLatexToAst(latexDoc);
     if (ast) {
-      // 🔥 Update everything simultaneously and mark the AST as safely synced
       updateProjectDetails({ globalAst: ast, latexContent: latexDoc });
       setAstSyncFile(activeFile);
     }
