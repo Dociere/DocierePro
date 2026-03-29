@@ -674,21 +674,17 @@ export const astToSlate = (astInput) => {
           });
         } else if (["quote", "quotation"].includes(envName)) {
           const innerBlocks = parseNodes(node.content);
+          const leaves = innerBlocks.flatMap((b) => b.children || [{ text: "" }]);
           slateBlocks.push({
             type: "blockquote",
-            children:
-              innerBlocks.length > 0
-                ? innerBlocks
-                : [{ type: "paragraph", children: [{ text: "" }] }],
+            children: leaves.length > 0 ? leaves : [{ text: "" }],
           });
         } else if (["verbatim", "lstlisting", "minted"].includes(envName)) {
           const innerBlocks = parseNodes(node.content);
+          const leaves = innerBlocks.flatMap((b) => b.children || [{ text: "" }]);
           slateBlocks.push({
             type: "code-block",
-            children:
-              innerBlocks.length > 0
-                ? innerBlocks
-                : [{ type: "paragraph", children: [{ text: "" }] }],
+            children: leaves.length > 0 ? leaves : [{ text: "" }],
           });
         } else if (
           ["center", "flushleft", "flushright", "justify"].includes(envName)
@@ -818,8 +814,10 @@ export const astToSlate = (astInput) => {
 const leavesToLatexString = (leaves) => {
   let str = "";
   leaves.forEach((leaf) => {
-    let text = leaf.text;
-    if (!leaf.code) {
+    let text = leaf.text || "";
+    if (leaf.code) {
+      text = `\\texttt{${text}}`;
+    } else {
       if (leaf.bold) text = `\\textbf{${text}}`;
       if (leaf.italic) text = `\\textit{${text}}`;
       if (leaf.underline) text = `\\underline{${text}}`;
@@ -827,7 +825,6 @@ const leavesToLatexString = (leaves) => {
       if (leaf.superscript) text = `\\textsuperscript{${text}}`;
       if (leaf.subscript) text = `\\textsubscript{${text}}`;
     }
-    if (leaf.code && !leaf.bold && !leaf.italic) latex = `\\texttt{${latex}}`;
     str += text;
   });
   return str;
@@ -843,8 +840,9 @@ export const slateToAst = (slateNodes) => {
         const tempAst = parseLatexToAst(latexStr);
         const paraContent = tempAst?.content || [];
 
-        if (block.align && block.align !== "left") {
+        if (block.align) {
           const envMap = {
+            left: "flushleft",
             center: "center",
             right: "flushright",
             justify: "justify",
@@ -1009,24 +1007,41 @@ export const slateToAst = (slateNodes) => {
       }
 
       case "blockquote": {
-        const innerAst = slateToAst(block.children);
+        const isLeafChildren = block.children.length > 0 && block.children[0].text !== undefined;
+        let contentAst;
+        if (isLeafChildren) {
+          const latexStr = leavesToLatexString(block.children);
+          const tempAst = parseLatexToAst(latexStr);
+          contentAst = tempAst?.content || [];
+        } else {
+          contentAst = slateToAst(block.children);
+        }
+
         astNodes.push({
           type: "environment",
           env: "quote",
           args: [],
-          content: innerAst,
+          content: contentAst,
         });
         astNodes.push({ type: "parbreak" });
         break;
       }
 
       case "code-block": {
-        const innerAst = slateToAst(block.children);
+        const isLeafChildren = block.children.length > 0 && block.children[0].text !== undefined;
+        let contentAst;
+        if (isLeafChildren) {
+          const plainText = block.children.map(c => c.text || "").join("");
+          contentAst = [{ type: "string", content: plainText }];
+        } else {
+          contentAst = slateToAst(block.children);
+        }
+
         astNodes.push({
           type: "environment",
           env: "verbatim",
           args: [],
-          content: innerAst,
+          content: contentAst,
         });
         astNodes.push({ type: "parbreak" });
         break;

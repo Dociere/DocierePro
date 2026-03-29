@@ -8,7 +8,14 @@ import {
 import { Slate, Editable, withReact, useSlate } from "slate-react";
 import { withHistory } from "slate-history";
 import { astToSlate, slateToAst } from "../utils/latexAstEngine";
-import { FaListUl } from "react-icons/fa";
+import {
+  FaListUl,
+  FaAlignLeft,
+  FaAlignCenter,
+  FaAlignJustify,
+  FaAlignRight,
+  FaQuoteRight,
+} from "react-icons/fa";
 import { FaListOl } from "react-icons/fa6";
 
 // ==========================================
@@ -512,15 +519,15 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
           </button>
 
           <div className="w-px h-6 bg-gray-300 mx-2" />
-          <AlignButton align="left" icon={<span>≡L</span>} />
-          <AlignButton align="center" icon={<span>≡C</span>} />
-          <AlignButton align="right" icon={<span>≡R</span>} />
-          <AlignButton align="justify" icon={<span>≡J</span>} />
+          <AlignButton align="left" icon={<FaAlignLeft />} />
+          <AlignButton align="center" icon={<FaAlignCenter />} />
+          <AlignButton align="right" icon={<FaAlignRight />} />
+          <AlignButton align="justify" icon={<FaAlignJustify />} />
 
           <div className="w-px h-6 bg-gray-300 mx-2" />
           <BlockButton format="bulleted-list" icon={<FaListUl />} />
           <BlockButton format="numbered-list" icon={<FaListOl />} />
-          <BlockButton format="blockquote" icon={<span>"</span>} />
+          <BlockButton format="blockquote" icon={<FaQuoteRight />} />
           <BlockButton
             format="code-block"
             icon={<span className="font-mono">{}</span>}
