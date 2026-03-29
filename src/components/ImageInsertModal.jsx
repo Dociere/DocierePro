@@ -690,14 +690,12 @@ const parseLatexFigure = (latex) => {
     const labelMatch = latex.match(/\\label\{([^}]*)\}/);
     const label = labelMatch ? labelMatch[1] : "";
 
-    // Parse width - extract number and unit separately
     const widthMatch = latex.match(
       /width\s*=\s*([\d.]+)(\\?[a-z]+|cm|mm|in|pt)?/i,
     );
     const widthValue = widthMatch ? widthMatch[1] : "";
     const widthUnit = widthMatch && widthMatch[2] ? widthMatch[2] : "";
 
-    // Parse height
     const heightMatch = latex.match(
       /height\s*=\s*([\d.]+)(\\?[a-z]+|cm|mm|in|pt)?/i,
     );
@@ -810,12 +808,8 @@ const SCALE_PRESETS = [
   { label: "125%", value: "1.25" },
 ];
 
-// ==========================================
-// TOAST COMPONENT
-// ==========================================
 const Toast = ({ message, isVisible }) => {
   if (!isVisible) return null;
-
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300000] bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
       <TbCheck size={16} className="text-green-400" />
@@ -824,12 +818,8 @@ const Toast = ({ message, isVisible }) => {
   );
 };
 
-// ==========================================
-// ALERT MODAL
-// ==========================================
 const AlertModal = ({ isOpen, message, onClose }) => {
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-[400000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
@@ -851,15 +841,11 @@ const AlertModal = ({ isOpen, message, onClose }) => {
   );
 };
 
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
 const ImageInsertModal = ({
   isOpen,
   onClose,
   onInsert,
   initialData = null,
-  projectFiles = [],
   showInsertButton = false,
 }) => {
   const { projectDetails, updateProjectDetails } =
@@ -884,19 +870,21 @@ const ImageInsertModal = ({
   const [compiledPreviewUrl, setCompiledPreviewUrl] = useState(null);
   const [isCompiling, setIsCompiling] = useState(false);
 
-  // Upload state
   const fileInputRef = useRef(null);
   const [pendingUploadFile, setPendingUploadFile] = useState(null);
   const [showDestinationModal, setShowDestinationModal] = useState(false);
-  const [uploadTargetType, setUploadTargetType] = useState("root"); // "root", "existing", "new"
+  const [uploadTargetType, setUploadTargetType] = useState("root");
   const [selectedExistingFolder, setSelectedExistingFolder] = useState("");
   const [newFolderName, setNewFolderName] = useState("");
 
-  const imageFiles = projectFiles.filter((file) =>
-    /\.(png|jpg|jpeg|gif|svg|pdf|eps)$/i.test(file),
-  );
+  // Fix: Derive imageFiles directly from context instead of relying on props
+  const imageFiles = React.useMemo(() => {
+    const files = projectDetails?.currentProject?.files || {};
+    return Object.keys(files).filter((file) =>
+      /\.(png|jpg|jpeg|gif|svg|pdf|eps)$/i.test(file),
+    );
+  }, [projectDetails?.currentProject?.files]);
 
-  // Extract existing folders from project files
   const existingFolders = React.useMemo(() => {
     const folders = new Set();
     Object.keys(projectDetails?.currentProject?.files || {}).forEach((path) => {
@@ -1019,13 +1007,12 @@ const ImageInsertModal = ({
     showToast("LaTeX copied to clipboard!");
   };
 
-  // Upload Logic
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setPendingUploadFile(file);
     setShowDestinationModal(true);
-    e.target.value = ""; // Reset input
+    e.target.value = "";
   };
 
   const handleConfirmUpload = async () => {
@@ -1050,7 +1037,6 @@ const ImageInsertModal = ({
     const finalFilePath = targetPath ? `${targetPath}/${fileName}` : fileName;
 
     try {
-      // Read as base64
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
@@ -1061,7 +1047,6 @@ const ImageInsertModal = ({
       const updatedProject = { ...projectDetails.currentProject };
       const newFiles = { ...updatedProject.files };
 
-      // Overwrite check (silent overwrite for simplicity, matching original logic)
       newFiles[finalFilePath] = {
         name: finalFilePath.split("/").pop(),
         content: dataUrl,
@@ -1069,7 +1054,6 @@ const ImageInsertModal = ({
         isImage: true,
       };
 
-      // Add a gitkeep if creating a new folder to ensure it persists independently
       if (uploadTargetType === "new") {
         newFiles[`${targetPath}/.gitkeep`] = {
           name: ".gitkeep",
@@ -1080,10 +1064,8 @@ const ImageInsertModal = ({
 
       updatedProject.files = newFiles;
 
-      // Update Context
       updateProjectDetails({ currentProject: updatedProject });
 
-      // Save to server
       await saveProject(
         updatedProject,
         projectDetails.activeFile,
@@ -1093,7 +1075,6 @@ const ImageInsertModal = ({
         isAuthenticated,
       );
 
-      // Set as currently selected image path
       setImagePath(finalFilePath);
       setShowDestinationModal(false);
       setPendingUploadFile(null);
@@ -1115,7 +1096,6 @@ const ImageInsertModal = ({
       }}
     >
       <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-5xl h-[85vh] flex flex-col overflow-hidden relative">
-        {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2 font-inter">
             <TbPhoto className="text-gray-700" />
@@ -1129,11 +1109,8 @@ const ImageInsertModal = ({
           </button>
         </div>
 
-        {/* Main Content */}
         <div className="flex flex-1 overflow-hidden min-h-0">
-          {/* Left Panel - Settings */}
           <div className="w-[280px] flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto p-4 space-y-5">
-            {/* Image Selection with Upload Button */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                 Image File
@@ -1175,7 +1152,6 @@ const ImageInsertModal = ({
               />
             </div>
 
-            {/* Size Options */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                 Size Mode
@@ -1309,7 +1285,6 @@ const ImageInsertModal = ({
               )}
             </div>
 
-            {/* Layout Options */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                 Layout
@@ -1341,7 +1316,6 @@ const ImageInsertModal = ({
               </div>
             </div>
 
-            {/* Caption & Label */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                 Caption
@@ -1373,9 +1347,7 @@ const ImageInsertModal = ({
             </div>
           </div>
 
-          {/* Right Panel - Preview & Editor */}
           <div className="flex-1 flex flex-col min-w-0 bg-white p-6 overflow-y-auto">
-            {/* Preview Section */}
             <div className="mb-6 flex flex-col flex-1 min-h-[300px]">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-semibold text-gray-800">Preview</h3>
@@ -1434,7 +1406,6 @@ const ImageInsertModal = ({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="text-sm text-gray-500 font-medium">
             {initialData ? "Updating existing figure" : "Ready to insert"}
@@ -1467,7 +1438,6 @@ const ImageInsertModal = ({
           </div>
         </div>
 
-        {/* DESTINATION FOLDER MODAL OVERLAY */}
         {showDestinationModal && (
           <div className="absolute inset-0 z-[200000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 rounded-xl">
             <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
