@@ -1259,7 +1259,7 @@ import {
   TbDotsVertical,
   TbTrash,
 } from "react-icons/tb";
-import LinearLoading from "./loading/linearLoading"; // Adjust this path if your folder structure is slightly different
+import LinearLoading from "./loading/linearLoading";
 
 // Confirmation Modal Component
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
@@ -1973,10 +1973,20 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
       k.startsWith(prefix),
     );
 
+    // Calculate visible files (ignore internal .gitkeep)
+    const visibleFilesCount = filesInFolder.filter(
+      (f) => !f.endsWith("/.gitkeep"),
+    ).length;
+
+    const message =
+      visibleFilesCount === 0
+        ? `Are you sure you want to delete the empty folder "${folderName}"?`
+        : `Delete folder "${folderName}" and all ${visibleFilesCount} file(s) inside?`;
+
     setConfirmModal({
       isOpen: true,
       title: "Delete Folder",
-      message: `Delete folder "${folderName}" and all ${filesInFolder.length} file(s) inside?`,
+      message: message,
       onConfirm: async () => {
         setConfirmModal({
           isOpen: false,
@@ -2273,32 +2283,7 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
           <span className="font-medium text-black font-inter text-sm">
             Project Files
           </span>
-          <div className="space-x-3 flex items-center">
-            {/* Bulk Delete Button */}
-            <button
-              onClick={handleBulkDelete}
-              disabled={selectedFiles.size === 0}
-              className={`p-1 rounded transition-colors ${
-                selectedFiles.size > 0
-                  ? "text-red-500 hover:bg-red-50"
-                  : "text-gray-400 opacity-50 cursor-not-allowed"
-              } ${
-                isDark && selectedFiles.size > 0 ? "hover:bg-red-500/10" : ""
-              }`}
-              title={
-                selectedFiles.size > 0
-                  ? `Delete ${selectedFiles.size} selected files`
-                  : "Delete Selected Files"
-              }
-            >
-              <TbTrash size={16} />
-            </button>
-            <div
-              className={`h-4 w-[1px] mx-1 ${
-                isDark ? "bg-gray-700" : "bg-gray-300"
-              }`}
-            ></div>
-
+          <div className="flex items-center gap-1 ml-2">
             <button
               onClick={() => setIsCreatingFile(true)}
               className={`p-1 rounded hover:bg-opacity-20 ${
@@ -2358,6 +2343,33 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
                 />
               )}
             </button>
+
+            <div
+              className={`h-4 w-[1px] mx-1 ${
+                isDark ? "bg-gray-700" : "bg-gray-300"
+              }`}
+            ></div>
+
+            {/* Bulk Delete Button */}
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedFiles.size === 0}
+              className={`p-1 rounded transition-colors ${
+                selectedFiles.size > 0
+                  ? "text-red-500 hover:bg-red-50"
+                  : "text-gray-400 opacity-50 cursor-not-allowed"
+              } ${
+                isDark && selectedFiles.size > 0 ? "hover:bg-red-500/10" : ""
+              }`}
+              title={
+                selectedFiles.size > 0
+                  ? `Delete ${selectedFiles.size} selected files`
+                  : "Delete Selected Files"
+              }
+            >
+              <TbTrash size={16} />
+            </button>
+
             <input
               ref={fileInputRef}
               type="file"
