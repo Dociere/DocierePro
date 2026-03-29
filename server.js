@@ -77,34 +77,34 @@ const SIDECAR_PATH = isDev
 async function getActiveAIConfig() {
   try {
     const settingsDir = path.join(SETTINGS_DIR, "config.json");
-    console.log(`🔍 Checking for config at: ${settingsDir}`);
+    console.log(`Checking for config at: ${settingsDir}`);
     if (await fs.pathExists(settingsDir)) {
       const settings = await fs.readJSON(settingsDir);
       if (settings.app && settings.app.aiConfigs) {
         const active = settings.app.aiConfigs.find((c) => c.active);
         if (active) {
           console.log(
-            `✅ Found active AI config: ${active.name} (${active.provider})`,
+            `Found active AI config: ${active.name} (${active.provider})`,
           );
           const config = { ...active };
           if (config.provider === "gemini" && config.apiKey) {
-            console.log(`🔐 Decrypting API key for ${active.name}`);
+            console.log(`Decrypting API key for ${active.name}`);
             config.apiKey = decrypt(config.apiKey);
           }
           return config;
         } else {
           console.log(
-            "⚠️ No active AI configuration found in settings.app.aiConfigs",
+            "No active AI configuration found in settings.app.aiConfigs",
           );
         }
       } else {
-        console.log("⚠️ settings.app.aiConfigs is missing");
+        console.log("settings.app.aiConfigs is missing");
       }
     } else {
-      console.log("⚠️ config.json not found");
+      console.log("config.json not found");
     }
   } catch (error) {
-    console.error("❌ Error loading active AI config:", error);
+    console.error("Error loading active AI config:", error);
   }
   return null;
 }
@@ -233,14 +233,14 @@ async function initDirectories() {
   await fs.ensureDir(OUTPUT_DIR);
   await fs.ensureDir(EQUATIONS_DIR);
   await fs.ensureDir(CITATIONS_DIR);
-  console.log("✅ Directories initialized");
+  console.log("Directories initialized");
 }
 
 //FIXME: Convert to C++
 function runPdfLatexPermissive(texFilePath, outputPath) {
   return new Promise((resolve, reject) => {
-    console.log(`🔧 Running pdflatex on: ${texFilePath}`);
-    console.log(`🔧 Output directory: ${outputPath}`);
+    console.log(`Running pdflatex on: ${texFilePath}`);
+    console.log(`Output directory: ${outputPath}`);
 
     const pdflatexPath = getPdflatexPath();
 
@@ -271,13 +271,13 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
     });
 
     pdflatex.on("close", (code) => {
-      console.log(`✅ pdflatex process exited with code: ${code}`);
+      console.log(`pdflatex process exited with code: ${code}`);
       // ALWAYS resolve - never reject on error codes
       resolve({ stdout, stderr, code });
     });
 
     pdflatex.on("error", (error) => {
-      console.error(`❌ Failed to spawn pdflatex:`, error);
+      console.error(`Failed to spawn pdflatex:`, error);
       reject(error);
     });
   });
@@ -288,7 +288,7 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
 let PDFLATEX_PATH;
 try {
   PDFLATEX_PATH = "pdflatex";
-  console.log("🎉 LaTeX detected successfully!");
+  console.log("LaTeX detected successfully!");
 } catch (error) {
   console.error(error.message);
   PDFLATEX_PATH = null;
@@ -523,7 +523,7 @@ app.post("/api/synctex", async (req, res) => {
     const synctexFile = path.join(OUTPUT_DIR, `${baseName}.synctex.gz`);
     const absPdfPath = path.join(OUTPUT_DIR, cleanFileName);
 
-    console.log(`🔎 Looking for SyncTeX file at: ${synctexFile}`);
+    console.log(`Looking for SyncTeX file at: ${synctexFile}`);
 
     if (!(await fs.pathExists(synctexFile))) {
       return res.status(404).json({
@@ -565,13 +565,12 @@ app.post("/api/edit", async (req, res) => {
     }
 
     console.log(
-      `🤖 Editing LaTeX with AI prompt: "${prompt.substring(0, 50)}..."`,
+      `Editing LaTeX with AI prompt: "${prompt.substring(0, 50)}..."`,
     );
 
     const aiConfig = frontendConfig || (await getActiveAIConfig());
     console.log(
-      `📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${
-        aiConfig?.provider || "default"
+      `Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${aiConfig?.provider || "default"
       }`,
     );
 
@@ -601,7 +600,7 @@ app.post("/api/edit", async (req, res) => {
       throw new Error(aiResponse.data.error || "AI edit failed");
     }
   } catch (error) {
-    console.error("❌ AI Edit Error:", error.message);
+    console.error("AI Edit Error:", error.message);
     res.status(500).json({ success: false, error: "Failed to edit document" });
   }
 });
@@ -618,7 +617,7 @@ app.post("/api/generate-equation", async (req, res) => {
         .json({ success: false, error: "Prompt is required" });
     }
 
-    console.log(`🤖 Generating equation for prompt: "${prompt}"`);
+    console.log(`Generating equation for prompt: "${prompt}"`);
 
     // Call Python AI Service
     const aiConfig = frontendConfig || (await getActiveAIConfig());
@@ -632,7 +631,7 @@ app.post("/api/generate-equation", async (req, res) => {
     );
 
     if (response.data && response.data.success) {
-      console.log("✅ AI Equation generated successfully");
+      console.log("AI Equation generated successfully");
       res.json({
         success: true,
         latexEquation: response.data.latexEquation,
@@ -641,7 +640,7 @@ app.post("/api/generate-equation", async (req, res) => {
       throw new Error(response.data.error || "AI service failed");
     }
   } catch (error) {
-    console.error("❌ AI Equation Generation Error:", error.message);
+    console.error("AI Equation Generation Error:", error.message);
     res.status(500).json({
       success: false,
       error: "Failed to generate equation",
@@ -720,10 +719,10 @@ async function getTemplateFiles(templatePath) {
             ext === ".png"
               ? "image/png"
               : ext === ".jpg" || ext === ".jpeg"
-              ? "image/jpeg"
-              : ext === ".pdf"
-              ? "application/pdf"
-              : "application/octet-stream";
+                ? "image/jpeg"
+                : ext === ".pdf"
+                  ? "application/pdf"
+                  : "application/octet-stream";
           files[relPath] = {
             name: entry.name,
             content: `data:${mime};base64,${buffer.toString("base64")}`,
@@ -763,7 +762,7 @@ app.get("/api/templates", async (req, res) => {
 
     res.json({ success: true, builtInTemplates, userTemplates });
   } catch (error) {
-    console.error("❌ Template list error:", error);
+    console.error("Template list error:", error);
     res.status(500).json({ success: false, error: "Failed to list templates" });
   }
 });
@@ -823,10 +822,10 @@ app.post("/api/templates/save", async (req, res) => {
       }
     }
 
-    console.log(`✅ Saved template: ${name.trim()}`);
+    console.log(`Saved template: ${name.trim()}`);
     res.json({ success: true, message: "Template saved successfully" });
   } catch (error) {
-    console.error("❌ Template save error:", error);
+    console.error("Template save error:", error);
     res.status(500).json({ success: false, error: "Failed to save template" });
   }
 });
@@ -869,16 +868,16 @@ app.post(
           const result = await parser.getText();
           extractedText = result.text || "";
           await parser.destroy();
-          console.log(`📄 PDF parsed: ${extractedText.length} chars`);
+          console.log(`PDF parsed: ${extractedText.length} chars`);
         } catch (pdfErr) {
-          console.error("❌ pdf-parse error:", pdfErr.message);
+          console.error("pdf-parse error:", pdfErr.message);
           return res.status(400).json({
             success: false,
             error: `PDF parsing failed: ${pdfErr.message}`,
           });
         } finally {
           // Clean up temp file
-          await fs.remove(tempPdfPath).catch(() => {});
+          await fs.remove(tempPdfPath).catch(() => { });
         }
       } else {
         // .txt or .md — read as UTF-8 string
@@ -894,11 +893,11 @@ app.post(
       }
 
       console.log(
-        `📄 Extracted ${extractedText.length} chars from ${req.file.originalname}`,
+        `Extracted ${extractedText.length} chars from ${req.file.originalname}`,
       );
       res.json({ success: true, text: extractedText.trim() });
     } catch (error) {
-      console.error("❌ File text extraction error:", error);
+      console.error("File text extraction error:", error);
       res.status(500).json({
         success: false,
         error: `Failed to extract text: ${error.message}`,
@@ -915,14 +914,14 @@ app.post("/api/projects/create", async (req, res) => {
     const projectPath = path.join(PROJECTS_DIR, projectId);
     await fs.ensureDir(projectPath);
 
-    console.log("🆕 Creating new project:", title);
+    console.log("Creating new project:", title);
 
     // Normalize templateType
     let templateType = req.body.templateType || "article";
     if (templateType === "blank") templateType = "Blank Document";
 
     const templateSource = req.body.templateSource || "local";
-    console.log("🆕 Project details:", templateType, templateSource);
+    console.log("Project details:", templateType, templateSource);
 
     let files = {};
 
@@ -958,7 +957,7 @@ app.post("/api/projects/create", async (req, res) => {
       const isBuiltIn = await fs.pathExists(builtInPath);
       const templatePath = isBuiltIn ? builtInPath : userPath;
 
-      console.log(`📂 Reading template from: ${templatePath}`);
+      console.log(`Reading template from: ${templatePath}`);
       files = await getTemplateFiles(templatePath);
 
       if (Object.keys(files).length === 0) {
@@ -992,7 +991,7 @@ app.post("/api/projects/create", async (req, res) => {
     // ==========================================
     if (generateBoilerplate && userIdea) {
       try {
-        console.log(`🤖 Generating boilerplate for ${templateType}...`);
+        console.log(`Generating boilerplate for ${templateType}...`);
 
         // Use frontend config if provided, otherwise fallback to local config.json
         // Strip apiKey — Python fetches it from CouchDB using the forwarded cookie
@@ -1000,13 +999,12 @@ app.post("/api/projects/create", async (req, res) => {
         const { apiKey: _k, ...activeConfig } = rawConfig || {};
 
         console.log(
-          `🤖 Boilerplate aiConfig: provider=${activeConfig?.provider}, id=${
-            activeConfig?.id
+          `Boilerplate aiConfig: provider=${activeConfig?.provider}, id=${activeConfig?.id
           }, hasKey=${!!rawConfig?.apiKey}`,
         );
 
         if (!activeConfig?.provider) {
-          console.error("❌ No AI config found for boilerplate generation");
+          console.error("No AI config found for boilerplate generation");
           // Don't abort — let Python handle it (will try env key fallback)
         }
 
@@ -1043,7 +1041,7 @@ app.post("/api/projects/create", async (req, res) => {
             aiResponse.data.mainContent
           ) {
             files["main.tex"].content = aiResponse.data.mainContent;
-            console.log("✅ AI-generated blank document content applied");
+            console.log("AI-generated blank document content applied");
           } else if (aiResponse.data.fileUpdates) {
             // <-- Change to fileUpdates
             const generatedContent = aiResponse.data.fileUpdates; // <-- Change to fileUpdates
@@ -1057,18 +1055,18 @@ app.post("/api/projects/create", async (req, res) => {
               }
             }
             console.log(
-              `✅ AI populated ${populated}/${templateFileKeys.length} template files`,
+              `AI populated ${populated}/${templateFileKeys.length} template files`,
             );
           }
         } else {
           console.error(
-            "⚠️ AI boilerplate generation failed:",
+            "AI boilerplate generation failed:",
             aiResponse.data.error,
           );
         }
       } catch (error) {
         console.error(
-          "❌ AI Generation Error:",
+          "AI Generation Error:",
           error.response?.data || error.message,
         );
         // Fallback: templates/blank doc stay with their default static content
@@ -1104,10 +1102,10 @@ app.post("/api/projects/create", async (req, res) => {
 
     await fs.writeJSON(path.join(projectPath, "project.json"), projectData);
 
-    console.log(`✅ Created project: ${title} (${projectId})`);
+    console.log(`Created project: ${title} (${projectId})`);
     res.json({ success: true, project: projectData });
   } catch (error) {
-    console.error("❌ Project creation error:", error);
+    console.error("Project creation error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to create project",
@@ -1173,10 +1171,10 @@ app.post(
             ext === ".png"
               ? "image/png"
               : ext === ".jpg" || ext === ".jpeg"
-              ? "image/jpeg"
-              : ext === ".pdf"
-              ? "application/pdf"
-              : "application/octet-stream";
+                ? "image/jpeg"
+                : ext === ".pdf"
+                  ? "application/pdf"
+                  : "application/octet-stream";
           content = `data:${mime};base64,${buffer.toString("base64")}`;
           isImage = true;
         }
@@ -1234,10 +1232,10 @@ app.post(
 
       await fs.writeJSON(path.join(projectPath, "project.json"), projectData);
 
-      console.log(`✅ Uploaded project: ${projectTitle} (${projectId})`);
+      console.log(`Uploaded project: ${projectTitle} (${projectId})`);
       res.json({ success: true, project: projectData });
     } catch (error) {
-      console.error("❌ Project upload error:", error);
+      console.error("Project upload error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to upload project",
@@ -1273,7 +1271,7 @@ app.get("/api/projects", async (req, res) => {
     projects.sort((a, b) => new Date(b.modified) - new Date(a.modified));
     res.json(projects);
   } catch (error) {
-    console.error("❌ Projects list error:", error);
+    console.error("Projects list error:", error);
     res.status(500).json({ success: false, error: "Failed to list projects" });
   }
 });
@@ -1344,10 +1342,10 @@ app.get("/api/projects/:id", async (req, res) => {
       }
     }
 
-    console.log(`✅ Loaded project: ${projectData.title} (${id})`);
+    console.log(`Loaded project: ${projectData.title} (${id})`);
     res.json({ success: true, project: projectData });
   } catch (error) {
-    console.error("❌ Project load error:", error);
+    console.error("Project load error:", error);
     res.status(500).json({ success: false, error: "Failed to load project" });
   }
 });
@@ -1360,8 +1358,8 @@ app.put("/api/projects/:id", async (req, res) => {
     const projectDir = path.join(PROJECTS_DIR, id);
     const projectPath = path.join(projectDir, "project.json");
 
-    // console.log("✅ owner ✅", owner);
-    console.log("✅ title ✅", title);
+    // console.log("owner ", owner);
+    console.log("title ", title);
 
     if (!(await fs.pathExists(projectPath))) {
       return res
@@ -1383,7 +1381,7 @@ app.put("/api/projects/:id", async (req, res) => {
     // Save updated project.json
     await fs.writeJSON(projectPath, projectData, { spaces: 2 });
 
-    // ⭐ IMPORTANT: Write each file to disk
+    // IMPORTANT: Write each file to disk
     for (const [fileName, fileInfo] of Object.entries(files)) {
       // Skip .gitkeep placeholder files
       if (fileName.endsWith("/.gitkeep") || fileInfo.name === ".gitkeep") {
@@ -1411,13 +1409,13 @@ app.put("/api/projects/:id", async (req, res) => {
       } else {
         await fs.writeFile(filePath, fileInfo.content || "", "utf8");
       }
-      console.log(`✅ Saved ${fileName} to disk`);
+      console.log(`Saved ${fileName} to disk`);
     }
 
-    console.log(`✅ Saved project: ${projectData.title} (${id})`);
+    console.log(`Saved project: ${projectData.title} (${id})`);
     res.json({ success: true, message: "Project saved successfully" });
   } catch (error) {
-    console.error("❌ Project save error:", error);
+    console.error("Project save error:", error);
     res.status(500).json({ success: false, error: "Failed to save project" });
   }
 });
@@ -1458,7 +1456,7 @@ app.delete("/api/projects/:id/files/:filename", async (req, res) => {
       await fs.remove(filePath);
     }
 
-    console.log(`✅ Deleted file ${filename} from project ${id}`);
+    console.log(`Deleted file ${filename} from project ${id}`);
 
     // Populate remaining file contents to keep frontend in sync
     for (const [fName, fInfo] of Object.entries(projectData.files)) {
@@ -1486,7 +1484,7 @@ app.delete("/api/projects/:id/files/:filename", async (req, res) => {
 
     res.json({ success: true, project: projectData });
   } catch (error) {
-    console.error("❌ File deletion error:", error);
+    console.error("File deletion error:", error);
     res.status(500).json({ success: false, error: "Failed to delete file" });
   }
 });
@@ -1522,7 +1520,7 @@ app.get("/api/projects/:id/export-zip", async (req, res) => {
     const zipBuffer = zip.toBuffer();
     const zipName = `${projectData.title || "project"}.zip`;
 
-    console.log(`📦 Exporting project ${id} as ${zipName}`);
+    console.log(`Exporting project ${id} as ${zipName}`);
 
     res.set({
       "Content-Type": "application/zip",
@@ -1532,7 +1530,7 @@ app.get("/api/projects/:id/export-zip", async (req, res) => {
 
     res.send(zipBuffer);
   } catch (error) {
-    console.error("❌ ZIP Export Error:", error);
+    console.error("ZIP Export Error:", error);
     res
       .status(500)
       .json({ success: false, error: "Failed to export project as ZIP" });
@@ -1576,7 +1574,7 @@ app.post("/api/projects/:id/chat/save", async (req, res) => {
     await fs.writeJSON(chatPath, chatHistory, { spaces: 2 });
     res.json({ success: true });
   } catch (error) {
-    console.error("❌ Chat Save Error:", error);
+    console.error("Chat Save Error:", error);
     res.status(500).json({ error: "Failed to save chat" });
   }
 });
@@ -1594,7 +1592,7 @@ app.get("/api/projects/:id/chat", async (req, res) => {
       res.json({ success: true, history: [] }); // Empty history for new projects
     }
   } catch (error) {
-    console.error("❌ Chat Load Error:", error);
+    console.error("Chat Load Error:", error);
     res.status(500).json({ error: "Failed to load chat" });
   }
 });
@@ -1652,7 +1650,7 @@ app.post("/api/compile", async (req, res) => {
           const base64Data = base64Match[1];
           const buffer = Buffer.from(base64Data, "base64");
           await fs.writeFile(filePath, buffer);
-          console.log(`✅ Written image file as binary: ${relPath}`);
+          console.log(`Written image file as binary: ${relPath}`);
         } else {
           await fs.writeFile(filePath, file.content, "utf8");
         }
@@ -1685,9 +1683,9 @@ app.post("/api/compile", async (req, res) => {
     try {
       await fs.remove(pdfPath);
       await fs.remove(path.join(OUTPUT_DIR, `${filename}.synctex.gz`));
-    } catch (e) {}
+    } catch (e) { }
 
-    console.log("🔄 Running PDFLaTeX...");
+    console.log("Running PDFLaTeX...");
 
     function needsRerun(log) {
       return (
@@ -1727,7 +1725,7 @@ app.post("/api/compile", async (req, res) => {
 
     //   if (parallelOutput) {
     //     console.log(
-    //       `🚀 Parallel compilation successful using sidecar! Output: ${parallelOutput}`,
+    //       `Parallel compilation successful using sidecar! Output: ${parallelOutput}`,
     //     );
     //     usedParallel = true;
     //     pdfExists = await fs.pathExists(generatedPdfPath);
@@ -1741,7 +1739,7 @@ app.post("/api/compile", async (req, res) => {
     // }
 
     if (!usedParallel) {
-      console.log("🔄 Running serial PDFLaTeX compilation...");
+      console.log("Running serial PDFLaTeX compilation...");
       result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
 
       // --- INTEGRATION: Check for missing packages ---
@@ -1756,12 +1754,12 @@ app.post("/api/compile", async (req, res) => {
 
         if (installed.length > 0) {
           console.log(
-            `📦 Installed ${installed.length} missing packages. Retrying compilation...`,
+            `Installed ${installed.length} missing packages. Retrying compilation...`,
           );
           result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
         }
       } catch (pkgErr) {
-        console.warn("⚠️ Package installation failed:", pkgErr.message);
+        console.warn("Package installation failed:", pkgErr.message);
       }
       // -----------------------------------------------
 
@@ -1790,7 +1788,7 @@ app.post("/api/compile", async (req, res) => {
           }
         }
 
-        console.log("📚 Running BibTeX...");
+        console.log("Running BibTeX...");
         await new Promise((resolve) => {
           require("child_process").execFile(
             "bibtex",
@@ -1799,7 +1797,7 @@ app.post("/api/compile", async (req, res) => {
             (error, stdout, stderr) => {
               if (error) {
                 console.warn(
-                  "⚠️ BibTeX warning/error:",
+                  "BibTeX warning/error:",
                   stderr || error.message,
                 );
               }
@@ -1808,7 +1806,7 @@ app.post("/api/compile", async (req, res) => {
           );
         });
       } catch (bibErr) {
-        console.warn("⚠️ BibTeX skipped:", bibErr.message);
+        console.warn("BibTeX skipped:", bibErr.message);
       }
     }
 
@@ -1822,7 +1820,7 @@ app.post("/api/compile", async (req, res) => {
     // }
 
     if (needsRerun(result1.stdout)) {
-      console.log("🔄 Rerunning PDFLaTeX (Pass 2)...");
+      console.log("Rerunning PDFLaTeX (Pass 2)...");
       result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
       // Only run pass 3 if still needed
       const result2 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
@@ -1849,7 +1847,7 @@ app.post("/api/compile", async (req, res) => {
       }
 
       // const pdfBuffer = await fs.readFile(pdfPath);
-      // console.log(`✅ PDF Generated: ${filename}.pdf`);
+      // console.log(`PDF Generated: ${filename}.pdf`);
 
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
@@ -1939,7 +1937,7 @@ Hello World
 
 // API: Compile LaTeX (for math equations OR sections)
 app.post("/api/latex/compile", async (req, res) => {
-  console.log("📝 Received LaTeX compilation request");
+  console.log("Received LaTeX compilation request");
   try {
     const {
       latex,
@@ -2041,7 +2039,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
     }
 
     await fs.writeFile(texFilePath, minimalLatexDocument, "utf8");
-    console.log("📄 Writing LaTeX file:", texFileName);
+    console.log("Writing LaTeX file:", texFileName);
 
     // Run the permissive compiler
     await runPdfLatexPermissive(texFilePath, OUTPUT_DIR);
@@ -2056,7 +2054,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch (logErr) {}
+      } catch (logErr) { }
 
       throw new Error(`PDF compilation failed. Log: ${logContent.slice(-500)}`);
     }
@@ -2066,7 +2064,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
 
     if (format === "image" || format === "png") {
       try {
-        console.log("🖼️ Converting PDF to image...");
+        console.log("Converting PDF to image...");
         const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
         // Crop logic...
         const croppedImagePath = path.join(
@@ -2077,7 +2075,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
         finalUrl = `/output/cropped_${imgFileName}`;
         finalFileName = `cropped_${imgFileName}`;
       } catch (imageError) {
-        console.error("⚠️ Image conversion failed:", imageError.message);
+        console.error("Image conversion failed:", imageError.message);
       }
     }
 
@@ -2090,7 +2088,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
       format: finalUrl.endsWith(".png") ? "image" : "pdf",
     });
   } catch (error) {
-    console.error("❌ Compilation error:", error.message);
+    console.error("Compilation error:", error.message);
     res.status(500).json({
       error: `Compilation failed: ${error.message}`,
       details: error.stack,
@@ -2100,7 +2098,7 @@ ${cleanLatex.replace(/[‹›]/g, "")}
 
 // API: Save equation
 app.post("/api/equations/save", async (req, res) => {
-  console.log("💾 Received equation save request");
+  console.log("Received equation save request");
   try {
     const { fileName, latex, projectId } = req.body;
     if (!fileName || !latex) {
@@ -2117,7 +2115,7 @@ app.post("/api/equations/save", async (req, res) => {
     const filePath = path.join(targetDir, fullFileName);
 
     await fs.writeFile(filePath, latex, "utf8");
-    console.log("✅ Equation saved successfully:", sanitizedFileName);
+    console.log("Equation saved successfully:", sanitizedFileName);
 
     res.json({
       success: true,
@@ -2125,7 +2123,7 @@ app.post("/api/equations/save", async (req, res) => {
       message: "Equation saved successfully",
     });
   } catch (error) {
-    console.error("❌ Save error:", error);
+    console.error("Save error:", error);
     res.status(500).json({
       error: `Save failed: ${error.message}`,
       details: error.stack,
@@ -2135,7 +2133,7 @@ app.post("/api/equations/save", async (req, res) => {
 
 // API: List all saved equations
 app.get("/api/equations/list", async (req, res) => {
-  console.log("📋 Received request to list equations");
+  console.log("Received request to list equations");
   try {
     const { projectId } = req.query;
     const targetDir = projectId
@@ -2145,7 +2143,7 @@ app.get("/api/equations/list", async (req, res) => {
 
     const files = await fs.readdir(targetDir);
     const texFiles = files.filter((file) => file.endsWith(".tex"));
-    console.log(`📚 Found ${texFiles.length} equation files`);
+    console.log(`Found ${texFiles.length} equation files`);
 
     const equations = await Promise.all(
       texFiles.map(async (file) => {
@@ -2168,7 +2166,7 @@ app.get("/api/equations/list", async (req, res) => {
     );
     res.json(equations);
   } catch (error) {
-    console.error("❌ List error:", error);
+    console.error("List error:", error);
     res.status(500).json({
       error: `Failed to list equations: ${error.message}`,
       details: error.stack,
@@ -2178,7 +2176,7 @@ app.get("/api/equations/list", async (req, res) => {
 
 // API: Load a specific equation
 app.get("/api/equations/load/:filename", async (req, res) => {
-  console.log("📖 Received request to load equation:", req.params.filename);
+  console.log("Received request to load equation:", req.params.filename);
   try {
     const { filename } = req.params;
     const { projectId } = req.query;
@@ -2192,14 +2190,14 @@ app.get("/api/equations/load/:filename", async (req, res) => {
     try {
       await fs.access(filePath);
     } catch {
-      console.log("❌ Equation file not found:", fullFileName);
+      console.log("Equation file not found:", fullFileName);
       return res.status(404).json({ error: "Equation file not found" });
     }
 
     const content = await fs.readFile(filePath, "utf8");
     const stats = await fs.stat(filePath);
 
-    console.log("✅ Equation loaded successfully:", sanitizedFileName);
+    console.log("Equation loaded successfully:", sanitizedFileName);
     res.json({
       fileName: sanitizedFileName,
       latex: content,
@@ -2207,7 +2205,7 @@ app.get("/api/equations/load/:filename", async (req, res) => {
       fileSize: stats.size,
     });
   } catch (error) {
-    console.error("❌ Load error:", error);
+    console.error("Load error:", error);
     res.status(500).json({
       error: `Failed to load equation: ${error.message}`,
       details: error.stack,
@@ -2217,7 +2215,7 @@ app.get("/api/equations/load/:filename", async (req, res) => {
 
 // API: Delete an equation
 app.delete("/api/equations/:filename", async (req, res) => {
-  console.log("🗑️ Received request to delete equation:", req.params.filename);
+  console.log("Received request to delete equation:", req.params.filename);
   try {
     const { filename } = req.params;
     const { projectId } = req.query;
@@ -2229,7 +2227,7 @@ app.delete("/api/equations/:filename", async (req, res) => {
     const filePath = path.join(targetDir, fullFileName);
 
     await fs.unlink(filePath);
-    console.log("✅ Equation deleted successfully:", sanitizedFileName);
+    console.log("Equation deleted successfully:", sanitizedFileName);
 
     res.json({
       success: true,
@@ -2239,13 +2237,13 @@ app.delete("/api/equations/:filename", async (req, res) => {
   } catch (error) {
     if (error.code === "ENOENT") {
       console.log(
-        "❌ Equation file not found for deletion:",
+        "Equation file not found for deletion:",
         req.params.filename,
       );
       return res.status(404).json({ error: "Equation file not found" });
     }
 
-    console.error("❌ Delete error:", error);
+    console.error("Delete error:", error);
     res.status(500).json({
       error: `Failed to delete equation: ${error.message}`,
       details: error.stack,
@@ -2264,7 +2262,7 @@ app.get("/api/citation/doi-lookup", async (req, res) => {
   try {
     // Clean the DOI (handle full URLs or plain DOIs)
     const cleanDoi = doi.replace(/^https?:\/\/doi\.org\//, "").trim();
-    console.log(`🔍 Looking up DOI: ${cleanDoi}`);
+    console.log(`Looking up DOI: ${cleanDoi}`);
 
     const response = await axios.get(
       `https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`,
@@ -2313,7 +2311,7 @@ app.get("/api/citation/doi-lookup", async (req, res) => {
     // Extract title
     const title = (item.title && item.title[0]) || "";
 
-    console.log(`✅ DOI resolved: "${title}" by ${authors}`);
+    console.log(`DOI resolved: "${title}" by ${authors}`);
 
     res.json({
       success: true,
@@ -2329,7 +2327,7 @@ app.get("/api/citation/doi-lookup", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(`❌ DOI lookup failed:`, error.message);
+    console.error(`DOI lookup failed:`, error.message);
     const status = error.response?.status;
     if (status === 404) {
       return res.status(404).json({
@@ -2352,7 +2350,7 @@ app.get("/api/citation/search", async (req, res) => {
   }
 
   try {
-    console.log(`🔎 Searching academics for: "${q}"`);
+    console.log(`Searching academics for: "${q}"`);
     const response = await axios.get(`https://api.crossref.org/works`, {
       params: {
         query: q,
@@ -2408,7 +2406,7 @@ app.get("/api/citation/search", async (req, res) => {
 
     res.json({ success: true, results });
   } catch (error) {
-    console.error(`❌ Search failed:`, error.message);
+    console.error(`Search failed:`, error.message);
     res.status(500).json({
       success: false,
       error: "Academic search failed. Please try again.",
@@ -2419,7 +2417,7 @@ app.get("/api/citation/search", async (req, res) => {
 // API: Compile citation
 app.post("/api/citation/compile", async (req, res) => {
   console.log("\n" + "=".repeat(60));
-  console.log("📚 CITATION COMPILATION REQUEST");
+  console.log("CITATION COMPILATION REQUEST");
   console.log("=".repeat(60));
 
   try {
@@ -2440,10 +2438,10 @@ app.post("/api/citation/compile", async (req, res) => {
     let citationLatex = "";
 
     if (customLatex) {
-      console.log("🔄 Using custom LaTeX");
+      console.log("Using custom LaTeX");
       citationLatex = customLatex;
     } else {
-      console.log("🆕 Generating citation from form data");
+      console.log("Generating citation from form data");
       if (!authors || !title || !year) {
         return res.status(400).json({
           error: "Authors, title, and year are required",
@@ -2555,45 +2553,45 @@ app.post("/api/citation/compile", async (req, res) => {
 \\end{document}`;
 
     await fs.writeFile(texFilePath, latexDocument, "utf8");
-    console.log("📄 Citation LaTeX file written");
+    console.log("Citation LaTeX file written");
 
     // Delete old PDF if exists
     try {
       await fs.remove(pdfFilePath);
-    } catch (e) {}
+    } catch (e) { }
 
     // Run pdflatex
-    console.log("🔄 Compiling citation...");
+    console.log("Compiling citation...");
     const result = await runPdfLatexPermissive(texFilePath, OUTPUT_DIR);
-    console.log(`📊 Compilation exit code: ${result.code}`);
+    console.log(`Compilation exit code: ${result.code}`);
 
     // Check if PDF exists
     const pdfExists = await fs.pathExists(pdfFilePath);
-    console.log(`📄 PDF exists: ${pdfExists}`);
+    console.log(`PDF exists: ${pdfExists}`);
 
     if (!pdfExists) {
       const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch {}
+      } catch { }
 
-      console.error("❌ Citation compilation failed - no PDF");
+      console.error("Citation compilation failed - no PDF");
       throw new Error(`PDF not generated. Log:\n${logContent.slice(-500)}`);
     }
 
-    console.log("✅ Citation PDF created");
+    console.log("Citation PDF created");
 
     // Convert to image
     try {
-      console.log("🖼️ Converting citation to image...");
+      console.log("Converting citation to image...");
       const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
       const finalImagePath = path.join(OUTPUT_DIR, `final_${imgFileName}`);
       await sharp(rawImagePath).png({ quality: 100 }).toFile(finalImagePath);
 
       await cleanupFiles(baseFileName, OUTPUT_DIR);
 
-      console.log("✅ Citation compilation complete\n");
+      console.log("Citation compilation complete\n");
 
       res.json({
         success: true,
@@ -2605,14 +2603,14 @@ app.post("/api/citation/compile", async (req, res) => {
           : "Citation generated successfully",
       });
     } catch (imageError) {
-      console.error("❌ Image conversion failed:", imageError.message);
+      console.error("Image conversion failed:", imageError.message);
       res.status(500).json({
         error: "Image conversion failed",
         details: imageError.message,
       });
     }
   } catch (error) {
-    console.error("❌ Citation compilation error:", error.message);
+    console.error("Citation compilation error:", error.message);
     res.status(500).json({
       error: `Citation compilation failed: ${error.message}`,
       details: error.stack,
@@ -2622,7 +2620,7 @@ app.post("/api/citation/compile", async (req, res) => {
 
 // API: Save citation
 app.post("/api/citation/save", async (req, res) => {
-  console.log("💾 Received citation save request");
+  console.log("Received citation save request");
   try {
     const { fileName, citationData, latexCode, projectId } = req.body;
 
@@ -2672,14 +2670,14 @@ app.post("/api/citation/save", async (req, res) => {
       message: "Citation saved successfully",
     });
   } catch (error) {
-    console.error("❌ Citation save error:", error);
+    console.error("Citation save error:", error);
     res.status(500).json({ error: `Save failed: ${error.message}` });
   }
 });
 
 // API: List saved citations
 app.get("/api/citation/list", async (req, res) => {
-  console.log("📋 Received request to list citations");
+  console.log("Received request to list citations");
   try {
     const { projectId } = req.query;
     const targetDir = projectId
@@ -2702,7 +2700,7 @@ app.get("/api/citation/list", async (req, res) => {
     citations.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     res.json(citations);
   } catch (error) {
-    console.error("❌ List citations error:", error);
+    console.error("List citations error:", error);
     res
       .status(500)
       .json({ error: `Failed to list citations: ${error.message}` });
@@ -2711,7 +2709,7 @@ app.get("/api/citation/list", async (req, res) => {
 
 // API: Delete citation
 app.delete("/api/citation/:filename", async (req, res) => {
-  console.log("🗑️ Received request to delete citation:", req.params.filename);
+  console.log("Received request to delete citation:", req.params.filename);
   try {
     const { filename } = req.params;
     const { projectId } = req.query;
@@ -2772,15 +2770,15 @@ app.post("/api/drafts/:id", async (req, res) => {
     for (const [fileName, fileInfo] of Object.entries(files)) {
       const filePath = path.join(draftDir, fileName);
       await fs.writeFile(filePath, fileInfo.content, "utf8");
-      console.log(`✅ Saved ${fileName} to disk`);
+      console.log(`Saved ${fileName} to disk`);
     }
 
     console.log("draftData", draftData);
 
-    console.log(`✅ Saved draft: ${name} in (${id})`);
+    console.log(`Saved draft: ${name} in (${id})`);
     res.json({ success: true, message: "Draft saved successfully", draftData });
   } catch (error) {
-    console.error("❌ Draft save error:", error);
+    console.error("Draft save error:", error);
     res.status(500).json({ success: false, error: "Failed to save draft" });
   }
 });
@@ -2796,10 +2794,10 @@ app.get("/api/drafts/:id", async (req, res) => {
     }
     const draftData = await fs.readJSON(draftPath);
 
-    console.log(`✅ Loaded Drafts of (${id})`);
+    console.log(`Loaded Drafts of (${id})`);
     res.json({ success: true, draft: draftData });
   } catch (error) {
-    console.error("❌ Draft load error:", error);
+    console.error("Draft load error:", error);
     res.status(500).json({ success: false, error: "Failed to load drafts" });
   }
 });
@@ -2842,13 +2840,13 @@ app.patch("/api/settings", async (req, res) => {
     // Save updated config.json
     await fs.writeJSON(settingsDir, settings, { spaces: 2 });
 
-    console.log(`✅ Saved Setting`);
+    console.log(`Saved Setting`);
     res.json({
       success: true,
       message: "Settings saved successfully",
     });
   } catch (error) {
-    console.error("❌ Setting save error:", error);
+    console.error("Setting save error:", error);
     res.status(500).json({ success: false, error: "Failed to save Setting" });
   }
 });
@@ -2876,10 +2874,10 @@ app.get("/api/settings", async (req, res) => {
       });
     }
 
-    console.log(`✅ Loaded Settings`);
+    console.log(`Loaded Settings`);
     res.json({ success: true, settings: settings });
   } catch (error) {
-    console.error("❌ Settings load error:", error);
+    console.error("Settings load error:", error);
     res.status(500).json({ success: false, error: "Failed to load Settings" });
   }
 });
@@ -2997,7 +2995,7 @@ app.get("/", (req, res) => {
 
 // Error handling middleware
 app.use((error, req, res, next) => {
-  console.error("🔥 Unhandled error:", error);
+  console.error("Unhandled error:", error);
   res.status(500).json({
     error: "Internal server error",
     message: error.message,
@@ -3020,20 +3018,20 @@ async function startServer() {
     await initDirectories();
 
     app.listen(PORT, () => {
-      console.log("🚀 Unified LaTeX Server Started!");
+      console.log("Unified LaTeX Server Started!");
       console.log("=".repeat(60));
-      console.log(`📡 Server: http://localhost:${PORT}`);
-      console.log(`📁 Projects: ${PROJECTS_DIR}`);
-      console.log(`📁 Equations: ${EQUATIONS_DIR}`);
-      console.log(`📁 Citations: ${CITATIONS_DIR}`);
-      // console.log(`📁 Temp: ${TEMP_DIR}`);
-      console.log(`📁 Temp: ${jobDir}`);
-      console.log(`📁 Output: ${OUTPUT_DIR}`);
+      console.log(`Server: http://localhost:${PORT}`);
+      console.log(`Projects: ${PROJECTS_DIR}`);
+      console.log(`Equations: ${EQUATIONS_DIR}`);
+      console.log(`Citations: ${CITATIONS_DIR}`);
+      // console.log(`Temp: ${TEMP_DIR}`);
+      console.log(`Temp: ${jobDir}`);
+      console.log(`Output: ${OUTPUT_DIR}`);
       console.log(
-        `🔧 pdfLaTeX: ${PDFLATEX_PATH ? "✅ Ready" : "❌ Not found"}`,
+        `pdfLaTeX: ${PDFLATEX_PATH ? "Ready" : "Not found"}`,
       );
       console.log("=".repeat(60));
-      console.log("✨ All routes from both servers merged successfully!");
+      console.log("All routes from both servers merged successfully!");
       console.log("=".repeat(60));
 
       const pdflatexPath = getPdflatexPath();
@@ -3051,19 +3049,19 @@ async function startServer() {
 
       testPdfLatex.on("close", (code) => {
         if (code === 0) {
-          console.log("✅ pdflatex is available and ready");
+          console.log("pdflatex is available and ready");
         } else {
-          console.log("❌ WARNING: pdflatex not found or not working");
+          console.log("WARNING: pdflatex not found or not working");
           console.log("   Please install TeX Live or MiKTeX");
         }
       });
       testPdfLatex.on("error", () => {
-        console.log("❌ WARNING: pdflatex not found in PATH");
+        console.log("WARNING: pdflatex not found in PATH");
         console.log("   Please install TeX Live or MiKTeX and add to PATH");
       });
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
+    console.error("Failed to start server:", error);
     process.exit(1);
   }
 }
@@ -3072,12 +3070,12 @@ startServer();
 
 // Graceful shutdown
 process.on("SIGINT", () => {
-  console.log("\n🛑 Gracefully shutting down server...");
+  console.log("\nGracefully shutting down server...");
   process.exit(0);
 });
 
 process.on("SIGTERM", () => {
-  console.log("\n🛑 Server terminated");
+  console.log("\n Server terminated");
   process.exit(0);
 });
 
