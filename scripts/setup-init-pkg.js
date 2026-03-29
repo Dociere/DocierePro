@@ -98,6 +98,7 @@ export async function setupExtraPackages(
     "cite",
     "cm-super",
     "ragged2e",
+    "ulem",
   ];
 
   try {

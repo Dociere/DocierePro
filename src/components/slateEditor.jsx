@@ -8,6 +8,8 @@ import {
 import { Slate, Editable, withReact, useSlate } from "slate-react";
 import { withHistory } from "slate-history";
 import { astToSlate, slateToAst } from "../utils/latexAstEngine";
+import { FaListUl } from "react-icons/fa";
+import { FaListOl } from "react-icons/fa6";
 
 // ==========================================
 // 1. SLATE PLUGINS
@@ -101,7 +103,7 @@ const Element = ({ attributes, children, element }) => {
             contentEditable={false}
             className="absolute -top-3 left-4 bg-white px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest border rounded-full shadow-sm"
           >
-            ✏️ \{element.macro}
+            \{element.macro}
           </span>
           <div className="font-medium">{children}</div>
         </div>
@@ -117,7 +119,7 @@ const Element = ({ attributes, children, element }) => {
             contentEditable={false}
             className="absolute -top-3 left-4 bg-white px-3 py-0.5 text-[10px] font-bold text-purple-600 uppercase tracking-widest border border-purple-100 rounded-full shadow-sm"
           >
-            📄 {element.env}
+            {element.env}
           </span>
           <div className="text-gray-700">{children}</div>
         </div>
@@ -155,11 +157,32 @@ const Element = ({ attributes, children, element }) => {
         </div>
       );
 
+    case "blockquote":
+      return (
+        <blockquote
+          {...attributes}
+          className="border-l-4 border-gray-300 pl-4 italic text-gray-600 my-4"
+        >
+          {children}
+        </blockquote>
+      );
+
+    case "code-block":
+      return (
+        <pre
+          {...attributes}
+          className="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded-xl my-4 overflow-x-auto"
+        >
+          <code>{children}</code>
+        </pre>
+      );
+
     default:
       return (
         <p
           {...attributes}
           className="mb-3 text-gray-700 leading-relaxed font-inter"
+          style={{ textAlign: element.align || "left" }}
         >
           {children}
         </p>
@@ -171,6 +194,9 @@ const Leaf = ({ attributes, children, leaf }) => {
   if (leaf.bold) children = <strong>{children}</strong>;
   if (leaf.italic) children = <em>{children}</em>;
   if (leaf.underline) children = <u>{children}</u>;
+  if (leaf.strikethrough) children = <del>{children}</del>;
+  if (leaf.superscript) children = <sup className="text-xs">{children}</sup>;
+  if (leaf.subscript) children = <sub className="text-xs">{children}</sub>;
   if (leaf.code)
     children = (
       <code className="bg-gray-100 px-1.5 py-0.5 rounded text-red-500 font-mono text-sm border border-gray-200">
@@ -184,12 +210,36 @@ const Leaf = ({ attributes, children, leaf }) => {
 // 3. TOOLBAR LOGIC
 // ==========================================
 
-const isBlockActive = (editor, format) => {
+const isBlockActive = (editor, format, level = null) => {
   const [match] = Editor.nodes(editor, {
     match: (n) =>
-      !Editor.isEditor(n) && SlateElement.isElement(n) && n.type === format,
+      !Editor.isEditor(n) &&
+      SlateElement.isElement(n) &&
+      n.type === format &&
+      (level === null || n.level === level),
   });
   return !!match;
+};
+
+const AlignButton = ({ align, icon }) => {
+  const editor = useSlate();
+  return (
+    <button
+      onMouseDown={(e) => {
+        e.preventDefault();
+        Transforms.setNodes(
+          editor,
+          { align },
+          {
+            match: (n) =>
+              SlateElement.isElement(n) && Editor.isBlock(editor, n),
+          },
+        );
+      }}
+    >
+      {icon}
+    </button>
+  );
 };
 
 const toggleBlock = (editor, format) => {
@@ -406,6 +456,16 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
             format="underline"
             icon={<span className="underline">U</span>}
           />
+          <MarkButton
+            format="strikethrough"
+            icon={<span className="line-through">S</span>}
+          />
+          <MarkButton format="superscript" icon={<span>x²</span>} />
+          <MarkButton format="subscript" icon={<span>x₂</span>} />
+          <MarkButton
+            format="code"
+            icon={<span className="font-mono">{`</>`}</span>}
+          />
           <div className="w-px h-6 bg-gray-300 mx-2" />
 
           <button
@@ -415,7 +475,7 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               Transforms.setNodes(editor, { level: 1 });
             }}
             className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors font-inter ${
-              isBlockActive(editor, "heading")
+              isBlockActive(editor, "heading", 1)
                 ? "bg-gray-200  text-blue-700"
                 : "text-gray-600  hover:bg-gray-100"
             }`}
@@ -429,7 +489,7 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               Transforms.setNodes(editor, { level: 2 });
             }}
             className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors font-inter ${
-              isBlockActive(editor, "heading")
+              isBlockActive(editor, "heading", 2)
                 ? "bg-gray-200  text-blue-700"
                 : "text-gray-600  hover:bg-gray-100"
             }`}
@@ -443,7 +503,7 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
               Transforms.setNodes(editor, { level: 3 });
             }}
             className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors font-inter ${
-              isBlockActive(editor, "heading")
+              isBlockActive(editor, "heading", 3)
                 ? "bg-gray-200  text-blue-700"
                 : "text-gray-600  hover:bg-gray-100"
             }`}
@@ -452,8 +512,19 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
           </button>
 
           <div className="w-px h-6 bg-gray-300 mx-2" />
-          <BlockButton format="bulleted-list" icon="• List" />
-          <BlockButton format="numbered-list" icon="1. List" />
+          <AlignButton align="left" icon={<span>≡L</span>} />
+          <AlignButton align="center" icon={<span>≡C</span>} />
+          <AlignButton align="right" icon={<span>≡R</span>} />
+          <AlignButton align="justify" icon={<span>≡J</span>} />
+
+          <div className="w-px h-6 bg-gray-300 mx-2" />
+          <BlockButton format="bulleted-list" icon={<FaListUl />} />
+          <BlockButton format="numbered-list" icon={<FaListOl />} />
+          <BlockButton format="blockquote" icon={<span>"</span>} />
+          <BlockButton
+            format="code-block"
+            icon={<span className="font-mono">{}</span>}
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto p-12">
@@ -487,6 +558,16 @@ const SlateEditorPanel = ({ globalAst, onAstChange }) => {
                 case "u":
                   event.preventDefault();
                   toggleMark(editor, "underline");
+                  break;
+                case "s":
+                  if (event.shiftKey) {
+                    event.preventDefault();
+                    toggleMark(editor, "strikethrough");
+                  }
+                  break;
+                case "`":
+                  event.preventDefault();
+                  toggleMark(editor, "code");
                   break;
                 default:
                   break;

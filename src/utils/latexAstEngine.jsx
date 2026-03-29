@@ -468,7 +468,18 @@ export const astToSlate = (astInput) => {
         currentParagraph.children.push(...leaves);
         currentParagraph.children.push({ text: "}", code: true });
       } else if (node.type === "macro") {
-        if (["textbf", "textit", "underline", "emph"].includes(node.content)) {
+        if (
+          [
+            "textbf",
+            "textit",
+            "underline",
+            "emph",
+            "sout",
+            "textsuperscript",
+            "textsubscript",
+            "texttt",
+          ].includes(node.content)
+        ) {
           let argContent = [];
           if (node.args && node.args.length > 0) {
             argContent = node.args[node.args.length - 1].content;
@@ -489,12 +500,29 @@ export const astToSlate = (astInput) => {
           const leaves = innerBlocks.flatMap(
             (b) => b.children || [{ text: "" }],
           );
-          const mark =
-            node.content === "textbf"
-              ? "bold"
-              : node.content === "textit" || node.content === "emph"
-              ? "italic"
-              : "underline";
+          // const mark =
+          //   node.content === "textbf"
+          //     ? "bold"
+          //     : node.content === "textit" || node.content === "emph"
+          //     ? "italic"
+          //     : "underline";
+
+          const markMap = {
+            textbf: "bold",
+            textit: "italic",
+            emph: "italic",
+            underline: "underline",
+            sout: "strikethrough",
+            textsuperscript: "superscript",
+            textsubscript: "subscript",
+            texttt: "code",
+          };
+          const mark = markMap[node.content];
+          if (!mark) {
+            /* fall through to unknown macro handler */
+            break;
+          }
+
           leaves.forEach((l) => (l[mark] = true));
           currentParagraph.children.push(...leaves);
         } else if (
@@ -644,6 +672,39 @@ export const astToSlate = (astInput) => {
                 ? innerBlocks
                 : [{ type: "paragraph", children: [{ text: "" }] }],
           });
+        } else if (["quote", "quotation"].includes(envName)) {
+          const innerBlocks = parseNodes(node.content);
+          slateBlocks.push({
+            type: "blockquote",
+            children:
+              innerBlocks.length > 0
+                ? innerBlocks
+                : [{ type: "paragraph", children: [{ text: "" }] }],
+          });
+        } else if (["verbatim", "lstlisting", "minted"].includes(envName)) {
+          const innerBlocks = parseNodes(node.content);
+          slateBlocks.push({
+            type: "code-block",
+            children:
+              innerBlocks.length > 0
+                ? innerBlocks
+                : [{ type: "paragraph", children: [{ text: "" }] }],
+          });
+        } else if (
+          ["center", "flushleft", "flushright", "justify"].includes(envName)
+        ) {
+          const alignMap = {
+            center: "center",
+            flushleft: "left",
+            flushright: "right",
+            justify: "justify",
+          };
+          const innerBlocks = parseNodes(node.content);
+          // Tag each child paragraph with the alignment
+          innerBlocks.forEach((b) => {
+            if (b.type === "paragraph") b.align = alignMap[envName];
+          });
+          slateBlocks.push(...innerBlocks);
         } else if (LIST_ENVS.includes(envName)) {
           const listType =
             envName === "itemize" || envName === "resumelist"
@@ -762,7 +823,11 @@ const leavesToLatexString = (leaves) => {
       if (leaf.bold) text = `\\textbf{${text}}`;
       if (leaf.italic) text = `\\textit{${text}}`;
       if (leaf.underline) text = `\\underline{${text}}`;
+      if (leaf.strikethrough) text = `\\sout{${text}}`;
+      if (leaf.superscript) text = `\\textsuperscript{${text}}`;
+      if (leaf.subscript) text = `\\textsubscript{${text}}`;
     }
+    if (leaf.code && !leaf.bold && !leaf.italic) latex = `\\texttt{${latex}}`;
     str += text;
   });
   return str;
@@ -772,138 +837,203 @@ export const slateToAst = (slateNodes) => {
   const astNodes = [];
 
   const parseBlock = (block, index, arrayLength) => {
-    if (block.type === "paragraph") {
-      const latexStr = leavesToLatexString(block.children);
-      const tempAst = parseLatexToAst(latexStr);
-      if (tempAst && tempAst.content) astNodes.push(...tempAst.content);
-      if (index < arrayLength - 1) astNodes.push({ type: "parbreak" });
-    } else if (block.type === "heading") {
-      const macroName =
-        block.level === 1
-          ? "section"
-          : block.level === 2
-          ? "subsection"
-          : block.level === 3
-          ? "subsubsection"
-          : block.level === 4
-          ? "paragraph"
-          : "subparagraph";
-      const latexStr = leavesToLatexString(block.children);
-      const tempAst = parseLatexToAst(latexStr);
-      astNodes.push({
-        type: "macro",
-        content: macroName,
-        args: [
-          {
-            type: "argument",
-            content: tempAst?.content || [],
-            openMark: "{",
-            closeMark: "}",
-          },
-        ],
-      });
-    } else if (block.type === "editable-macro") {
-      const innerAst = slateToAst(block.children);
-      astNodes.push({
-        type: "macro",
-        content: block.macro,
-        args: [
-          {
-            type: "argument",
-            content: innerAst,
-            openMark: "{",
-            closeMark: "}",
-          },
-        ],
-      });
-      astNodes.push({ type: "parbreak" });
-    } else if (block.type === "editable-env") {
-      const innerAst = slateToAst(block.children);
-
-      let finalArgs = [];
-      if (
-        block.argsRaw &&
-        Array.isArray(block.argsRaw) &&
-        block.argsRaw.length > 0
-      ) {
-        // Preferred: argsRaw stores the original parsed arg objects verbatim — no re-parsing needed.
-        finalArgs = block.argsRaw;
-      } else if (block.argsLatex) {
-        // Fallback: parse argsLatex as a standalone fragment.
-        // NOTE: do NOT wrap in \begin{dummy}...\end{dummy} — unified-latex would absorb
-        // the braced groups as the dummy env's own args instead of free content nodes,
-        // causing content[0].args to always come back empty.
-        const tempAst = parseLatexToAst(block.argsLatex);
-        if (tempAst?.content?.length > 0) {
-          finalArgs = tempAst.content
-            .filter((n) => n.type === "group" || n.type === "argument")
-            .map((n) =>
-              n.type === "argument"
-                ? n
-                : {
-                    type: "argument",
-                    content: n.content || [],
-                    openMark: "{",
-                    closeMark: "}",
-                  },
-            );
-        }
-      }
-
-      // Hard guarantee: thebibliography always needs a widest-label arg.
-      if (block.env === "thebibliography" && finalArgs.length === 0) {
-        finalArgs = [
-          {
-            type: "argument",
-            content: [{ type: "string", content: "1" }],
-            openMark: "{",
-            closeMark: "}",
-          },
-        ];
-      }
-
-      astNodes.push({
-        type: "environment",
-        env: block.env,
-        args: finalArgs,
-        content: innerAst,
-      });
-      astNodes.push({ type: "parbreak" });
-    } else if (
-      block.type === "bulleted-list" ||
-      block.type === "numbered-list"
-    ) {
-      const envName =
-        block.env || (block.type === "bulleted-list" ? "itemize" : "enumerate");
-      const listContent = [];
-
-      block.children.forEach((listItem) => {
-        listContent.push({ type: "macro", content: "item" });
-        listContent.push({ type: "whitespace", content: " " });
-        const latexStr = leavesToLatexString(listItem.children);
+    switch (block.type) {
+      case "paragraph": {
+        const latexStr = leavesToLatexString(block.children);
         const tempAst = parseLatexToAst(latexStr);
-        if (tempAst && tempAst.content) listContent.push(...tempAst.content);
-        listContent.push({ type: "whitespace", content: "\n" });
-      });
+        const paraContent = tempAst?.content || [];
 
-      let finalArgs = [];
-      if (block.argsLatex) {
-        const tempAst = parseLatexToAst(
-          `\\begin{dummy}${block.argsLatex}\\end{dummy}`,
-        );
-        finalArgs = tempAst?.content[0]?.args || [];
+        if (block.align && block.align !== "left") {
+          const envMap = {
+            center: "center",
+            right: "flushright",
+            justify: "justify",
+          };
+          const envName = envMap[block.align];
+          if (envName) {
+            astNodes.push({
+              type: "environment",
+              env: envName,
+              args: [],
+              content: paraContent,
+            });
+            astNodes.push({ type: "parbreak" });
+            break;
+          }
+        }
+
+        if (tempAst && tempAst.content) astNodes.push(...tempAst.content);
+        if (index < arrayLength - 1) astNodes.push({ type: "parbreak" });
+        break;
       }
 
-      astNodes.push({
-        type: "environment",
-        env: envName,
-        args: finalArgs,
-        content: listContent,
-      });
-      astNodes.push({ type: "parbreak" });
-    } else if (block.type === "latex-block") {
-      const tempAst = parseLatexToAst(block.rawLatex);
-      if (tempAst && tempAst.content) astNodes.push(...tempAst.content);
+      case "heading": {
+        const macroName =
+          block.level === 1
+            ? "section"
+            : block.level === 2
+            ? "subsection"
+            : block.level === 3
+            ? "subsubsection"
+            : block.level === 4
+            ? "paragraph"
+            : "subparagraph";
+        const latexStr = leavesToLatexString(block.children);
+        const tempAst = parseLatexToAst(latexStr);
+        astNodes.push({
+          type: "macro",
+          content: macroName,
+          args: [
+            {
+              type: "argument",
+              content: tempAst?.content || [],
+              openMark: "{",
+              closeMark: "}",
+            },
+          ],
+        });
+        break;
+      }
+
+      case "editable-macro": {
+        const innerAst = slateToAst(block.children);
+        astNodes.push({
+          type: "macro",
+          content: block.macro,
+          args: [
+            {
+              type: "argument",
+              content: innerAst,
+              openMark: "{",
+              closeMark: "}",
+            },
+          ],
+        });
+        astNodes.push({ type: "parbreak" });
+        break;
+      }
+
+      case "editable-env": {
+        const innerAst = slateToAst(block.children);
+
+        let finalArgs = [];
+        if (
+          block.argsRaw &&
+          Array.isArray(block.argsRaw) &&
+          block.argsRaw.length > 0
+        ) {
+          // Preferred: argsRaw stores the original parsed arg objects verbatim — no re-parsing needed.
+          finalArgs = block.argsRaw;
+        } else if (block.argsLatex) {
+          // Fallback: parse argsLatex as a standalone fragment.
+          // NOTE: do NOT wrap in \begin{dummy}...\end{dummy} — unified-latex would absorb
+          // the braced groups as the dummy env's own args instead of free content nodes,
+          // causing content[0].args to always come back empty.
+          const tempAst = parseLatexToAst(block.argsLatex);
+          if (tempAst?.content?.length > 0) {
+            finalArgs = tempAst.content
+              .filter((n) => n.type === "group" || n.type === "argument")
+              .map((n) =>
+                n.type === "argument"
+                  ? n
+                  : {
+                      type: "argument",
+                      content: n.content || [],
+                      openMark: "{",
+                      closeMark: "}",
+                    },
+              );
+          }
+        }
+
+        // Hard guarantee: thebibliography always needs a widest-label arg.
+        if (block.env === "thebibliography" && finalArgs.length === 0) {
+          finalArgs = [
+            {
+              type: "argument",
+              content: [{ type: "string", content: "1" }],
+              openMark: "{",
+              closeMark: "}",
+            },
+          ];
+        }
+
+        astNodes.push({
+          type: "environment",
+          env: block.env,
+          args: finalArgs,
+          content: innerAst,
+        });
+        astNodes.push({ type: "parbreak" });
+        break;
+      }
+
+      case "bulleted-list":
+      case "numbered-list": {
+        const envName =
+          block.env ||
+          (block.type === "bulleted-list" ? "itemize" : "enumerate");
+        const listContent = [];
+
+        block.children.forEach((listItem) => {
+          listContent.push({ type: "macro", content: "item" });
+          listContent.push({ type: "whitespace", content: " " });
+          const latexStr = leavesToLatexString(listItem.children);
+          const tempAst = parseLatexToAst(latexStr);
+          if (tempAst && tempAst.content) listContent.push(...tempAst.content);
+          listContent.push({ type: "whitespace", content: "\n" });
+        });
+
+        let finalArgs = [];
+        if (block.argsLatex) {
+          const tempAst = parseLatexToAst(
+            `\\begin{dummy}${block.argsLatex}\\end{dummy}`,
+          );
+          finalArgs = tempAst?.content[0]?.args || [];
+        }
+
+        astNodes.push({
+          type: "environment",
+          env: envName,
+          args: finalArgs,
+          content: listContent,
+        });
+        astNodes.push({ type: "parbreak" });
+        break;
+      }
+
+      case "latex-block": {
+        const tempAst = parseLatexToAst(block.rawLatex);
+        if (tempAst && tempAst.content) astNodes.push(...tempAst.content);
+        break;
+      }
+
+      case "blockquote": {
+        const innerAst = slateToAst(block.children);
+        astNodes.push({
+          type: "environment",
+          env: "quote",
+          args: [],
+          content: innerAst,
+        });
+        astNodes.push({ type: "parbreak" });
+        break;
+      }
+
+      case "code-block": {
+        const innerAst = slateToAst(block.children);
+        astNodes.push({
+          type: "environment",
+          env: "verbatim",
+          args: [],
+          content: innerAst,
+        });
+        astNodes.push({ type: "parbreak" });
+        break;
+      }
+
+      default:
+        break;
     }
   };
 
