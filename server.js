@@ -3075,8 +3075,10 @@ process.on("SIGINT", () => {
 });
 
 process.on("SIGTERM", () => {
-  console.log("\n Server terminated");
-  process.exit(0);
+  console.log("\nServer terminated");
+
 });
 
-export default app;
+process.on("SIGTERM", () => {
+  console.log("\n Server terminated");
+});
