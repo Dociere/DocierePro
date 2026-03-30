@@ -150,7 +150,13 @@ export async function setupTinyTex(
     onProgress("Extracting TinyTeX...");
     if (platform === "win32") {
       const zip = new admZip(tempFile);
-      zip.extractAllTo(destDir, true);
+      const extractTemp = path.join(baseDir, "tinytex_unzip_temp");
+      fs.ensureDirSync(extractTemp);
+      zip.extractAllTo(extractTemp, true);
+      
+      // Mimic Linux's 'strip: 1' by moving the contents of the inner 'TinyTeX' folder
+      fs.moveSync(path.join(extractTemp, "TinyTeX"), destDir, { overwrite: true });
+      fs.removeSync(extractTemp);
     } else {
       await tar.x({ file: tempFile, cwd: destDir, strip: 1 });
       const binDir = path.join(destDir, "bin", archFolder);
