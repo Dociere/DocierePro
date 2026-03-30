@@ -4,6 +4,7 @@
   "version": "0.3.1",
   "type": "module",
   "main": "electron/main.cjs",
+  "repository": "Dociere/DocierePro",
   "scripts": {
     "start": "node server.js",
     "dev": "vite",
@@ -11,6 +12,7 @@
     "lint": "eslint .",
     "electron:dev": "concurrently \"npm run dev\" \"npm run start\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
     "electron:build": "npm run build && electron-builder",
+    "electron:publish": "npm run build && electron-builder --publish always",
     "electron:crossbuild": "npm run build && electron-builder -mwl",
     "electron:winbuild": "npm run build && electron-builder -w",
     "preview": "vite preview",

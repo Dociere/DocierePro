@@ -1,5 +1,14 @@
-name: Build Cross-Platform
-on: [push]
+name: Publish Official Release
+
+# 1. Trigger only on version tags (e.g., v1.0.0, v0.3.1)
+on:
+  push:
+    tags:
+      - "v*"
+
+# 2. Explicitly grant permission to write releases
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -17,42 +26,50 @@ jobs:
         with:
           node-version: 20
 
-      # - name: Install C++ Dependencies (Ubuntu)
+      # - name: Install Native Dependencies (Linux)
       #   if: matrix.os == 'ubuntu-latest'
       #   run: |
       #     sudo apt-get update
-      #     sudo apt-get install -y cmake g++ nlohmann-json3-dev libqpdf-dev pkg-config
+      #     sudo apt-get install -y cmake pkg-config nlohmann-json3-dev libqpdf-dev
 
-      # - name: Install C++ Dependencies (macOS)
+      # - name: Install Native Dependencies (macOS)
       #   if: matrix.os == 'macos-latest'
       #   run: |
-      #     brew install cmake nlohmann-json qpdf pkg-config
+      #     brew install cmake pkg-config nlohmann-json qpdf
 
-      # - name: Install C++ Dependencies (Windows)
+      # - name: Install Native Dependencies (Windows)
       #   if: matrix.os == 'windows-latest'
       #   run: |
       #     vcpkg install nlohmann-json:x64-windows qpdf:x64-windows pkgconf:x64-windows
       #     vcpkg integrate install
 
-      # - name: Build C++ Sidecar
+      # - name: Build Sidecar
+      #   shell: bash
       #   run: |
       #     mkdir -p sidecar/build
       #     cd sidecar/build
-      #     cmake .. -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'windows-latest' && '-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
-      #     cmake --build . --config Release
-      #   shell: bash
 
-      # - name: Bundle Linux Dependencies
+      #     if [ "$RUNNER_OS" == "Windows" ]; then
+      #       cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+      #     else
+      #       cmake .. -DCMAKE_BUILD_TYPE=Release
+      #     fi
+
+      #     cmake --build . --config Release
+
+      # - name: Bundle Linux Libs
       #   if: matrix.os == 'ubuntu-latest'
+      #   shell: bash
       #   run: |
       #     cd sidecar
-      #     chmod +x bundle_libs.sh
-      #     ./bundle_libs.sh
+      #     chmod +x ../bundle_libs.sh
+      #     bash ../bundle_libs.sh
 
-      - name: Install Dependencies
+      - name: Install NPM Dependencies
         run: npm install
 
-      - name: Build and Distribute
-        run: npm run electron:build
+      # 3. Use the new publish command
+      - name: Build and Publish Release
+        run: npm run electron:publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
