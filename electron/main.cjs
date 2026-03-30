@@ -12,8 +12,8 @@ const archFolder =
   platform === "win32"
     ? "windows"
     : platform === "darwin"
-      ? "universal-darwin"
-      : "x86_64-linux";
+    ? "universal-darwin"
+    : "x86_64-linux";
 const binaryName = platform === "win32" ? "pdflatex.exe" : "pdflatex";
 
 const isDev = !app.isPackaged;
@@ -28,78 +28,60 @@ async function runSetupExtraPackages(userDataPath, isDev, onProgress) {
   await setupExtraPackages(userDataPath, isDev, onProgress);
 }
 
-function getSidecarPath() {
-  const isDev = !app.isPackaged;
-  const platform = process.platform;
+// function getSidecarPath() {
+//   const isDev = !app.isPackaged;
+//   const platform = process.platform;
 
-  // Binary name is platform-dependent
-  const binaryName = platform === "win32" ? "sidecar.exe" : "sidecar";
+//   // Binary name is platform-dependent
+//   const binaryName = platform === "win32" ? "sidecar.exe" : "sidecar";
 
-  if (isDev) {
-    // __dirname is application/electron, so we go up one level to application/sidecar
-    return path.join(__dirname, "..", "sidecar", "build", binaryName);
-  }
+//   if (isDev) {
+//     // __dirname is application/electron, so we go up one level to application/sidecar
+//     return path.join(__dirname, "..", "sidecar", "build", binaryName);
+//   }
 
-  return path.join(process.resourcesPath, "bin", binaryName);
-}
+//   return path.join(process.resourcesPath, "bin", binaryName);
+// }
 
-function startSidecar(userDataPath) {
-  const sidecarBin = getSidecarPath();
-  const platform = process.platform;
-  const libsDir = !app.isPackaged
-    ? path.join(__dirname, "..", "sidecar", "build", "libs")
-    : path.join(process.resourcesPath, "bin", "libs");
+// function startSidecar(userDataPath) {
+//   const sidecarBin = getSidecarPath();
+//   const platform = process.platform;
+//   const libsDir = !app.isPackaged
+//     ? path.join(__dirname, "..", "sidecar", "build", "libs")
+//     : path.join(process.resourcesPath, "bin", "libs");
 
-  const ldPath =
-    platform === "linux"
-      ? `${libsDir}${path.delimiter}${process.env.LD_LIBRARY_PATH || ""}`
-      : process.env.LD_LIBRARY_PATH;
+//   const ldPath =
+//     platform === "linux"
+//       ? `${libsDir}${path.delimiter}${process.env.LD_LIBRARY_PATH || ""}`
+//       : process.env.LD_LIBRARY_PATH;
 
-  const sidecarProcess = spawn(sidecarBin, [], {
-    cwd: userDataPath,
-    stdio: ["pipe", "pipe", "inherit"],
-    env: {
-      ...process.env,
-      USER_DATA_PATH: userDataPath,
-      ...(platform === "linux" && { LD_LIBRARY_PATH: ldPath }),
-    },
-  });
+//   const sidecarProcess = spawn(sidecarBin, [], {
+//     cwd: userDataPath,
+//     stdio: ["pipe", "pipe", "inherit"],
+//     env: {
+//       ...process.env,
+//       USER_DATA_PATH: userDataPath,
+//       ...(platform === "linux" && { LD_LIBRARY_PATH: ldPath }),
+//     },
+//   });
 
-  sidecarProcess.on("error", (err) => {
-    console.error("Sidecar failed to start:", err);
-  });
+//   sidecarProcess.on("error", (err) => {
+//     console.error("Sidecar failed to start:", err);
+//   });
 
-  sidecarProcess.on("exit", (code) => {
-    console.log("Sidecar exited with code:", code);
-  });
+//   sidecarProcess.on("exit", (code) => {
+//     console.log("Sidecar exited with code:", code);
+//   });
 
-  return sidecarProcess;
-}
+//   return sidecarProcess;
+// }
 
 function startBackend() {
   const isDev = !app.isPackaged;
   const userDataPath = app.getPath("userData");
 
   if (isDev) {
-    // const latexBinPath = path.join(
-    //   process.cwd(),
-    //   "resources",
-    //   "TinyTex",
-    //   platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux",
-    //   "bin",
-    //   archFolder,
-    // );
-    // backendProcess = spawn("npm", ["start"], {
-    //   shell: true,
-    //   cwd: __dirname.replace("/electron", ""),
-    //   stdio: "inherit",
-    //   env: {
-    //     ...process.env,
-    //     USER_DATA_PATH: userDataPath,
-    //     PATH: `${latexBinPath}${path.delimiter}${process.env.PATH}`,
-    //   },
-    // });
-    startSidecar(userDataPath);
+    // startSidecar(userDataPath);
   } else {
     const backendPath = path.join(
       process.resourcesPath,
@@ -131,7 +113,7 @@ function startBackend() {
       },
     });
 
-    startSidecar(userDataPath);
+    // startSidecar(userDataPath);
   }
 }
 
