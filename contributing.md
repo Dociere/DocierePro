@@ -7,6 +7,8 @@
 
 ### To Build Sidecar
 
+```
 mkdir -p sidecar/build && cd sidecar/build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
+```

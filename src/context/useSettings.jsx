@@ -58,7 +58,7 @@ const DEFAULT_SETTINGS = {
     compile: "Ctrl+Shift+B",
   },
   server: {
-    mode: "",
+    mode: "selfHosting",
     methods: {
       selfHosting: { backendServer: "", webSocketServer: "" },
       cloudHosting: {
