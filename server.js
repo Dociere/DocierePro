@@ -76,6 +76,19 @@ const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
 const getServerUrl = () => {
   const configPath = path.join(SETTINGS_DIR, "config.json");
 
+  const defaultConfig = {
+    server: {
+      mode: "selfHosting",
+      methods: {
+        selfHosting: { backendServer: "", webSocketServer: "" },
+        cloudHosting: {
+          backendServer: "server.dociere.com",
+          webSocketServer: "ws.dociere.com",
+        },
+      },
+    },
+  };
+
   if (!fs.existsSync(configPath)) {
     fs.writeFileSync(
       configPath,
