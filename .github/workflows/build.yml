@@ -17,37 +17,37 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install C++ Dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake g++ nlohmann-json3-dev libqpdf-dev pkg-config
+      # - name: Install C++ Dependencies (Ubuntu)
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y cmake g++ nlohmann-json3-dev libqpdf-dev pkg-config
 
-      - name: Install C++ Dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install cmake nlohmann-json qpdf pkg-config
+      # - name: Install C++ Dependencies (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     brew install cmake nlohmann-json qpdf pkg-config
 
-      - name: Install C++ Dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          vcpkg install nlohmann-json:x64-windows qpdf:x64-windows pkgconf:x64-windows
-          vcpkg integrate install
+      # - name: Install C++ Dependencies (Windows)
+      #   if: matrix.os == 'windows-latest'
+      #   run: |
+      #     vcpkg install nlohmann-json:x64-windows qpdf:x64-windows pkgconf:x64-windows
+      #     vcpkg integrate install
 
-      - name: Build C++ Sidecar
-        run: |
-          mkdir -p sidecar/build
-          cd sidecar/build
-          cmake .. -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'windows-latest' && '-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
-          cmake --build . --config Release
-        shell: bash
+      # - name: Build C++ Sidecar
+      #   run: |
+      #     mkdir -p sidecar/build
+      #     cd sidecar/build
+      #     cmake .. -DCMAKE_BUILD_TYPE=Release ${{ matrix.os == 'windows-latest' && '-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
+      #     cmake --build . --config Release
+      #   shell: bash
 
-      - name: Bundle Linux Dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          cd sidecar
-          chmod +x bundle_libs.sh
-          ./bundle_libs.sh
+      # - name: Bundle Linux Dependencies
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: |
+      #     cd sidecar
+      #     chmod +x bundle_libs.sh
+      #     ./bundle_libs.sh
 
       - name: Install Dependencies
         run: npm install

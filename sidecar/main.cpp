@@ -61,6 +61,27 @@ int main() {
     long free_ram_bytes = pages * page_size;
     long free_ram_gb = free_ram_bytes / (1024LL * 1024 * 1024);
 
+    long free_ram_bytes = 0;
+
+// #ifdef __APPLE__
+//     // macOS: use sysctl to get available memory
+//     int mib[2] = {CTL_HW, HW_USABLE_MEMORY};
+//     unsigned long usable_mem = 0;
+//     size_t len = sizeof(usable_mem);
+//     if (sysctl(mib, 2, &usable_mem, &len, NULL, 0) == 0) {
+//         free_ram_bytes = usable_mem;
+//     } else {
+//         free_ram_bytes = 1024LL * 1024 * 1024; // fallback: 1GB
+//     }
+// #else
+//     // Linux: use sysconf
+//     long pages = sysconf(_SC_AVPHYS_PAGES);
+//     long page_size = sysconf(_SC_PAGE_SIZE);
+//     free_ram_bytes = pages * page_size;
+// #endif
+
+// long free_ram_gb = free_ram_bytes / (1024LL * 1024 * 1024);
+
     int hw_threads = std::thread::hardware_concurrency();
     int max_workers = std::max(1, (int)std::min(
         (long)hw_threads,

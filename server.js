@@ -21,8 +21,8 @@ import { getTinyTexBinPath } from "./scripts/setup-tinytex.js";
 dotenv.config();
 
 //DEV Mode means using local pdflatex while PROD Mode means TinyTex
-const projMode = "DEV";
-// const projMode = "PROD";
+// const projMode = "DEV";
+const projMode = "PROD";
 
 // const envEncryptionKey = process.env.ENCRYPTION_KEY;
 // const ENCRYPTION_KEY = Buffer.from(envEncryptionKey, "utf8");
@@ -157,80 +157,80 @@ const AI_SERVICE_URL = getServerUrl();
 //   return match ? match[1].trim() : "";
 // }
 
-function splitIntoChunks(texContent, files) {
-  const preamble = extractPreamble(texContent);
+// function splitIntoChunks(texContent, files) {
+//   const preamble = extractPreamble(texContent);
 
-  // Case 1: multi-file — use \input{} boundaries
-  const inputMatches = [...texContent.matchAll(/\\input\{([^}]+)\}/g)];
-  if (inputMatches.length >= 2) {
-    return {
-      preamble,
-      chunks: inputMatches.map((m) => {
-        const relPath = m[1].endsWith(".tex") ? m[1] : m[1] + ".tex";
-        return files[relPath]?.content ?? `% missing: ${relPath}`;
-      }),
-    };
-  }
+//   // Case 1: multi-file — use \input{} boundaries
+//   const inputMatches = [...texContent.matchAll(/\\input\{([^}]+)\}/g)];
+//   if (inputMatches.length >= 2) {
+//     return {
+//       preamble,
+//       chunks: inputMatches.map((m) => {
+//         const relPath = m[1].endsWith(".tex") ? m[1] : m[1] + ".tex";
+//         return files[relPath]?.content ?? `% missing: ${relPath}`;
+//       }),
+//     };
+//   }
 
-  // Case 2: single-file — split by \chapter or \section
-  const body = texContent
-    .replace(/^[\s\S]*?\\begin\{document\}/, "")
-    .replace(/\\end\{document\}[\s\S]*$/, "");
-  const parts = body.split(/(?=\\chapter\{|\\section\{)/);
-  const meaningful = parts.filter((p) => p.trim().length > 50); // skip tiny fragments
+//   // Case 2: single-file — split by \chapter or \section
+//   const body = texContent
+//     .replace(/^[\s\S]*?\\begin\{document\}/, "")
+//     .replace(/\\end\{document\}[\s\S]*$/, "");
+//   const parts = body.split(/(?=\\chapter\{|\\section\{)/);
+//   const meaningful = parts.filter((p) => p.trim().length > 50); // skip tiny fragments
 
-  return { preamble, chunks: meaningful.length > 1 ? meaningful : [body] };
-}
+//   return { preamble, chunks: meaningful.length > 1 ? meaningful : [body] };
+// }
 
-async function compileParallel(
-  texContent,
-  files,
-  jobDir,
-  outputPdfPath,
-  progressCallback,
-) {
-  const { preamble, chunks } = splitIntoChunks(texContent, files);
+// async function compileParallel(
+//   texContent,
+//   files,
+//   jobDir,
+//   outputPdfPath,
+//   progressCallback,
+// ) {
+//   const { preamble, chunks } = splitIntoChunks(texContent, files);
 
-  // If only one chunk after splitting, no benefit — fall back to serial
-  if (chunks.length <= 1) return null;
+//   // If only one chunk after splitting, no benefit — fall back to serial
+//   if (chunks.length <= 1) return null;
 
-  const config = {
-    job_dir: jobDir,
-    preamble,
-    chunks,
-    output_pdf: outputPdfPath,
-  };
+//   const config = {
+//     job_dir: jobDir,
+//     preamble,
+//     chunks,
+//     output_pdf: outputPdfPath,
+//   };
 
-  return new Promise((resolve, reject) => {
-    const sidecar = spawn(SIDECAR_PATH, [], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+//   return new Promise((resolve, reject) => {
+//     const sidecar = spawn(SIDECAR_PATH, [], {
+//       stdio: ["pipe", "pipe", "pipe"],
+//     });
 
-    // Send job config to sidecar via stdin
-    sidecar.stdin.write(JSON.stringify(config));
-    sidecar.stdin.end();
+//     // Send job config to sidecar via stdin
+//     sidecar.stdin.write(JSON.stringify(config));
+//     sidecar.stdin.end();
 
-    // ─── What you learn: readline for line-delimited JSON ────────────────
-    // stdout is a byte stream. readline splits it on \n for us.
-    // Each line is one JSON progress event from the sidecar.
-    const rl = createInterface({ input: sidecar.stdout });
-    rl.on("line", (line) => {
-      try {
-        const event = JSON.parse(line);
-        progressCallback(event); // forward to SSE stream
-        if (event.event === "complete") resolve(event.output);
-      } catch (e) {
-        /* malformed line, ignore */
-      }
-    });
+//     // ─── What you learn: readline for line-delimited JSON ────────────────
+//     // stdout is a byte stream. readline splits it on \n for us.
+//     // Each line is one JSON progress event from the sidecar.
+//     const rl = createInterface({ input: sidecar.stdout });
+//     rl.on("line", (line) => {
+//       try {
+//         const event = JSON.parse(line);
+//         progressCallback(event); // forward to SSE stream
+//         if (event.event === "complete") resolve(event.output);
+//       } catch (e) {
+//         /* malformed line, ignore */
+//       }
+//     });
 
-    sidecar.stderr.on("data", (d) => console.error("sidecar:", d.toString()));
-    sidecar.on("error", reject);
-    sidecar.on("close", (code) => {
-      if (code !== 0) reject(new Error(`Sidecar exited with code ${code}`));
-    });
-  });
-}
+//     sidecar.stderr.on("data", (d) => console.error("sidecar:", d.toString()));
+//     sidecar.on("error", reject);
+//     sidecar.on("close", (code) => {
+//       if (code !== 0) reject(new Error(`Sidecar exited with code ${code}`));
+//     });
+//   });
+// }
 
 const getPdflatexPath = () => {
   return getTinyTexBinPath(process.env.USER_DATA_PATH, isDev, "pdflatex");
