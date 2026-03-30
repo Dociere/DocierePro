@@ -79,8 +79,8 @@ const getServerUrl = () => {
   const rawData = fs.readFileSync(configPath, "utf-8");
   const config = JSON.parse(rawData);
 
-  const mode = config.server.mode;
-  const serverUrl = config.server.methods[mode].backendServer;
+  const mode = config?.server?.mode;
+  const serverUrl = config?.server?.methods[mode]?.backendServer;
 
   return serverUrl;
 };
