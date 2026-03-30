@@ -74,25 +74,15 @@ const SIDECAR_PATH = isDev
   : join(process.env.RESOURCES_PATH, "sidecar");
 
 const getServerUrl = () => {
-  try {
-    const configPath = path.resolve("./config.json");
-    
-    // Check if it exists before trying to read it to prevent crashes
-    if (fs.existsSync(configPath)) {
-      const rawData = fs.readFileSync(configPath, "utf-8");
-      const config = JSON.parse(rawData);
-      
-      const mode = config?.server?.mode;
-      const serverUrl = config?.server?.methods[mode]?.backendServer;
-      
-      if (serverUrl) return serverUrl;
-    }
-  } catch (error) {
-    console.warn("⚠️ Could not read config.json, using fallback AI URL");
-  }
-  
-  // Return a safe fallback URL if the file is missing or corrupted
-  return "http://localhost:5025"; 
+  const configPath = path.join(SETTINGS_DIR, "config.json");
+
+  const rawData = fs.readFileSync(configPath, "utf-8");
+  const config = JSON.parse(rawData);
+
+  const mode = config?.server?.mode;
+  const serverUrl = config?.server?.methods[mode]?.backendServer;
+
+  return serverUrl;
 };
 
 async function getActiveAIConfig() {
@@ -159,7 +149,7 @@ const jobDir = TEMP_DIR;
 });
 
 // const AI_SERVICE_URL = "http://localhost:5025";
-const AI_SERVICE_URL = getServerUrl();
+const AI_SERVICE_URL = getServerUrl() || "http://localhost:5025";
 
 //Uncomment it when the data flow for sidecar is ready
 // function extractPreamble(texContent) {
