@@ -69,12 +69,20 @@ const __dirname = dirname(__filename);
 const isDev = !process.env.USER_DATA_PATH;
 const baseDir = isDev ? __dirname : process.env.USER_DATA_PATH;
 
-const SIDECAR_PATH = isDev
-  ? join(__dirname, "sidecar", "build", "sidecar")
-  : join(process.env.RESOURCES_PATH, "sidecar");
+// const SIDECAR_PATH = isDev
+//   ? join(__dirname, "sidecar", "build", "sidecar")
+//   : join(process.env.RESOURCES_PATH, "sidecar");
 
 const getServerUrl = () => {
   const configPath = path.join(SETTINGS_DIR, "config.json");
+
+  if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify(defaultConfig, null, 2),
+      "utf-8",
+    );
+  }
 
   const rawData = fs.readFileSync(configPath, "utf-8");
   const config = JSON.parse(rawData);
@@ -147,6 +155,17 @@ const jobDir = TEMP_DIR;
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+// Initialize directories
+async function initDirectories() {
+  await fs.ensureDir(PROJECTS_DIR);
+  await fs.ensureDir(TEMP_DIR);
+  await fs.ensureDir(OUTPUT_DIR);
+  await fs.ensureDir(EQUATIONS_DIR);
+  await fs.ensureDir(CITATIONS_DIR);
+  await fs.ensureDir(SETTINGS_DIR);
+  console.log("✅ Directories initialized");
+}
 
 // const AI_SERVICE_URL = "http://localhost:5025";
 const AI_SERVICE_URL = getServerUrl() || "http://localhost:5025";
@@ -239,16 +258,6 @@ const getPdflatexPath = () => {
 const getTlmgrPath = () => {
   return getTinyTexBinPath(process.env.USER_DATA_PATH, isDev, "tlmgr");
 };
-
-// Initialize directories
-async function initDirectories() {
-  await fs.ensureDir(PROJECTS_DIR);
-  await fs.ensureDir(TEMP_DIR);
-  await fs.ensureDir(OUTPUT_DIR);
-  await fs.ensureDir(EQUATIONS_DIR);
-  await fs.ensureDir(CITATIONS_DIR);
-  console.log("✅ Directories initialized");
-}
 
 //FIXME: Convert to C++
 function runPdfLatexPermissive(texFilePath, outputPath) {
