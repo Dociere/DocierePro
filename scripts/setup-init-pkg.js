@@ -22,7 +22,7 @@ export async function setupExtraPackages(
 
   const runCommandAndGetOutput = (cmd, args) => {
     return new Promise((resolve, reject) => {
-      const proc = spawn(cmd, args, { shell: platform === "win32" });
+      const proc = spawn(cmd, args, { shell: process.platform === "win32" });
       let output = "";
       proc.stdout.on("data", (data) => (output += data.toString()));
       proc.on("close", (code) => {
@@ -34,7 +34,7 @@ export async function setupExtraPackages(
 
   const runCommand = (cmd, args) => {
     return new Promise((resolve, reject) => {
-      const proc = spawn(cmd, args, { shell: platform === "win32" });
+      const proc = spawn(cmd, args, { shell: process.platform === "win32" });
       proc.stdout.on("data", (data) => {
         const txt = data.toString();
         const match =
