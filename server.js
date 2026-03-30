@@ -74,7 +74,7 @@ const SIDECAR_PATH = isDev
   : join(process.env.RESOURCES_PATH, "sidecar");
 
 const getServerUrl = () => {
-  const configPath = path.resolve("./config.json");
+  const configPath = path.join(SETTINGS_DIR, "config.json");
 
   const rawData = fs.readFileSync(configPath, "utf-8");
   const config = JSON.parse(rawData);
@@ -84,9 +84,6 @@ const getServerUrl = () => {
 
   return serverUrl;
 };
-
-// const AI_SERVICE_URL = "http://localhost:5025";
-const AI_SERVICE_URL = getServerUrl();
 
 async function getActiveAIConfig() {
   try {
@@ -150,6 +147,9 @@ const jobDir = TEMP_DIR;
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+// const AI_SERVICE_URL = "http://localhost:5025";
+const AI_SERVICE_URL = getServerUrl();
 
 //Uncomment it when the data flow for sidecar is ready
 // function extractPreamble(texContent) {

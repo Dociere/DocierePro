@@ -814,9 +814,12 @@ const SettingsPage = () => {
                         <input
                           type="radio"
                           name="hostingMethod"
-                          value="self-hosted"
-                          checked={hostingMethod === "self-hosted"}
-                          onChange={(e) => setHostingMethod(e.target.value)}
+                          value="selfHosting"
+                          checked={hostingMethod === "selfHosting"}
+                          onChange={(e) => {
+                            setHostingMethod(e.target.value);
+                            updateSetting("server.mode", e.target.value);
+                          }}
                         />
                         <div>
                           <span
@@ -832,9 +835,12 @@ const SettingsPage = () => {
                         <input
                           type="radio"
                           name="hostingMethod"
-                          value="cloud"
-                          checked={hostingMethod === "cloud"}
-                          onChange={(e) => setHostingMethod(e.target.value)}
+                          value="cloudHosting"
+                          checked={hostingMethod === "cloudHosting"}
+                          onChange={(e) => {
+                            setHostingMethod(e.target.value);
+                            updateSetting("server.mode", e.target.value);
+                          }}
                         />
                         <div>
                           <span
@@ -847,7 +853,7 @@ const SettingsPage = () => {
                         </div>
                       </label>
                     </div>
-                    {hostingMethod === "self-hosted" && (
+                    {hostingMethod === "selfHosting" && (
                       <div className="pt-5 space-y-5 font-inter text-sm">
                         <div>
                           <p className="font-medium mb-2">Backend Server</p>
