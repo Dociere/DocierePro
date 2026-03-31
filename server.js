@@ -21,8 +21,8 @@ import { getTinyTexBinPath } from "./scripts/setup-tinytex.js";
 dotenv.config();
 
 //DEV Mode means using local pdflatex while PROD Mode means TinyTex
-const projMode = "DEV";
-// const projMode = "PROD";
+// const projMode = "DEV";
+const projMode = "PROD";
 
 // const envEncryptionKey = process.env.ENCRYPTION_KEY;
 // const ENCRYPTION_KEY = Buffer.from(envEncryptionKey, "utf8");
@@ -273,16 +273,29 @@ const getTlmgrPath = () => {
 };
 
 //FIXME: Convert to C++
-function runPdfLatexPermissive(texFilePath, outputPath) {
+function runPdfLatexPermissive(texFilePath, outputPath, extraTexInputs = []) {
   return new Promise((resolve, reject) => {
     console.log(`🔧 Running pdflatex on: ${texFilePath}`);
     console.log(`🔧 Output directory: ${outputPath}`);
 
     const pdflatexPath = getPdflatexPath();
 
+    const projectDir = path.dirname(texFilePath);
+
+    // Build TEXINPUTS: working dir, any caller-supplied paths, then the system default
+    const texInputPaths = [
+      projectDir,
+      path.join(projectDir, "sections"),
+      ...extraTexInputs,
+      process.env.TEXINPUTS || "",
+    ];
+
+    const customTexInputs = texInputPaths.join(path.delimiter);
+
     const pdflatex = spawn(
       projMode === "DEV" ? "pdflatex" : pdflatexPath,
       [
+        "-shell-escape",
         `-output-directory=${outputPath}`,
         "-interaction=nonstopmode", // Never stop for errors
         "-file-line-error",
@@ -290,7 +303,11 @@ function runPdfLatexPermissive(texFilePath, outputPath) {
         texFilePath,
       ],
       {
-        cwd: path.dirname(texFilePath),
+        cwd: projectDir,
+        env: {
+          ...process.env,
+          TEXINPUTS: customTexInputs,
+        },
         stdio: ["ignore", "pipe", "pipe"], // Ignore stdin, capture stdout/stderr
       },
     );
@@ -1129,6 +1146,23 @@ app.post("/api/projects/create", async (req, res) => {
     }
 
     // Create project.json
+    // --- SMART ROOT FILE DETECTION FOR NEW PROJECTS ---
+    let detectedRoot = "main.tex";
+    if (!files["main.tex"]) {
+      const texFiles = Object.keys(files).filter((k) => k.endsWith(".tex"));
+      // Look for the file containing the \documentclass declaration
+      const docClassFile = texFiles.find(
+        (k) => files[k].content && files[k].content.includes("\\documentclass"),
+      );
+
+      if (docClassFile) {
+        detectedRoot = docClassFile;
+      } else if (texFiles.length > 0) {
+        detectedRoot = texFiles[0];
+      }
+    }
+
+    // Create project.json
     const projectData = {
       id: projectId,
       title,
@@ -1136,6 +1170,8 @@ app.post("/api/projects/create", async (req, res) => {
       modified: new Date().toISOString(),
       owner: Owner || "",
       files: files,
+      activeFile: detectedRoot,
+      rootFile: detectedRoot,
     };
 
     await fs.writeJSON(path.join(projectPath, "project.json"), projectData);
@@ -1659,8 +1695,6 @@ app.post("/api/compile", async (req, res) => {
         .json({ success: false, error: "No LaTeX content" });
     }
 
-    // const filename = projectId ? projectId : `temp_project_${Date.now()}`;
-
     const filename = projectId ?? `temp_project_${Date.now()}`;
     const jobDir = path.join(TEMP_DIR, `job_${filename}_${Date.now()}`);
     await fs.ensureDir(jobDir);
@@ -1669,19 +1703,18 @@ app.post("/api/compile", async (req, res) => {
     console.log(`Target Filename: ${filename}`);
     console.log(`Job Directory: ${jobDir}`);
 
+    // Default to activeFile from client
+    let mainTexFile = activeFile || "main.tex";
+
     // Write all project files to jobDir, preserving directory structure
-    let mainTexFile = activeFile || "main.tex"; // Default to activeFile from client
     for (const [relPath, file] of Object.entries(files)) {
-      // Skip .gitkeep files
       if (file.name === ".gitkeep" || relPath.endsWith("/.gitkeep")) continue;
 
       const filePath = path.join(jobDir, relPath);
-      // Ensure subdirectory exists
       await fs.ensureDir(path.dirname(filePath));
 
       console.log("Writing file:", relPath);
 
-      // Check if file is a base64 image (data URL format)
       if (file.isImage && file.content && file.content.startsWith("data:")) {
         const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
         if (base64Match) {
@@ -1697,25 +1730,17 @@ app.post("/api/compile", async (req, res) => {
       }
     }
 
-    // Copy Definitions/ folder contents to TEMP_DIR root so pdflatex can find .cls/.sty files
-    // (e.g. IEEEtran.cls lives in Definitions/ but \documentclass{IEEEtran} looks in the working dir)
-    const defFiles = Object.entries(files).filter(
-      ([k]) => k.startsWith("Definitions/") && !k.endsWith("/.gitkeep"),
-    );
-    for (const [relPath, file] of defFiles) {
-      const destPath = path.join(jobDir, file.name); // copy flat to root
-      if (file.isImage && file.content && file.content.startsWith("data:")) {
-        const base64Match = file.content.match(/^data:[^;]+;base64,(.+)$/);
-        if (base64Match)
-          await fs.writeFile(destPath, Buffer.from(base64Match[1], "base64"));
-      } else if (file.content) {
-        await fs.writeFile(destPath, file.content, "utf8");
+    const compileTexInputs = [];
+    if (projectId) {
+      const diskDefsDir = path.join(PROJECTS_DIR, projectId, "Definitions");
+      if (await fs.pathExists(diskDefsDir)) {
+        compileTexInputs.push(diskDefsDir + "//");
+        console.log(`📎 Adding Definitions to TEXINPUTS: ${diskDefsDir}`);
       }
     }
 
     const texPath = path.join(jobDir, mainTexFile);
     const pdfPath = path.join(OUTPUT_DIR, `${filename}.pdf`);
-    const logPath = path.join(OUTPUT_DIR, `${filename}.log`);
 
     // Remove old PDF/SyncTeX to ensure fresh compile
     try {
@@ -1733,96 +1758,68 @@ app.post("/api/compile", async (req, res) => {
       );
     }
 
-    // PDFLaTeX outputs based on input filename (main.tex -> main.pdf)
+    // ⭐ TARGET JOB_DIR INSTEAD OF OUTPUT_DIR ⭐
     const mainTexBaseName = path.basename(mainTexFile, ".tex");
-    const generatedPdfPath = path.join(OUTPUT_DIR, `${mainTexBaseName}.pdf`);
+    const generatedPdfPath = path.join(jobDir, `${mainTexBaseName}.pdf`);
     const generatedSynctexPath = path.join(
-      OUTPUT_DIR,
+      jobDir,
       `${mainTexBaseName}.synctex.gz`,
     );
+    const generatedLogPath = path.join(jobDir, `${mainTexBaseName}.log`);
 
     let result1 = { stdout: "", stderr: "", code: 0 };
     let pdfExists = false;
     let usedParallel = false;
 
-    // try {
-    //   // Attempt parallel compilation first
-    //   const parallelOutput = await compileParallel(
-    //     content,
-    //     files,
-    //     jobDir,
-    //     generatedPdfPath,
-    //     (event) => {
-    //       if (event.chunk !== undefined) {
-    //         console.log(
-    //           `[Sidecar] Chunk ${event.chunk}/${event.total}: ${event.status}`,
-    //         );
-    //       }
-    //     },
-    //   );
-
-    //   if (parallelOutput) {
-    //     console.log(
-    //       `🚀 Parallel compilation successful using sidecar! Output: ${parallelOutput}`,
-    //     );
-    //     usedParallel = true;
-    //     pdfExists = await fs.pathExists(generatedPdfPath);
-    //     result1.stdout = "Successfully compiled using C++ sidecar.\n"; // Stub log to skip serial rerun
-    //   }
-    // } catch (err) {
-    //   console.error(
-    //     "Parallel compilation error, falling back to serial:",
-    //     err.message,
-    //   );
-    // }
-
     if (!usedParallel) {
       console.log("🔄 Running serial PDFLaTeX compilation...");
-      result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
 
-      // --- INTEGRATION: Check for missing packages ---
+      // ⭐ COMPILE INSIDE JOB DIR ⭐
+      result1 = await runPdfLatexPermissive(texPath, jobDir, compileTexInputs);
+
       try {
         const installed = await installMissingPackages(
           result1.stdout,
           getTlmgrPath(),
-          (msg) => {
-            console.log(`[Package Installer] ${msg}`);
-          },
+          (msg) => console.log(`[Package Installer] ${msg}`),
         );
 
         if (installed.length > 0) {
           console.log(
             `📦 Installed ${installed.length} missing packages. Retrying compilation...`,
           );
-          result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
+          result1 = await runPdfLatexPermissive(
+            texPath,
+            jobDir,
+            compileTexInputs,
+          );
         }
       } catch (pkgErr) {
         console.warn("⚠️ Package installation failed:", pkgErr.message);
       }
-      // -----------------------------------------------
 
       pdfExists = await fs.pathExists(generatedPdfPath);
     }
 
-    // Run BibTeX if any .bib files exist (needed for \bibliography{})
+    // Run BibTeX if any .bib files exist
     const hasBibFiles = Object.keys(files).some((k) => k.endsWith(".bib"));
     if (pdfExists && hasBibFiles) {
       try {
-        // Copy .bib and .bst files to OUTPUT_DIR so bibtex can find them alongside .aux
-        for (const [relPath, file] of Object.entries(files)) {
-          if (relPath.endsWith(".bib") || relPath.endsWith(".bst")) {
-            const destPath = path.join(OUTPUT_DIR, path.basename(relPath));
-            await fs.writeFile(destPath, file.content || "", "utf8");
-          }
-        }
-        // Also copy .bst files from Definitions/ that were flattened to TEMP_DIR root
-        for (const [relPath, file] of defFiles) {
-          if (file.name.endsWith(".bst") && file.content) {
-            await fs.writeFile(
-              path.join(OUTPUT_DIR, file.name),
-              file.content,
-              "utf8",
-            );
+        // Only need to copy .bst files from Definitions, .bib files are already in jobDir
+        if (projectId) {
+          const diskDefsDir = path.join(PROJECTS_DIR, projectId, "Definitions");
+          if (await fs.pathExists(diskDefsDir)) {
+            const defEntries = await fs.readdir(diskDefsDir, {
+              withFileTypes: true,
+            });
+            for (const entry of defEntries) {
+              if (entry.isFile() && entry.name.endsWith(".bst")) {
+                await fs.copy(
+                  path.join(diskDefsDir, entry.name),
+                  path.join(jobDir, entry.name), // Copy to jobDir
+                );
+              }
+            }
           }
         }
 
@@ -1831,15 +1828,14 @@ app.post("/api/compile", async (req, res) => {
           require("child_process").execFile(
             "bibtex",
             [mainTexBaseName],
-            { cwd: OUTPUT_DIR, timeout: 30000 },
+            { cwd: jobDir, timeout: 30000 }, // ⭐ RUN IN JOB DIR ⭐
             (error, stdout, stderr) => {
-              if (error) {
+              if (error)
                 console.warn(
                   "⚠️ BibTeX warning/error:",
                   stderr || error.message,
                 );
-              }
-              resolve(); // Don't reject — bibtex warnings are common
+              resolve();
             },
           );
         });
@@ -1848,83 +1844,74 @@ app.post("/api/compile", async (req, res) => {
       }
     }
 
-    // // Second pass (resolves references, citations)
-    // if (pdfExists) {
-    //   await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-    //   // Third pass for cross-references if bibtex was run
-    //   if (hasBibFiles) {
-    //     await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-    //   }
-    // }
-
     if (needsRerun(result1.stdout)) {
       console.log("🔄 Rerunning PDFLaTeX (Pass 2)...");
-      result1 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-      // Only run pass 3 if still needed
-      const result2 = await runPdfLatexPermissive(texPath, OUTPUT_DIR);
-      if (result2) result1 = result2; // Keep latest log
+      result1 = await runPdfLatexPermissive(texPath, jobDir, compileTexInputs);
+
+      const result2 = await runPdfLatexPermissive(
+        texPath,
+        jobDir,
+        compileTexInputs,
+      );
+      if (result2) result1 = result2;
     }
 
     pdfExists = await fs.pathExists(generatedPdfPath);
 
     if (pdfExists) {
-      // Rename generated PDF to the expected projectId-based name if different
-      if (generatedPdfPath !== pdfPath) {
-        await fs.move(generatedPdfPath, pdfPath, { overwrite: true });
+      // ⭐ MOVE FILES FROM JOB_DIR TO OUTPUT_DIR ⭐
+      await fs.move(generatedPdfPath, pdfPath, { overwrite: true });
 
-        // Also rename synctex file if it exists
-        if (await fs.pathExists(generatedSynctexPath)) {
-          const targetSynctexPath = path.join(
-            OUTPUT_DIR,
-            `${filename}.synctex.gz`,
-          );
-          await fs.move(generatedSynctexPath, targetSynctexPath, {
-            overwrite: true,
-          });
-        }
+      if (await fs.pathExists(generatedSynctexPath)) {
+        const targetSynctexPath = path.join(
+          OUTPUT_DIR,
+          `${filename}.synctex.gz`,
+        );
+        await fs.move(generatedSynctexPath, targetSynctexPath, {
+          overwrite: true,
+        });
       }
 
-      // const pdfBuffer = await fs.readFile(pdfPath);
-      // console.log(`✅ PDF Generated: ${filename}.pdf`);
+      if (await fs.pathExists(generatedLogPath)) {
+        await fs.move(
+          generatedLogPath,
+          path.join(OUTPUT_DIR, `${mainTexBaseName}.log`),
+          { overwrite: true },
+        );
+      }
 
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
         `attachment; filename="${filename}.pdf"`,
       );
-
-      // Pass the compilation log filename in a custom header (avoids huge base64 strings)
       res.setHeader("X-Log-File", `${mainTexBaseName}.log`);
 
       const stream = fs.createReadStream(pdfPath);
       stream.pipe(res);
 
-      // Handle errors to prevent server hang
       stream.on("error", (err) => {
         console.error(err);
         res.status(500).end();
       });
-
-      // res.json({
-      //   success: true,
-      //   pdf: pdfBuffer.toString("base64"),
-      //   fileName: `${filename}.pdf`,
-      //   message: "Compiled successfully",
-      //   log: result1.stdout,
-      // });
     } else {
+      // Move the log file even if it failed so frontend can debug
+      if (await fs.pathExists(generatedLogPath)) {
+        await fs.move(
+          generatedLogPath,
+          path.join(OUTPUT_DIR, `${mainTexBaseName}.log`),
+          { overwrite: true },
+        );
+      }
+
       res.setHeader("X-Log-File", `${mainTexBaseName}.log`);
       res.status(400).json({
         success: false,
         error: "Compilation failed",
-        log: result1.stdout, // Include raw stdout in JSON too as alternative
+        log: result1.stdout,
       });
     }
 
-    // Only clean the TEMP .tex file, KEEP the .pdf and .synctex.gz
-    // setTimeout(() => {
-    // cleanupFiles(filename, jobDir);
-    // }, 60000);
     res.on("finish", () => {
       fs.remove(jobDir).catch((err) =>
         console.error(`Cleanup failed for ${jobDir}:`, err),
@@ -1976,10 +1963,19 @@ Hello World
 // API: Compile LaTeX (for math equations OR sections)
 app.post("/api/latex/compile", async (req, res) => {
   console.log("📝 Received LaTeX compilation request");
+  // Each preview gets its own temp dir — avoids collisions and guarantees a
+  // writable working directory in PROD (TinyTex) mode.
+  const previewJobDir = path.join(
+    TEMP_DIR,
+    `preview_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+  );
   try {
+    await fs.ensureDir(previewJobDir);
+
     const {
       latex,
       preamble,
+      projectId,
       isTemp = true,
       fileName = "temp",
       format = "pdf",
@@ -1997,16 +1993,16 @@ app.post("/api/latex/compile", async (req, res) => {
 
     let extraPackages = "";
     cleanLatex = cleanLatex.replace(
-      /\\usepackage(?:\[.*?\])?{.*?}/g,
+      /\usepackage(?:\[.*?\])?{.*?}/g,
       (match) => {
         extraPackages += match + "\n";
         return ""; // Remove it from the body
       },
     );
 
-    cleanLatex = cleanLatex.replace(/\\documentclass(?:\[.*?\])?{.*?}/g, "");
-    cleanLatex = cleanLatex.replace(/\\begin{document}/g, "");
-    cleanLatex = cleanLatex.replace(/\\end{document}/g, "");
+    cleanLatex = cleanLatex.replace(/\documentclass(?:\[.*?\])?{.*?}/g, "");
+    cleanLatex = cleanLatex.replace(/\begin{document}/g, "");
+    cleanLatex = cleanLatex.replace(/\end{document}/g, "");
     cleanLatex = cleanLatex.trim();
 
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -2014,10 +2010,24 @@ app.post("/api/latex/compile", async (req, res) => {
     const texFileName = `${baseFileName}.tex`;
     const pdfFileName = `${baseFileName}.pdf`;
     const imgFileName = `${baseFileName}.png`;
-    // const texFilePath = path.join(TEMP_DIR, texFileName);
-    const texFilePath = path.join(jobDir, texFileName);
+    const texFilePath = path.join(previewJobDir, texFileName);
     const pdfFilePath = path.join(OUTPUT_DIR, pdfFileName);
     const imgFilePath = path.join(OUTPUT_DIR, imgFileName);
+
+    // If the request comes from within a project, point TEXINPUTS at its
+    // Definitions/ folder so pdflatex can find any .cls/.sty files there.
+    const previewTexInputs = [];
+    if (projectId) {
+      const diskDefsDir = path.join(
+        PROJECTS_DIR,
+        String(projectId),
+        "Definitions",
+      );
+      if (await fs.pathExists(diskDefsDir)) {
+        previewTexInputs.push(diskDefsDir + "//");
+        console.log(`📎 Preview TEXINPUTS: ${diskDefsDir}`);
+      }
+    }
 
     let minimalLatexDocument = "";
 
@@ -2080,20 +2090,16 @@ ${cleanLatex.replace(/[‹›]/g, "")}
     console.log("📄 Writing LaTeX file:", texFileName);
 
     // Run the permissive compiler
-    await runPdfLatexPermissive(texFilePath, OUTPUT_DIR);
-
-    // ... (The rest of the function remains the same: verification, image conversion, cleanup) ...
+    await runPdfLatexPermissive(texFilePath, OUTPUT_DIR, previewTexInputs);
 
     // Verify PDF exists
     const pdfExists = await fs.pathExists(pdfFilePath);
     if (!pdfExists) {
-      // ... existing error handling ...
       const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
       } catch (logErr) {}
-
       throw new Error(`PDF compilation failed. Log: ${logContent.slice(-500)}`);
     }
 
@@ -2131,6 +2137,11 @@ ${cleanLatex.replace(/[‹›]/g, "")}
       error: `Compilation failed: ${error.message}`,
       details: error.stack,
     });
+  } finally {
+    // Always clean up the isolated preview job directory
+    fs.remove(previewJobDir).catch((err) =>
+      console.error(`Preview cleanup failed for ${previewJobDir}:`, err),
+    );
   }
 });
 
