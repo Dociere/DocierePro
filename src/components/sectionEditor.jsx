@@ -1710,25 +1710,47 @@ const RecursiveSection = ({
 
   const initialText = contentNodesToText(section.contentNodes);
   const [localLatex, setLocalLatex] = useState(initialText);
+  const currentRawLatex = useRef(initialText);
   const lastSavedText = useRef(initialText);
   const updateTimeout = useRef(null);
 
   useEffect(() => {
     const incomingText = contentNodesToText(section.contentNodes);
-    if (incomingText !== lastSavedText.current) {
-      setLocalLatex(incomingText);
-      lastSavedText.current = incomingText;
+
+    // 1. Fast path: The text matches perfectly.
+    if (incomingText === lastSavedText.current) return;
+
+    // 2. Semantic Match: This stops the parser from reverting the user's raw keystrokes
+    // If the parser's "fixed" text matches what our raw text WOULD parse into,
+    // it means it's just a formatting difference. DO NOT touch the editor.
+    const currentSemanticText = contentNodesToText(
+      textToContentNodes(currentRawLatex.current),
+    );
+    if (incomingText === currentSemanticText) {
+      lastSavedText.current = incomingText; // Sync the tracker, but spare the cursor!
+      return;
     }
+
+    // 3. True external change (e.g., loading a new file or Undo/Redo)
+    setLocalLatex(incomingText);
+    currentRawLatex.current = incomingText;
+    lastSavedText.current = incomingText;
   }, [section.contentNodes]);
 
   const handleContentChange = useCallback(
     (newLatex) => {
       setLocalLatex(newLatex);
+      currentRawLatex.current = newLatex; // Keep ref in sync
+
       if (updateTimeout.current) clearTimeout(updateTimeout.current);
 
       updateTimeout.current = setTimeout(() => {
-        lastSavedText.current = newLatex;
         const newNodes = textToContentNodes(newLatex);
+
+        // Anticipate the normalized format so the useEffect doesn't trip
+        const normalizedText = contentNodesToText(newNodes);
+        lastSavedText.current = normalizedText;
+
         onUpdate({ ...section, contentNodes: newNodes });
       }, 500);
     },

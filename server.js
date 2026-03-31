@@ -21,8 +21,8 @@ import { getTinyTexBinPath } from "./scripts/setup-tinytex.js";
 dotenv.config();
 
 //DEV Mode means using local pdflatex while PROD Mode means TinyTex
-// const projMode = "DEV";
-const projMode = "PROD";
+const projMode = "DEV";
+// const projMode = "PROD";
 
 // const envEncryptionKey = process.env.ENCRYPTION_KEY;
 // const ENCRYPTION_KEY = Buffer.from(envEncryptionKey, "utf8");
