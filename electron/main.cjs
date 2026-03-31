@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
-const { spawn } = require("child_process");
+const { spawn, fork } = require("child_process");
 
 let backendProcess = null;
 let mainWindow = null;
@@ -100,10 +100,9 @@ function startBackend() {
       archFolder,
     );
 
-    backendProcess = spawn("node", [backendPath], {
+    backendProcess = fork(backendPath, [], {
       cwd: userDataPath,
       stdio: "inherit",
-      windowsHide: true,
       env: {
         ...process.env,
         USER_DATA_PATH: userDataPath,
