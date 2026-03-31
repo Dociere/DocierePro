@@ -22,10 +22,8 @@ const DetailsPage = () => {
   const [userIdea, setUserIdea] = useState("");
   const [isGenChecked, setIsGenChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
   const fileInputRef = useRef(null);
   const [alertModal, setAlertModal] = useState({
     isOpen: false,
@@ -35,6 +33,8 @@ const DetailsPage = () => {
 
   // Derived — no useEffect needed
   const isFormValid = title.trim() !== "";
+  const hasActiveAiConfig = settings?.app?.aiConfigs?.some((c) => c.active);
+  const canGenerateBoilerplate = isAuthenticated && hasActiveAiConfig;
 
   useEffect(() => {
     const syncConfigs = async () => {
@@ -54,10 +54,6 @@ const DetailsPage = () => {
   }, [isAuthenticated]);
 
   const handleGenCheck = () => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
     setIsGenChecked(!isGenChecked);
   };
 
@@ -123,10 +119,6 @@ const DetailsPage = () => {
     let activeConfig = null;
     if (isGenChecked) {
       activeConfig = settings?.app?.aiConfigs?.find((c) => c.active);
-      if (!activeConfig) {
-        setShowConfigModal(true);
-        return; // Stop project creation if they want boilerplate but have no AI config
-      }
     }
 
     if (!title.trim()) {
@@ -249,25 +241,37 @@ const DetailsPage = () => {
         )}
         */}
 
-          <div className="flex items-center gap-3 mt-5">
-            <p className="text-[#343434] text-base font-medium font-inter">
-              Generate a boilerplate or a paraphrased document?
-            </p>
+          <div className="flex flex-col mt-5">
             <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="boilerplate"
-                checked={isGenChecked}
-                onChange={handleGenCheck}
-                className="h-4 w-4 border-gray-300 rounded text-blue-500 focus:ring-blue-500"
-              />
-              <label
-                htmlFor="boilerplate"
-                className="text-sm font-inter text-[#343434]"
-              >
-                Yes
-              </label>
+              <p className="text-[#343434] text-base font-medium font-inter">
+                Generate a boilerplate or a paraphrased document?
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="boilerplate"
+                  checked={isGenChecked}
+                  disabled={!canGenerateBoilerplate}
+                  onChange={handleGenCheck}
+                  className="h-4 w-4 border-gray-300 rounded text-[#AB2D2D] focus:ring-[#AB2D2D] disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <label
+                  htmlFor="boilerplate"
+                  className={`text-sm font-inter ${
+                    canGenerateBoilerplate ? "text-[#343434]" : "text-gray-400"
+                  }`}
+                >
+                  Yes
+                </label>
+              </div>
             </div>
+            {!canGenerateBoilerplate && (
+              <p className="text-[#AB2D2D] text-xs font-inter mt-1.5 font-medium">
+                {!isAuthenticated
+                  ? "* Please sign in to generate a boilerplate document."
+                  : "* Please set up an active AI configuration in Settings to use this feature."}
+              </p>
+            )}
           </div>
 
           {isGenChecked && (
@@ -429,41 +433,6 @@ const DetailsPage = () => {
         </div>
       </div>
 
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[80]">
-          <div className="bg-white rounded-xl shadow-xl p-8 w-[380px] max-w-full text-center font-inter">
-            <div className="text-5xl mb-3">👤</div>
-            <h3 className="font-semibold text-lg text-[#343434] mb-1">
-              Not Signed In
-            </h3>
-            <p className="text-sm text-[#7D7D7D] mb-5">
-              Sign in to generate a boilerplate document
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => navigate("/login")}
-                className="px-5 py-2 bg-[#AB2D2D] text-white rounded-md text-sm hover:bg-[#8a2424] transition-colors"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => navigate("/signup")}
-                className="px-5 py-2 border border-[#CFCFCF] text-[#343434] rounded-md text-sm hover:bg-[#F9F9F9] transition-colors"
-              >
-                Create Account
-              </button>
-            </div>
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="mt-4 text-xs text-[#7D7D7D] hover:text-[#343434] transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Alert Modal */}
       <ConfirmModal
         isOpen={alertModal.isOpen}
@@ -477,18 +446,6 @@ const DetailsPage = () => {
         onCancel={() =>
           setAlertModal({ isOpen: false, title: "", message: "" })
         }
-      />
-      <ConfirmModal
-        isOpen={showConfigModal}
-        onConfirm={() => {
-          setShowConfigModal(false);
-          navigate("/settings");
-        }}
-        onCancel={() => setShowConfigModal(false)}
-        title="AI Configuration Required"
-        message="You selected 'Generate Boilerplate', but no active AI Configuration was found. Please set one up in the Settings page."
-        confirmText="Go to Settings"
-        cancelText="Cancel"
       />
     </>
   );
