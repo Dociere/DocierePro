@@ -12,21 +12,24 @@ import { getTinyTexBinPath } from "./setup-tinytex.js";
 // Helper to determine tlmgr path
 export const getTlmgrPath = () => {
   // For standalone/dev use, we assume isDev=true and no userDataPath
-  return getTinyTexBinPath(process.env.USER_DATA_PATH, !process.env.USER_DATA_PATH, "tlmgr");
+  return getTinyTexBinPath(
+    process.env.USER_DATA_PATH,
+    !process.env.USER_DATA_PATH,
+    "tlmgr",
+  );
 };
 
 const getPackageNameFromFile = (tlmgr, fileName) => {
   return new Promise((resolve) => {
     // Search for the package that contains the specific file
-    const searchPattern = fileName.includes('.') ? `/${fileName}` : `/${fileName}.sty`;
-    
-    const proc = spawn(tlmgr, [
-      "search",
-      "--global",
-      "--file",
-      searchPattern,
-    ]);
-    
+    const searchPattern = fileName.includes(".")
+      ? `/${fileName}`
+      : `/${fileName}.sty`;
+
+    const proc = spawn(tlmgr, ["search", "--global", "--file", searchPattern], {
+      shell: process.platform === "win32",
+    });
+
     let output = "";
     proc.stdout.on("data", (d) => (output += d.toString()));
     proc.on("close", () => {
@@ -44,7 +47,7 @@ const getPackageNameFromFile = (tlmgr, fileName) => {
 
 const runTlmgrCommand = (tlmgr, args, onProgress = () => {}) => {
   return new Promise((resolve, reject) => {
-    const proc = spawn(tlmgr, args);
+    const proc = spawn(tlmgr, args, { shell: process.platform === "win32" });
     proc.stdout.on("data", (data) => {
       const txt = data.toString();
       const match =
@@ -54,7 +57,9 @@ const runTlmgrCommand = (tlmgr, args, onProgress = () => {}) => {
         onProgress(`Installing ${match[1]}...`);
       }
     });
-    proc.stderr.on("data", (data) => console.error(`[tlmgr stderr]: ${data.toString()}`));
+    proc.stderr.on("data", (data) =>
+      console.error(`[tlmgr stderr]: ${data.toString()}`),
+    );
     proc.on("close", (code) => {
       if (code === 0) resolve();
       else reject(new Error(`tlmgr failed with code ${code}`));
@@ -111,7 +116,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (fs.existsSync(logFile)) {
     const text = fs.readFileSync(logFile, "utf8");
     installMissingPackages(text)
-      .then((pkgs) => console.log(`Finished installation: ${pkgs.join(", ") || "None"}`))
+      .then((pkgs) =>
+        console.log(`Finished installation: ${pkgs.join(", ") || "None"}`),
+      )
       .catch((err) => console.error("Error:", err));
   } else {
     console.error(`Log file not found: ${logFile}`);
