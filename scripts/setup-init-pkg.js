@@ -132,6 +132,10 @@ export async function setupExtraPackages(
     "preprint",
     "comment",
     "xpatch",
+    "varwidth",
+    "preview",
+    "ltablex",
+    "environ",
   ];
 
   try {

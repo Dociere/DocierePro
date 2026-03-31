@@ -981,6 +981,7 @@ const ImageInsertModal = ({
         fileName: "figure-preview",
         format: "image",
         type: "figure",
+        projectId: projectDetails?.currentProject?.id,
       });
 
       if (res.data.success && res.data.pdfUrl) {
@@ -1380,7 +1381,7 @@ const ImageInsertModal = ({
                   </div>
                 ) : null}
 
-                <div className="flex-1 flex items-center justify-center p-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2YwZjBmMCIgc3Ryb2tlLXdpZHRoPSIxIiAvPgo8L3N2Zz4=')]">
+                <div className="flex-1 flex items-start justify-center p-4 overflow-auto bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2YwZjBmMCIgc3Ryb2tlLXdpZHRoPSIxIiAvPgo8L3N2Zz4=')]">
                   {compiledPreviewUrl ? (
                     <img
                       src={compiledPreviewUrl}

@@ -80,30 +80,57 @@ const getServerUrl = () => {
     server: {
       mode: "selfHosting",
       methods: {
-        selfHosting: { backendServer: "", webSocketServer: "" },
+        selfHosting: {
+          backendServer: "",
+          webSocketServer: "",
+        },
         cloudHosting: {
-          backendServer: "server.dociere.com",
-          webSocketServer: "ws.dociere.com",
+          backendServer: "https://server.dociere.com",
+          webSocketServer: "wss://ws.dociere.com",
         },
       },
     },
   };
 
-  if (!fs.existsSync(configPath)) {
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify(defaultConfig, null, 2),
-      "utf-8",
-    );
+  try {
+    if (!fs.existsSync(configPath)) {
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(defaultConfig, null, 2),
+        "utf-8",
+      );
+    }
+
+    const rawData = fs.readFileSync(configPath, "utf-8");
+    const config = JSON.parse(rawData);
+
+    const mode = config?.server?.mode || "selfHosting";
+    let serverUrl = config?.server?.methods[mode]?.backendServer;
+
+    if (!serverUrl) {
+      serverUrl = defaultConfig.server.methods[mode].backendServer;
+    }
+
+    // Ensure protocol is present
+    if (
+      serverUrl &&
+      !serverUrl.startsWith("http://") &&
+      !serverUrl.startsWith("https://")
+    ) {
+      // Default to https for cloud, http for localhost
+      if (serverUrl.includes("localhost") || serverUrl.includes("127.0.0.1")) {
+        serverUrl = `http://${serverUrl}`;
+      } else {
+        serverUrl = `https://${serverUrl}`;
+      }
+    }
+
+    // Remove trailing slash
+    return serverUrl ? serverUrl.replace(/\/$/, "") : "http://localhost:5025";
+  } catch (error) {
+    console.error("❌ Error reading server config:", error);
+    return "http://localhost:5025";
   }
-
-  const rawData = fs.readFileSync(configPath, "utf-8");
-  const config = JSON.parse(rawData);
-
-  const mode = config?.server?.mode;
-  const serverUrl = config?.server?.methods[mode]?.backendServer;
-
-  return serverUrl;
 };
 
 async function getActiveAIConfig() {
@@ -180,8 +207,7 @@ async function initDirectories() {
   console.log("✅ Directories initialized");
 }
 
-// const AI_SERVICE_URL = "http://localhost:5025";
-const AI_SERVICE_URL = getServerUrl() || "http://localhost:5025";
+// AI_SERVICE_URL is now dynamic via getServerUrl()
 
 //Uncomment it when the data flow for sidecar is ready
 // function extractPreamble(texContent) {
@@ -351,7 +377,6 @@ try {
 const cleanupFiles = async (baseFilename, directory) => {
   const extensions = [
     "tex",
-    "pdf",
     "aux",
     "log",
     "fls",
@@ -403,9 +428,16 @@ async function convertPdfToImage(pdfPath, outputPath) {
 async function cropImageToContent(imagePath, outputPath) {
   try {
     const image = sharp(imagePath);
-    const { width, height } = await image.metadata();
+    const metadata = await image.metadata();
+    const { width, height, channels } = metadata;
     const buffer = await image.raw().toBuffer();
-    const bounds = await findContentBounds(buffer, width, height);
+    const bounds = await findContentBounds(buffer, width, height, channels);
+
+    // If the image is completely blank, return it without cropping to avoid crash
+    if (bounds.left >= bounds.right || bounds.top >= bounds.bottom) {
+      await sharp(imagePath).toFile(outputPath);
+      return outputPath;
+    }
 
     const padding = 20;
     const cropOptions = {
@@ -424,8 +456,7 @@ async function cropImageToContent(imagePath, outputPath) {
   }
 }
 
-async function findContentBounds(buffer, width, height) {
-  const channels = 3;
+async function findContentBounds(buffer, width, height, channels = 3) {
   let minX = width,
     maxX = 0,
     minY = height,
@@ -434,11 +465,26 @@ async function findContentBounds(buffer, width, height) {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const index = (y * width + x) * channels;
-      const r = buffer[index];
-      const g = buffer[index + 1];
-      const b = buffer[index + 2];
+      let r,
+        g,
+        b,
+        a = 255;
 
-      if (r < 250 || g < 250 || b < 250) {
+      // Dynamically handle different color channel layouts
+      if (channels >= 3) {
+        r = buffer[index];
+        g = buffer[index + 1];
+        b = buffer[index + 2];
+        if (channels === 4) a = buffer[index + 3];
+      } else {
+        r = buffer[index];
+        g = buffer[index];
+        b = buffer[index];
+        if (channels === 2) a = buffer[index + 1];
+      }
+
+      // Check if pixel is not white and not fully transparent
+      if (a > 10 && (r < 250 || g < 250 || b < 250)) {
         minX = Math.min(minX, x);
         maxX = Math.max(maxX, x);
         minY = Math.min(minY, y);
@@ -622,14 +668,15 @@ app.post("/api/edit", async (req, res) => {
     );
 
     const aiConfig = frontendConfig || (await getActiveAIConfig());
+    const currentAiUrl = getServerUrl();
     console.log(
-      `📤 Sending to AI Service (${AI_SERVICE_URL}/api/edit-latex) with provider: ${
+      `📤 Sending to AI Service (${currentAiUrl}/api/edit-latex) with provider: ${
         aiConfig?.provider || "default"
       }`,
     );
 
     const aiResponse = await axios.post(
-      `${AI_SERVICE_URL}/api/edit-latex`,
+      `${currentAiUrl}/api/edit-latex`,
       {
         prompt,
         latexContent,
@@ -675,8 +722,9 @@ app.post("/api/generate-equation", async (req, res) => {
 
     // Call Python AI Service
     const aiConfig = frontendConfig || (await getActiveAIConfig());
+    const currentAiUrl = getServerUrl();
     const response = await axios.post(
-      `${AI_SERVICE_URL}/api/generate-equation`,
+      `${currentAiUrl}/api/generate-equation`,
       {
         prompt,
         aiConfig,
@@ -1075,8 +1123,9 @@ app.post("/api/projects/create", async (req, res) => {
           });
         }
 
+        const currentAiUrl = getServerUrl();
         const aiResponse = await axios.post(
-          `${AI_SERVICE_URL}/api/generate-boilerplate`, // Unified endpoint
+          `${currentAiUrl}/api/generate-boilerplate`, // Unified endpoint
           {
             userIdea,
             title,
@@ -2014,18 +2063,14 @@ app.post("/api/latex/compile", async (req, res) => {
     const pdfFilePath = path.join(OUTPUT_DIR, pdfFileName);
     const imgFilePath = path.join(OUTPUT_DIR, imgFileName);
 
-    // If the request comes from within a project, point TEXINPUTS at its
-    // Definitions/ folder so pdflatex can find any .cls/.sty files there.
+    // If the request comes from within a project, point TEXINPUTS at the project root
+    // and its subdirectories (// suffix) so pdflatex can find images, .cls/.sty, etc.
     const previewTexInputs = [];
     if (projectId) {
-      const diskDefsDir = path.join(
-        PROJECTS_DIR,
-        String(projectId),
-        "Definitions",
-      );
-      if (await fs.pathExists(diskDefsDir)) {
-        previewTexInputs.push(diskDefsDir + "//");
-        console.log(`📎 Preview TEXINPUTS: ${diskDefsDir}`);
+      const diskProjDir = path.join(PROJECTS_DIR, String(projectId));
+      if (await fs.pathExists(diskProjDir)) {
+        previewTexInputs.push(diskProjDir + "//");
+        console.log(`📎 Preview TEXINPUTS added: ${diskProjDir}`);
       }
     }
 
@@ -2041,19 +2086,23 @@ app.post("/api/latex/compile", async (req, res) => {
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
 \\usepackage{amssymb}
-\\usepackage{graphicx}
+\\usepackage[final]{graphicx}
 \\usepackage{multirow}
 \\usepackage{xcolor}
 \\usepackage{caption}
+\\usepackage{tabularx}
+\\usepackage{longtable}
+\\usepackage{booktabs}
 ${extraPackages}
 \\begin{document}
 ${cleanLatex}
 \\end{document}`;
     } else if (type === "figure") {
-      // OPTION for FIGURE preview
-      minimalLatexDocument = `\\documentclass[preview,border=12pt,varwidth=15cm]{standalone}
-\\usepackage{graphicx}
+      // OPTION for FIGURE preview - Ensure [final] for graphicx to avoid placeholders
+      minimalLatexDocument = `\\documentclass[preview, border=12pt,varwidth=15cm]{standalone}
+\\usepackage[final]{graphicx}
 \\usepackage{caption}
+\\usepackage{xcolor}
 ${extraPackages}
 \\begin{document}
 ${cleanLatex}
@@ -2064,8 +2113,10 @@ ${cleanLatex}
 \\usepackage{amsmath}
 \\usepackage{amsfonts}
 \\usepackage{amssymb}
-\\usepackage{graphicx}
+\\usepackage[final]{graphicx}
 \\usepackage{xcolor}
+\\usepackage{tabularx}
+\\usepackage{booktabs}
 ${extraPackages}
 \\begin{document}
 ${cleanLatex}
@@ -2089,19 +2140,66 @@ ${cleanLatex.replace(/[‹›]/g, "")}
     await fs.writeFile(texFilePath, minimalLatexDocument, "utf8");
     console.log("📄 Writing LaTeX file:", texFileName);
 
-    // Run the permissive compiler
-    await runPdfLatexPermissive(texFilePath, OUTPUT_DIR, previewTexInputs);
+    // Run the permissive compiler in the job directory to avoid collisions
+    // Run the permissive compiler in the job directory to avoid collisions
+    let result = await runPdfLatexPermissive(
+      texFilePath,
+      previewJobDir,
+      previewTexInputs,
+    );
 
-    // Verify PDF exists
-    const pdfExists = await fs.pathExists(pdfFilePath);
+    // Dynamic package installation support for previews
+    try {
+      const tlmgrPath = getTlmgrPath();
+      if (tlmgrPath) {
+        const installed = await installMissingPackages(
+          result.stdout,
+          tlmgrPath,
+          (msg) => console.log(`[Preview Package Installer] ${msg}`),
+        );
+
+        if (installed.length > 0) {
+          console.log(
+            `📦 Installed ${installed.length} missing packages for preview. Retrying...`,
+          );
+          result = await runPdfLatexPermissive(
+            texFilePath,
+            previewJobDir,
+            previewTexInputs,
+          );
+        }
+      }
+    } catch (pkgErr) {
+      console.warn("⚠️ Preview package installation failed:", pkgErr.message);
+    }
+
+    // Verify PDF exists in the job directory
+    const jobPdfPath = path.join(previewJobDir, pdfFileName);
+    const pdfExists = await fs.pathExists(jobPdfPath);
+
     if (!pdfExists) {
-      const logPath = path.join(OUTPUT_DIR, `${baseFileName}.log`);
+      const logPath = path.join(previewJobDir, `${baseFileName}.log`);
       let logContent = "";
       try {
         logContent = await fs.readFile(logPath, "utf8");
-      } catch (logErr) {}
-      throw new Error(`PDF compilation failed. Log: ${logContent.slice(-500)}`);
+      } catch (logErr) {
+        logContent = "No log file found.";
+      }
+
+      // Extract the actual error from the log
+      const errorMatch =
+        logContent.match(/!(.*?)l\.(\d+)/s) || logContent.match(/!(.*?)==>/s);
+      const errorMessage = errorMatch ? errorMatch[0] : "Check LaTeX syntax.";
+
+      throw new Error(
+        `PDF compilation failed. Error: ${errorMessage}\n\nFull Log Context: ${logContent.slice(
+          -1000,
+        )}`,
+      );
     }
+
+    // Copy the successful results to the public OUTPUT_DIR
+    await fs.copy(jobPdfPath, pdfFilePath);
 
     let finalUrl = `/output/${pdfFileName}`;
     let finalFileName = pdfFileName;
@@ -2109,21 +2207,33 @@ ${cleanLatex.replace(/[‹›]/g, "")}
     if (format === "image" || format === "png") {
       try {
         console.log("🖼️ Converting PDF to image...");
-        const rawImagePath = await convertPdfToImage(pdfFilePath, imgFilePath);
-        // Crop logic...
-        const croppedImagePath = path.join(
+        const jobImgPath = path.join(previewJobDir, imgFileName);
+        const rawImagePath = await convertPdfToImage(jobPdfPath, jobImgPath);
+
+        const jobCroppedImgPath = path.join(
+          previewJobDir,
+          `cropped_${imgFileName}`,
+        );
+        const publicCroppedImgPath = path.join(
           OUTPUT_DIR,
           `cropped_${imgFileName}`,
         );
-        await cropImageToContent(rawImagePath, croppedImagePath);
+
+        await cropImageToContent(rawImagePath, jobCroppedImgPath);
+        await fs.copy(jobCroppedImgPath, publicCroppedImgPath);
+
         finalUrl = `/output/cropped_${imgFileName}`;
         finalFileName = `cropped_${imgFileName}`;
       } catch (imageError) {
         console.error("⚠️ Image conversion failed:", imageError.message);
+        // Fallback to serving PDF if image conversion fails
       }
     }
 
-    await cleanupFiles(baseFileName, OUTPUT_DIR);
+    // Only cleanup the temporary job directory, leave OUTPUT_DIR content for serving
+    fs.remove(previewJobDir).catch((err) =>
+      console.error("Cleanup error:", err),
+    );
 
     res.json({
       success: true,
@@ -2638,6 +2748,7 @@ app.post("/api/citation/compile", async (req, res) => {
       const finalImagePath = path.join(OUTPUT_DIR, `final_${imgFileName}`);
       await sharp(rawImagePath).png({ quality: 100 }).toFile(finalImagePath);
 
+      // Clean up auxiliary files from OUTPUT_DIR but keep the final result
       await cleanupFiles(baseFileName, OUTPUT_DIR);
 
       console.log("✅ Citation compilation complete\n");
