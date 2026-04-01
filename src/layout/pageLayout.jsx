@@ -4,6 +4,7 @@ import SectionSpace from "../components/sectionSpace";
 import NavBar from "../components/navBar";
 import { Outlet, useLocation } from "react-router-dom";
 import StatusBar from "../components/statusBar";
+import UpdatePopup from "../components/UpdatePopup";
 import { useState, useEffect, useRef, useCallback, useContext } from "react";
 import { projectContext } from "../context/useProject";
 import { startTour, syncTourWithRoute } from "../utils/tour";
@@ -143,6 +144,9 @@ const PageLayout = () => {
 
       {/* StatusBar — hidden in distraction free mode */}
       {!isDistractionFree && <StatusBar />}
+
+      {/* OTA Update Popup — always mounted */}
+      <UpdatePopup />
     </div>
   );
 };

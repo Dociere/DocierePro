@@ -1,6 +1,20 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, nativeImage } = require("electron");
 const path = require("path");
 const { spawn, fork } = require("child_process");
+const { autoUpdater } = require("electron-updater");
+const log = require("electron-log");
+const fs = require("fs-extra");
+
+// ─── Auto Updater Configuration ────────────────────────────────────
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = "info";
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.allowPrerelease = true;
+autoUpdater.allowDowngrade = true;
+
+let retryDelay = 60_000; // Start retry at 1 minute
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
 let backendProcess = null;
 let mainWindow = null;
@@ -237,6 +251,43 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send("setup-progress", msg);
       }
     });
+
+    // ─── OTA: Deferred startup update check ───────────────────────
+    setTimeout(() => {
+      try {
+        const pendingVersion = readUpdateSetting("pendingVersion");
+        if (pendingVersion) {
+          // A downloaded update is already waiting — surface it immediately
+          mainWindow.webContents.send("update-downloaded", {
+            version: pendingVersion,
+            releaseNotes: readUpdateSetting("pendingReleaseNotes") || "",
+          });
+          return;
+        }
+        const autoCheck = readUpdateSetting("autoCheck");
+        if (autoCheck !== false) {
+          autoUpdater.checkForUpdates().catch((err) => {
+            log.error("Startup update promise rejected:", err);
+          });
+        }
+      } catch (err) {
+        log.error("Startup update check failed:", err);
+      }
+    }, 8000);
+
+    // ─── OTA: Periodic background polling (every 4 hours) ─────────
+    setInterval(() => {
+      try {
+        const autoCheck = readUpdateSetting("autoCheck");
+        if (autoCheck !== false) {
+          autoUpdater.checkForUpdates().catch((err) => {
+            log.error("Periodic update promise rejected:", err);
+          });
+        }
+      } catch (err) {
+        log.error("Periodic update check failed:", err);
+      }
+    }, FOUR_HOURS_MS);
   });
 });
 
@@ -271,7 +322,6 @@ ipcMain.on("window-close", () => mainWindow.close());
 
 ipcMain.handle("save-pdf", async (event, { arrayBuffer, defaultName }) => {
   const { dialog } = require("electron");
-  const fs = require("fs-extra");
 
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
     title: "Export PDF",
@@ -291,4 +341,175 @@ ipcMain.handle("save-pdf", async (event, { arrayBuffer, defaultName }) => {
     console.error("Failed to save PDF:", error);
     return { success: false, error: error.message };
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// ─── OTA Update System ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── Utility: Read/write update settings from config.json ─────────
+function getSettingsPath() {
+  const userDataPath = app.getPath("userData");
+  const settingsDir = isDev
+    ? process.cwd()
+    : path.join(userDataPath, "settings");
+  return path.join(settingsDir, "config.json");
+}
+
+function readUpdateSetting(key) {
+  try {
+    const configPath = getSettingsPath();
+    if (!fs.existsSync(configPath)) return undefined;
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    return config?.updates?.[key];
+  } catch (err) {
+    log.error("Failed to read update setting:", err);
+    return undefined;
+  }
+}
+
+function writeUpdateSetting(key, value) {
+  try {
+    const configPath = getSettingsPath();
+    let config = {};
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    }
+    if (!config.updates) config.updates = {};
+    config.updates[key] = value;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+  } catch (err) {
+    log.error("Failed to write update setting:", err);
+  }
+}
+
+function clearOSBadges() {
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.setBadge("");
+  }
+  if (process.platform === "win32" && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setOverlayIcon(null, "");
+  }
+}
+
+// ─── IPC Handlers ─────────────────────────────────────────────────
+ipcMain.handle("check-for-updates", async () => {
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    log.error("Manual update check failed:", err);
+  }
+});
+
+ipcMain.handle("download-update", async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+  } catch (err) {
+    log.error("Download update failed:", err);
+  }
+});
+
+ipcMain.on("install-update", () => {
+  writeUpdateSetting("pendingVersion", null);
+  writeUpdateSetting("pendingReleaseNotes", null);
+  clearOSBadges();
+  autoUpdater.quitAndInstall(false, true);
+});
+
+ipcMain.on("dismiss-update-badge", () => {
+  clearOSBadges();
+});
+
+// ─── autoUpdater Event Forwarding ─────────────────────────────────
+autoUpdater.on("checking-for-update", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("checking-for-update");
+  }
+});
+
+autoUpdater.on("update-available", (info) => {
+  retryDelay = 60_000;
+  writeUpdateSetting("lastCheckedAt", new Date().toISOString());
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("update-available", {
+      version: info.version,
+      releaseNotes: info.releaseNotes || "",
+      releaseDate: info.releaseDate || "",
+    });
+  }
+});
+
+autoUpdater.on("update-not-available", (info) => {
+  retryDelay = 60_000;
+  writeUpdateSetting("lastCheckedAt", new Date().toISOString());
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("update-not-available", {
+      version: info.version,
+    });
+  }
+});
+
+autoUpdater.on("download-progress", (progressObj) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("download-progress", {
+      percent: Math.floor(progressObj.percent),
+      bytesPerSecond: progressObj.bytesPerSecond,
+      transferred: progressObj.transferred,
+      total: progressObj.total,
+    });
+  }
+});
+
+autoUpdater.on("update-downloaded", (info) => {
+  writeUpdateSetting("pendingVersion", info.version);
+  writeUpdateSetting("pendingReleaseNotes", info.releaseNotes || "");
+
+  // macOS dock badge
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.setBadge("↑");
+  }
+
+  // Windows taskbar overlay
+  if (process.platform === "win32" && mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      const badgePath = path.join(__dirname, "../public/dociereLogo6.png");
+      mainWindow.setOverlayIcon(
+        nativeImage.createFromPath(badgePath),
+        "Update ready to install",
+      );
+    } catch (e) {
+      log.warn("Failed to set taskbar overlay:", e);
+    }
+  }
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("update-downloaded", {
+      version: info.version,
+      releaseNotes: info.releaseNotes || "",
+    });
+  }
+});
+
+autoUpdater.on("error", (err) => {
+  log.error("Auto-update error:", err);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("update-error", {
+      message: err?.message || String(err),
+    });
+  }
+  // Retry with exponential backoff (max 4 hours)
+  const nextRetry = Math.min(retryDelay * 2, FOUR_HOURS_MS);
+  retryDelay = nextRetry;
+  setTimeout(() => {
+    try {
+      const autoCheck = readUpdateSetting("autoCheck");
+      if (autoCheck !== false) {
+        autoUpdater.checkForUpdates().catch((err) => {
+          log.error("Retry update promise rejected:", err);
+        });
+      }
+    } catch (e) {
+      log.error("Retry update check failed:", e);
+    }
+  }, nextRetry);
 });

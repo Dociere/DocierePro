@@ -67,6 +67,12 @@ const DEFAULT_SETTINGS = {
       },
     },
   },
+  updates: {
+    autoCheck: true,
+    lastCheckedAt: null,
+    pendingVersion: null,
+    pendingReleaseNotes: null,
+  },
 };
 
 export const SettingsProvider = ({ children }) => {
