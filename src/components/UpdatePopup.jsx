@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import { useSettings } from "../context/useSettings";
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -275,7 +276,86 @@ const UpdatePopup = () => {
                       marginBottom: 12,
                     }}
                   >
-                    <ReactMarkdown>{releaseNotes}</ReactMarkdown>
+                    <ReactMarkdown
+                      rehypePlugins={[rehypeRaw]}
+                      components={{
+                        h1: ({ node, ...props }) => (
+                          <h1
+                            style={{
+                              fontSize: 14,
+                              marginTop: 12,
+                              marginBottom: 8,
+                              color: theme.text1,
+                            }}
+                            {...props}
+                          />
+                        ),
+                        h2: ({ node, ...props }) => (
+                          <h2
+                            style={{
+                              fontSize: 13,
+                              marginTop: 12,
+                              marginBottom: 8,
+                              color: theme.text1,
+                            }}
+                            {...props}
+                          />
+                        ),
+                        h3: ({ node, ...props }) => (
+                          <h3
+                            style={{
+                              fontSize: 12,
+                              marginTop: 10,
+                              marginBottom: 6,
+                              color: theme.text1,
+                            }}
+                            {...props}
+                          />
+                        ),
+                        p: ({ node, ...props }) => (
+                          <p style={{ margin: "0 0 8px 0" }} {...props} />
+                        ),
+                        ul: ({ node, ...props }) => (
+                          <ul
+                            style={{ margin: "0 0 8px 0", paddingLeft: 20 }}
+                            {...props}
+                          />
+                        ),
+                        li: ({ node, ...props }) => (
+                          <li style={{ marginBottom: 4 }} {...props} />
+                        ),
+                        a: ({ node, ...props }) => (
+                          <a
+                            style={{ color: "#3b82f6", textDecoration: "none" }}
+                            target="_blank"
+                            rel="noreferrer"
+                            {...props}
+                            onMouseEnter={(e) =>
+                              (e.target.style.textDecoration = "underline")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.target.style.textDecoration = "none")
+                            }
+                          />
+                        ),
+                        code: ({ node, inline, ...props }) => (
+                          <code
+                            style={{
+                              background: isDark
+                                ? "rgba(255,255,255,0.1)"
+                                : "rgba(0,0,0,0.06)",
+                              padding: "2px 4px",
+                              borderRadius: 3,
+                              fontFamily: "monospace",
+                              fontSize: "0.9em",
+                            }}
+                            {...props}
+                          />
+                        ),
+                      }}
+                    >
+                      {releaseNotes}
+                    </ReactMarkdown>
                   </div>
                 )}
               </>
