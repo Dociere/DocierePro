@@ -896,6 +896,87 @@ const SettingsPage = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Separator before Updates */}
+                <div
+                  className={`border-t pt-6 ${
+                    isDark ? "border-[#404040]" : "border-[#CFCFCF]"
+                  }`}
+                >
+                  {/* Auto Update */}
+                  <div className="space-y-2">
+                    <label
+                      className={`block text-sm font-inter font-medium ${
+                        isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                      }`}
+                    >
+                      Updates
+                    </label>
+                    <p
+                      className={`text-xs mb-4 ${
+                        isDark ? "text-[#a0a0a0]" : "text-[#7D7D7D]"
+                      }`}
+                    >
+                      Automatically check for new versions in the background
+                    </p>
+                    <div className="flex items-center justify-between max-w-md">
+                      <span
+                        className={`text-sm font-inter ${
+                          isDark ? "text-[#e5e5e5]" : "text-[#212121]"
+                        }`}
+                      >
+                        Auto Check for Updates
+                      </span>
+                      <button
+                        onClick={() =>
+                          handleSettingChange(
+                            "updates",
+                            "autoCheck",
+                            !settings.updates?.autoCheck,
+                          )
+                        }
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          settings.updates?.autoCheck
+                            ? "bg-[#AB2D2D]"
+                            : isDark
+                            ? "bg-[#404040]"
+                            : "bg-[#CFCFCF]"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            settings.updates?.autoCheck
+                              ? "translate-x-[18px]"
+                              : "translate-x-[3px]"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p
+                      className={`text-xs mt-3 ${
+                        isDark ? "text-[#666]" : "text-[#999]"
+                      }`}
+                    >
+                      Last checked:{" "}
+                      {settings.updates?.lastCheckedAt
+                        ? (() => {
+                            const diff =
+                              Date.now() -
+                              new Date(
+                                settings.updates.lastCheckedAt,
+                              ).getTime();
+                            const minutes = Math.floor(diff / 60000);
+                            const hours = Math.floor(minutes / 60);
+                            const days = Math.floor(hours / 24);
+                            if (minutes < 1) return "Just now";
+                            if (minutes < 60) return `${minutes} minutes ago`;
+                            if (hours < 24) return `${hours} hours ago`;
+                            return `${days} days ago`;
+                          })()
+                        : "Never"}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

@@ -22,6 +22,11 @@
     "appId": "com.docierepro.app",
     "productName": "DocierePro",
     "icon": "public/dociereLogo6.png",
+    "publish": {
+      "provider": "github",
+      "owner": "Dociere",
+      "repo": "DocierePro"
+    },
     "electronLanguages": [
       "en-US"
     ],
@@ -50,7 +55,10 @@
       "!node_modules/@napi-rs/canvas-linux-x64-musl/**"
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "build/icon.icns"
     },
     "win": {
@@ -99,52 +107,55 @@
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.8.3",
     "express": "^5.1.0",
     "fs-extra": "^11.3.2",
     "multer": "^2.0.2",
     "nodemon": "^3.1.10",
+    "pdf-parse": "^2.4.5",
+    "react-markdown": "^10.1.0",
     "sharp": "^0.34.4",
     "slate": "^0.124.0",
     "slate-history": "^0.113.1",
     "slate-react": "^0.124.0",
     "tar": "^7.5.11",
-    "uuid": "^13.0.0",
-    "pdf-parse": "^2.4.5"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.25.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^4.4.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^7.9.2",
-    "y-indexeddb": "^9.0.12",
-    "y-websocket": "^3.0.0",
-    "yjs": "^13.6.29",
+    "@eslint/js": "^9.25.0",
+    "@monaco-editor/react": "^4.7.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.16",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
+    "driver.js": "^1.4.0",
     "electron": "^39.2.7",
     "electron-builder": "^26.8.1",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "pdfjs-dist": "^5.4.296",
     "postcss": "^8.4.31",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.5.0",
+    "react-pdf": "^10.3.0",
+    "react-quill-new": "^3.6.0",
+    "react-router-dom": "^7.9.2",
     "tailwindcss": "^3.4.3",
     "vite": "^6.3.5",
     "vite-plugin-svgr": "^4.5.0",
     "wait-on": "^9.0.3",
-    "react-icons": "^5.5.0",
-    "@monaco-editor/react": "^4.7.0",
-    "pdfjs-dist": "^5.4.296",
-    "react-pdf": "^10.3.0",
-    "driver.js": "^1.4.0",
-    "react-quill-new": "^3.6.0",
-    "y-monaco": "^0.1.6"
+    "y-indexeddb": "^9.0.12",
+    "y-monaco": "^0.1.6",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.29"
   }
 }
