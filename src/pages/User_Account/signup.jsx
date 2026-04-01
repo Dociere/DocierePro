@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import ConfirmModal from "../../components/confirmModal";
 import { api } from "../../api/projectHandling";
+import { useSettings } from "../../context/useSettings";
 
 function DynamicSignup() {
   const navigate = useNavigate();
@@ -11,14 +12,31 @@ function DynamicSignup() {
   const [password, setPassword] = useState("");
   const [emailId, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { settings } = useSettings();
   const [alertModal, setAlertModal] = useState({
     isOpen: false,
     title: "",
     message: "",
   });
 
+  const getServerUrl = () => {
+    const mode = settings.server?.mode;
+    return settings.server?.methods?.[mode]?.backendServer || "";
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+
+    // Check if server is configured
+    if (!getServerUrl().trim()) {
+      setError(
+        "* Server not configured. Go to Settings → Configuration and set up either Self-Hosting or Cloud-Based hosting.",
+      );
+      return;
+    }
+
     setLoading(true);
 
     const userData = {
@@ -83,6 +101,25 @@ function DynamicSignup() {
             <div className="bg-white rounded-xl border-[1px] border-gray-500 overflow-hidden">
               {/* Header */}
               <div className="bg-white px-6 py-6 text-center relative overflow-hidden">
+                <button
+                  onClick={() => navigate("/")}
+                  className="absolute top-4 left-4 text-xs font-medium text-gray-500 hover:text-[#0C2340] transition-colors flex items-center gap-1"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
+                  </svg>
+                  Home
+                </button>
                 <h2 className="text-lg font-inter font-semibold text-[#0C2340] mt-4">
                   Create New User
                 </h2>
@@ -90,6 +127,28 @@ function DynamicSignup() {
 
               {/* Form */}
               <div className="px-6 py-5">
+                {/* Server configuration error */}
+                {error && (
+                  <div className="mb-4 bg-red-50 border-l-4 border-red-400 rounded-lg p-3">
+                    <div className="flex">
+                      <svg
+                        className="w-4 h-4 text-red-400 mr-2 mt-0.5 flex-shrink-0"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span className="text-red-700 text-xs font-medium">
+                        {error}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Username field */}
                   <div className="space-y-1">

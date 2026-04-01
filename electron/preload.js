@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   minimize: () => ipcRenderer.send("window-minimize"),
   maximize: () => ipcRenderer.send("window-maximize"),
   close: () => ipcRenderer.send("window-close"),
+  minimizeSplash: () => ipcRenderer.send("splash-minimize"),
+  quitApp: () => ipcRenderer.send("app-quit"),
   onMaximize: (callback) =>
     ipcRenderer.on("window-is-maximized", () => callback()),
   onUnmaximize: (callback) =>
