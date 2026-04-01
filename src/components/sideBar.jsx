@@ -1,5 +1,6 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { uploadZipProject } from "../api/projectHandling.jsx";
 import EasyMathInput from "./easyMathInput";
 import CitationManager from "./citationManager";
 import ShareProject from "./shareProject";
@@ -45,6 +46,7 @@ const DynamicSideBar = ({
   const { user, isServerConnected, isAuthenticated } = useAuth();
   const { settings } = useSettings();
   const menuRefs = useRef({});
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   console.log("user", user);
@@ -128,6 +130,39 @@ const DynamicSideBar = ({
   const toggleSectionSpace = () => {
     setIsSectionSpaceOpen(!isSectionSpaceOpen);
   };
+
+  const handleFootnoteClick = () => {
+    document.dispatchEvent(
+      new CustomEvent("trigger-open-sidebar", {
+        detail: { panelClass: "footnote" },
+      }),
+    );
+  };
+
+  const handleCrossRefClick = () => {
+    document.dispatchEvent(
+      new CustomEvent("trigger-open-sidebar", {
+        detail: { panelClass: "crossref" },
+      }),
+    );
+  };
+
+  const handleOpenExistingProject = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.name.endsWith(".zip")) {
+      try {
+        const projectId = await uploadZipProject(file);
+        if (projectId) {
+          navigate(`/canvas?project=${projectId}`);
+        }
+      } catch (err) {
+        console.error("Failed to upload project:", err);
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
   return (
     <>
       <div
@@ -164,7 +199,7 @@ const DynamicSideBar = ({
                 {/* Open Existing Project */}
                 <div
                   id="tour-openExistingProject-space"
-                  onClick={toggleSectionSpace}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   <span
                     className="flex items-center justify-center text-[#585858] cursor-pointer relative group mb-1"
@@ -315,7 +350,7 @@ const DynamicSideBar = ({
                 </div>
 
                 {/* Insert Footnote */}
-                {/* <div onClick={handleImageIconClick}>
+                <div onClick={handleFootnoteClick}>
                   <span
                     className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                     title="Insert Footnote"
@@ -331,10 +366,10 @@ const DynamicSideBar = ({
                       />
                     </div>
                   </span>
-                </div> */}
+                </div>
 
                 {/* Insert Cross-References */}
-                {/* <div onClick={handleImageIconClick}>
+                <div onClick={handleCrossRefClick}>
                   <span
                     className="flex items-center justify-center text-[#585858] cursor-pointer relative group"
                     title="Insert Cross-References"
@@ -350,7 +385,7 @@ const DynamicSideBar = ({
                       />
                     </div>
                   </span>
-                </div> */}
+                </div>
 
                 {/* Draft Versioning */}
                 <div
@@ -600,6 +635,15 @@ const DynamicSideBar = ({
           </div>
         </div>
       )}
+
+      {/* Hidden file input for Open Existing Project */}
+      <input
+        type="file"
+        accept=".zip,.tex"
+        ref={fileInputRef}
+        onChange={handleOpenExistingProject}
+        hidden
+      />
     </>
   );
 };

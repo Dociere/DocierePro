@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -31,7 +31,7 @@
         font-family: "Inter", sans-serif;
       }
 
-      /* splash container */
+      /* splash container — draggable */
 
       .splash {
         width: 380px;
@@ -45,6 +45,51 @@
         justify-content: center;
         padding: 28px;
         animation: fadeIn 0.7s ease;
+        -webkit-app-region: drag;
+        position: relative;
+      }
+
+      /* window control buttons (no-drag zone) */
+
+      .window-controls {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        display: flex;
+        gap: 6px;
+        -webkit-app-region: no-drag;
+      }
+
+      .window-controls button {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 600;
+        color: #666;
+        background: #eee;
+        transition: background 0.15s, color 0.15s;
+        line-height: 1;
+      }
+
+      .window-controls button:hover {
+        background: #ddd;
+        color: #333;
+      }
+
+      .window-controls .btn-quit {
+        background: #fee;
+        color: #c44;
+      }
+
+      .window-controls .btn-quit:hover {
+        background: #fcc;
+        color: #a00;
       }
 
       /* logo */
@@ -103,6 +148,17 @@
         margin-top: 14px;
       }
 
+      /* offline error message */
+
+      .error-message {
+        font-size: 13px;
+        color: #c44;
+        margin-top: 10px;
+        text-align: center;
+        line-height: 1.5;
+        font-weight: 500;
+      }
+
       /* animations */
 
       @keyframes slide {
@@ -133,8 +189,36 @@
 
         const tagline = document.querySelector(".tagline");
         const subtext = document.querySelector(".subtext");
+        const progressBar = document.querySelector(".progress");
+        const controlsContainer = document.querySelector(".window-controls");
+
+        // Always show minimize button
+        controlsContainer.innerHTML =
+          '<button class="btn-minimize" onclick="handleMinimize()" title="Minimize">&#x2013;</button>';
 
         if (isFirstRun) {
+          // Check if user is offline
+          if (!navigator.onLine) {
+            tagline.innerText = "No Internet Connection";
+            progressBar.style.display = "none";
+            subtext.style.display = "none";
+
+            // Show error message
+            const errorDiv = document.createElement("div");
+            errorDiv.className = "error-message";
+            errorDiv.innerText =
+              "Internet is required to complete the initial setup.\nPlease connect and relaunch the app.";
+            progressBar.parentNode.insertBefore(
+              errorDiv,
+              progressBar.nextSibling,
+            );
+
+            // Show close button
+            controlsContainer.innerHTML +=
+              ' <button class="btn-quit" onclick="handleQuit()" title="Quit">&#x2715;</button>';
+            return;
+          }
+
           tagline.innerText = "Setting up LaTeX...";
           subtext.innerText =
             "Installing required packages (may take a minute)";
@@ -149,11 +233,25 @@
           subtext.innerText = "Loading project environment";
         }
       });
+
+      function handleMinimize() {
+        if (window.electronAPI && window.electronAPI.minimizeSplash) {
+          window.electronAPI.minimizeSplash();
+        }
+      }
+
+      function handleQuit() {
+        if (window.electronAPI && window.electronAPI.quitApp) {
+          window.electronAPI.quitApp();
+        }
+      }
     </script>
   </head>
 
   <body>
     <div class="splash">
+      <div class="window-controls"></div>
+
       <div class="logo">
         <img src="dociereLogo.png" />
       </div>
