@@ -1,13 +1,15 @@
 {
   "name": "dociere-pro",
   "private": true,
-  "version": "0.3.4",
+  "version": "0.3.5",
   "type": "module",
   "main": "electron/main.cjs",
   "repository": "Dociere/DocierePro",
   "scripts": {
     "start": "node server.js",
     "dev": "vite",
+    "generate-icons": "node scripts/generate-icons.js",
+    "prebuild": "npm run generate-icons",
     "build": "vite build",
     "lint": "eslint .",
     "electron:dev": "concurrently \"npm run dev\" \"npm run start\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
@@ -21,7 +23,7 @@
   "build": {
     "appId": "com.docierepro.app",
     "productName": "DocierePro",
-    "icon": "public/dociereLogo6.png",
+    "icon": "build/icon.png",
     "publish": {
       "provider": "github",
       "owner": "Dociere",
@@ -59,7 +61,7 @@
         "dmg",
         "zip"
       ],
-      "icon": "build/icon.icns"
+      "icon": "build/icon.png"
     },
     "win": {
       "target": "nsis"
@@ -73,7 +75,7 @@
     },
     "linux": {
       "target": "AppImage",
-      "icon": "public/dociereLogo6.png",
+      "icon": "build/icon.png",
       "extraResources": [
         {
           "from": "sidecar/build/libs",
