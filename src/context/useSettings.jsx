@@ -62,8 +62,8 @@ const DEFAULT_SETTINGS = {
     methods: {
       selfHosting: { backendServer: "", webSocketServer: "" },
       cloudHosting: {
-        backendServer: "server.dociere.com",
-        webSocketServer: "ws.dociere.com",
+        backendServer: "https://server.dociere.com",
+        webSocketServer: "wss://ws.dociere.com",
       },
     },
   },

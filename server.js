@@ -9,7 +9,7 @@ import multer from "multer";
 import AdmZip from "adm-zip";
 import { PDFParse as pdfParse } from "pdf-parse";
 import axios from "axios";
-import dotenv from "dotenv";
+import dotenv, { config } from "dotenv";
 import sharp from "sharp";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -722,15 +722,17 @@ app.post("/api/generate-equation", async (req, res) => {
 
     // Call Python AI Service
     const aiConfig = frontendConfig || (await getActiveAIConfig());
-    const currentAiUrl = getServerUrl();
+    console.log("AI_SERVICE_URL", AI_SERVICE_URL);
     const response = await axios.post(
-      `${currentAiUrl}/api/generate-equation`,
+      `https://${AI_SERVICE_URL}/api/generate-equation`,
       {
         prompt,
         aiConfig,
       },
       { timeout: 30000, headers: { Cookie: req.headers.cookie || "" } },
     );
+
+    console.log("Response from /generate-equation", response);
 
     if (response.data && response.data.success) {
       console.log("✅ AI Equation generated successfully");
