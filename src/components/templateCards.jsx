@@ -84,12 +84,15 @@
 import React, { useState } from "react";
 import { useSettings } from "../context/useSettings";
 
-const TemplateCards = ({ title, onDeleteClick }) => {
+const TemplateCards = ({ title, onDeleteClick, onRenameClick }) => {
   const { settings } = useSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false); // State to toggle dropdown
 
   const isDark = settings.appearance.theme === "dark";
   const theme = settings.appearance.customThemes[settings.appearance.theme];
+
+  // Only show the menu button if at least one action is provided
+  const showMenuButton = !!onDeleteClick || !!onRenameClick;
 
   return (
     <div
@@ -97,30 +100,32 @@ const TemplateCards = ({ title, onDeleteClick }) => {
       onMouseLeave={() => setIsMenuOpen(false)} // Auto-close when mouse leaves card
     >
       {/* Three Dots Button */}
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsMenuOpen(!isMenuOpen);
-        }}
-        className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-white/80 hover:bg-white shadow-sm transition-all duration-200"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+      {showMenuButton && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsMenuOpen(!isMenuOpen);
+          }}
+          className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-white/80 hover:bg-white shadow-sm transition-all duration-200"
         >
-          <path
-            d="M8 4a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2z"
-            fill="#000000"
-          />
-        </svg>
-      </button>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M8 4a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2zm0 5a1 1 0 100-2 1 1 0 000 2z"
+              fill="#000000"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Dropdown Menu - Styled similar to SideBar profile */}
-      {isMenuOpen && (
+      {showMenuButton && isMenuOpen && (
         <div
           className="absolute right-2 top-10 z-30 min-w-[100px] rounded-md border shadow-lg animate-in fade-in zoom-in duration-150"
           style={{
@@ -128,32 +133,35 @@ const TemplateCards = ({ title, onDeleteClick }) => {
             borderColor: theme.border,
           }}
         >
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsMenuOpen(false);
-              onDeleteClick(); // This opens the confirmation modal
-            }}
-            className="w-full text-left px-4 py-2 text-sm font-inter transition-colors bg-red-100 text-red-600 hover:font-semibold"
-          >
-            Delete
-          </button>
+          {onDeleteClick && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsMenuOpen(false);
+                onDeleteClick(); // This opens the confirmation modal
+              }}
+              className="w-full text-left px-4 py-2 text-sm font-inter transition-colors bg-red-100 text-red-600 hover:font-semibold"
+            >
+              Delete
+            </button>
+          )}
 
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsMenuOpen(false);
-              //   onDeleteClick(); // This opens the confirmation modal
-            }}
-            className="w-full text-left px-4 py-2 text-sm font-inter transition-colors hover:font-semibold"
-          >
-            Rename
-          </button>
+          {onRenameClick && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsMenuOpen(false);
+                onRenameClick(); // Trigger rename logic in parent
+              }}
+              className="w-full text-left px-4 py-2 text-sm font-inter transition-colors hover:font-semibold"
+            >
+              Rename
+            </button>
+          )}
 
           {/* You can easily add more options here in the future */}
-          {/* <button className="...">Rename</button> */}
         </div>
       )}
 

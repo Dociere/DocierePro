@@ -869,6 +869,57 @@ app.get("/api/templates", async (req, res) => {
   }
 });
 
+// API: Rename user template
+app.put("/api/templates/rename", async (req, res) => {
+  try {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName) {
+      return res
+        .status(400)
+        .json({ success: false, error: "oldName and newName are required" });
+    }
+
+    const oldPath = path.join(USER_TEMPLATES_DIR, oldName);
+    const newPath = path.join(USER_TEMPLATES_DIR, newName);
+
+    if (!(await fs.pathExists(oldPath))) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Template not found" });
+    }
+
+    await fs.rename(oldPath, newPath);
+    res.json({ success: true, message: "Template renamed successfully" });
+  } catch (error) {
+    console.error("❌ Template rename error:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to rename template" });
+  }
+});
+
+// API: Delete user template
+app.delete("/api/templates/delete/:name", async (req, res) => {
+  try {
+    const { name } = req.params;
+    const templatePath = path.join(USER_TEMPLATES_DIR, name);
+
+    if (!(await fs.pathExists(templatePath))) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Template not found" });
+    }
+
+    await fs.remove(templatePath);
+    res.json({ success: true, message: "Template deleted successfully" });
+  } catch (error) {
+    console.error("❌ Template deletion error:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to delete template" });
+  }
+});
+
 // API: Save current project files as a local template
 app.post("/api/templates/save", async (req, res) => {
   try {
@@ -1426,6 +1477,36 @@ app.delete("/api/projects/delete/:id", async (req, res) => {
       .json({ success: false, error: "Failed to delete project folder" });
   }
 });
+// API: Rename project
+app.put("/api/projects/rename/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+    const projectPath = path.join(PROJECTS_DIR, id, "project.json");
+
+    if (!(await fs.pathExists(projectPath))) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Project not found" });
+    }
+
+    const projectData = await fs.readJSON(projectPath);
+    projectData.title = title;
+    projectData.modified = new Date().toISOString();
+
+    await fs.writeJSON(projectPath, projectData, { spaces: 2 });
+    console.log(`✅ Renamed project to: ${title} (${id})`);
+    res.json({
+      success: true,
+      message: "Project renamed successfully",
+      project: projectData,
+    });
+  } catch (error) {
+    console.error("❌ Project rename error:", error);
+    res.status(500).json({ success: false, error: "Failed to rename project" });
+  }
+});
+
 // API: Load project
 app.get("/api/projects/:id", async (req, res) => {
   try {

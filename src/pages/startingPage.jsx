@@ -7,9 +7,11 @@ import {
   loadProjects,
   deleteProjectFromDisk,
   uploadZipProject,
+  renameProject,
 } from "../api/projectHandling.jsx";
 import { useSettings } from "../context/useSettings";
 import ConfirmModal from "../components/confirmModal.jsx";
+import RenameModal from "../components/renameModal.jsx";
 import LinearLoading from "../components/loading/linearLoading";
 import { TbX } from "react-icons/tb";
 
@@ -50,6 +52,38 @@ const StartingPage = () => {
   const handleDeleteClick = (project) => {
     setProjectToDelete(project);
     setShowDeleteConfirm(true);
+  };
+
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [projectToRename, setProjectToRename] = useState(null);
+
+  const handleRenameClick = (project) => {
+    setProjectToRename(project);
+    setShowRenameModal(true);
+  };
+
+  const handleRenameSubmit = async (newTitle) => {
+    if (newTitle && projectToRename && newTitle !== projectToRename.title) {
+      try {
+        const result = await renameProject(projectToRename.id, newTitle);
+        if (result.success) {
+          setProjectData((prev) =>
+            prev.map((p) =>
+              p.id === projectToRename.id ? { ...p, title: newTitle } : p,
+            ),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to rename project:", error);
+        setAlertModal({
+          isOpen: true,
+          title: "Rename Failed",
+          message: "Failed to rename project. Please try again.",
+        });
+      }
+    }
+    setShowRenameModal(false);
+    setProjectToRename(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -210,6 +244,7 @@ const StartingPage = () => {
                 <TemplateCards
                   title={project.title}
                   onDeleteClick={() => handleDeleteClick(project)}
+                  onRenameClick={() => handleRenameClick(project)}
                 />
               </Link>
             ))}
@@ -240,6 +275,7 @@ const StartingPage = () => {
                         key={project.id}
                         title={project.title}
                         onDeleteClick={() => handleDeleteClick(project)}
+                        onRenameClick={() => handleRenameClick(project)}
                       />
                     </Link>
                   ))}
@@ -266,6 +302,16 @@ const StartingPage = () => {
           cancelText=""
           onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
           onCancel={() => setAlertModal({ ...alertModal, isOpen: false })}
+        />
+        <RenameModal
+          isOpen={showRenameModal}
+          onClose={() => {
+            setShowRenameModal(false);
+            setProjectToRename(null);
+          }}
+          onSubmit={handleRenameSubmit}
+          title="Rename Project"
+          initialValue={projectToRename?.title || ""}
         />
       </div>
     </>
