@@ -5,6 +5,12 @@ import TemplateCards from "../components/templateCards";
 import TemplateSetupModal from "../components/TemplateSetupModal";
 import { useAuth } from "../context/useAuth";
 import { useSettings } from "../context/useSettings";
+import ConfirmModal from "../components/confirmModal.jsx";
+import RenameModal from "../components/renameModal.jsx";
+import {
+  renameUserTemplate,
+  deleteUserTemplate,
+} from "../api/projectHandling.jsx";
 import axios from "axios";
 
 const API_URL = "http://localhost:5000";
@@ -64,6 +70,57 @@ function TemplateSelect() {
     fetchTemplates();
   }, []);
 
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const [templateToRename, setTemplateToRename] = useState(null);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+
+  const handleTemplateRenameClick = (templateName) => {
+    setTemplateToRename(templateName);
+    setShowRenameModal(true);
+  };
+
+  const handleTemplateRenameSubmit = async (newName) => {
+    if (newName && templateToRename && newName !== templateToRename) {
+      try {
+        const result = await renameUserTemplate(templateToRename, newName);
+        if (result.success) {
+          setUserTemplates((prev) =>
+            prev.map((t) => (t === templateToRename ? newName : t)),
+          );
+        }
+      } catch (err) {
+        console.error("Failed to rename template:", err);
+      }
+    }
+    setShowRenameModal(false);
+    setTemplateToRename(null);
+  };
+
+  const handleDeleteClick = (templateName) => {
+    setTemplateToDelete(templateName);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (templateToDelete) {
+      try {
+        const result = await deleteUserTemplate(templateToDelete);
+        if (result.success) {
+          setUserTemplates((prev) =>
+            prev.filter((t) => t !== templateToDelete),
+          );
+        }
+      } catch (err) {
+        console.error("Failed to delete template:", err);
+      } finally {
+        setShowDeleteConfirm(false);
+        setTemplateToDelete(null);
+      }
+    }
+  };
+
   const handleBrowseClick = () => {
     if (isAuthenticated) {
       navigate("/template/browse");
@@ -79,7 +136,9 @@ function TemplateSelect() {
 
   return (
     <div
-      className={`min-h-screen flex flex-row mt-20 ${isDark ? "text-white" : "text-black"}`}
+      className={`min-h-screen flex flex-row mt-20 ${
+        isDark ? "text-white" : "text-black"
+      }`}
     >
       <Link
         to="/"
@@ -98,7 +157,9 @@ function TemplateSelect() {
             <div>
               <p className="font-playfair text-5xl font-bold">Templates</p>
               <p
-                className={`mt-2 font-inter font-medium ${isDark ? "text-gray-400" : "text-[#7D7D7D]"}`}
+                className={`mt-2 font-inter font-medium ${
+                  isDark ? "text-gray-400" : "text-[#7D7D7D]"
+                }`}
               >
                 Select a template to start your project
               </p>
@@ -146,7 +207,9 @@ function TemplateSelect() {
           {userTemplates.length > 0 && (
             <div className="mt-16">
               <p
-                className={`text-xl font-inter font-medium mb-6 ${isDark ? "text-gray-300" : "text-[#333]"}`}
+                className={`text-xl font-inter font-medium mb-6 ${
+                  isDark ? "text-gray-300" : "text-[#333]"
+                }`}
               >
                 Your Templates
               </p>
@@ -157,7 +220,11 @@ function TemplateSelect() {
                     to={`/template/preview/${folder}`}
                     className="transform hover:scale-105 transition-transform duration-200"
                   >
-                    <TemplateCards title={folder} />
+                    <TemplateCards
+                      title={folder}
+                      onDeleteClick={() => handleDeleteClick(folder)}
+                      onRenameClick={() => handleTemplateRenameClick(folder)}
+                    />
                   </Link>
                 ))}
               </div>
@@ -179,6 +246,28 @@ function TemplateSelect() {
           setIsSetupModalOpen(false);
           navigate("/template/builder", { state: config });
         }}
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Delete Template"
+        message={`Are you sure you want to delete the template "${templateToDelete}"? This cannot be undone.`}
+        confirmText="Delete Template"
+        cancelText="Cancel"
+        isDanger={true}
+      />
+
+      <RenameModal
+        isOpen={showRenameModal}
+        onClose={() => {
+          setShowRenameModal(false);
+          setTemplateToRename(null);
+        }}
+        onSubmit={handleTemplateRenameSubmit}
+        title="Rename Template"
+        initialValue={templateToRename || ""}
       />
     </div>
   );

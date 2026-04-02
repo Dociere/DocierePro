@@ -763,3 +763,43 @@ export const pullCitationsFromCloud = async (
     return [];
   }
 };
+
+export const renameProject = async (projectId, newTitle) => {
+  try {
+    const response = await axios.put(
+      `${API_URL}/api/projects/rename/${projectId}`,
+      {
+        title: newTitle,
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Failed to rename project:", error);
+    throw error;
+  }
+};
+
+export const renameUserTemplate = async (oldName, newName) => {
+  try {
+    const response = await axios.put(`${API_URL}/api/templates/rename`, {
+      oldName,
+      newName,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Failed to rename user template:", error);
+    throw error;
+  }
+};
+
+export const deleteUserTemplate = async (name) => {
+  try {
+    const response = await axios.delete(
+      `${API_URL}/api/templates/delete/${name}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Failed to delete user template:", error);
+    throw error;
+  }
+};
