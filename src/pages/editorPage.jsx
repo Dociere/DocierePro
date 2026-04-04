@@ -1398,6 +1398,7 @@ const EditorPage = () => {
                       ? Object.keys(projectDetails.currentProject.files)
                       : []
                   }
+                  aiConfig={settings?.app?.aiConfigs?.find((c) => c.active) || null}
                 />
               </div>
             )}

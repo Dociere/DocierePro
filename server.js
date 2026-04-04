@@ -706,6 +706,35 @@ app.post("/api/edit", async (req, res) => {
   }
 });
 
+// ==================== PAPER REVIEW USING AI ROUTE ====================
+app.post("/api/review", async (req, res) => {
+  try {
+    const { latexContent, aiConfig: frontendConfig, reviewOptions } = req.body;
+
+    if (!latexContent) {
+      return res.status(400).json({ error: "LaTeX content required" });
+    }
+
+    const aiConfig = frontendConfig || (await getActiveAIConfig());
+    const currentAiUrl = getServerUrl();
+    
+    const aiResponse = await axios.post(
+      `${currentAiUrl}/api/review`,
+      { latexContent, aiConfig, reviewOptions },
+      { headers: { Cookie: req.headers.cookie || "" } }
+    );
+
+    if (aiResponse.data.success) {
+      res.json(aiResponse.data);
+    } else {
+      throw new Error(aiResponse.data.error || "AI review failed");
+    }
+  } catch (error) {
+    console.error("❌ AI Review Error:", error.message);
+    res.status(500).json({ success: false, error: "Failed to fetch AI review" });
+  }
+});
+
 // ==================== EQUATION GENERATION USING AI ROUTE ====================
 
 app.post("/api/generate-equation", async (req, res) => {

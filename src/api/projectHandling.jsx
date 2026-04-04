@@ -157,6 +157,40 @@ export const editDocumentWithAI = async (
   }
 };
 
+export const fetchAIReview = async (
+  latexContent,
+  aiConfig,
+  signal = null,
+  reviewOptions = {}
+) => {
+  try {
+    const cleanConfig = { ...aiConfig };
+    if (cleanConfig.apiKey === "********" || cleanConfig.apiKey === "") {
+      delete cleanConfig.apiKey;
+    }
+
+    const payload = {
+      latexContent,
+      aiConfig: cleanConfig,
+      reviewOptions,
+    };
+
+    const response = await axios.post(`${API_URL}/api/review`, payload, {
+      signal,
+      withCredentials: true,
+    });
+
+    return response.data;
+  } catch (error) {
+    if (axios.isCancel(error)) {
+      console.log("Review request canceled by user");
+      throw new Error("Request canceled");
+    }
+    console.error("Error fetching AI review:", error);
+    throw error;
+  }
+};
+
 export const fetchDecryptedSecret = async (configId, SERVER_API) => {
   try {
     // const response = await axios.get(

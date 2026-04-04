@@ -6,6 +6,8 @@ import {
   defineLatexTheme,
 } from "../utils/latexMonarchLanguage.jsx";
 import { useSettings } from "../context/useSettings";
+import { useAIReviewer } from "../hooks/useAIReviewer";
+import AIReviewSidebar from "./AIReviewSidebar";
 
 // ==========================================
 // HELPER: Find table and figure ranges
@@ -86,6 +88,7 @@ const MonacoEditorPanel = ({
   onEditImage = null,
   projectFiles = [],
   readOnly = false,
+  aiConfig = null,
 }) => {
   const editorInstanceRef = useRef(null);
   const monacoRef = useRef(null);
@@ -150,6 +153,135 @@ const MonacoEditorPanel = ({
       figureDecorations,
     );
   }, []);
+
+  // --- AI Reviewer Integration ---
+  const {
+    suggestions,
+    isReviewing,
+    autoReview,
+    setAutoReview,
+    reviewOptions,
+    setReviewOptions,
+    triggerReview,
+    dismissSuggestion,
+    acceptSuggestion,
+    error: reviewError,
+  } = useAIReviewer({ latexContent: value, aiConfig });
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const aiDecorationsRef = useRef([]);
+  const aiSuggestionRangesRef = useRef([]);
+  const acceptActionRef = useRef(null);
+  const dismissActionRef = useRef(null);
+  const hoverProviderRef = useRef(null);
+
+  useEffect(() => {
+    dismissActionRef.current = dismissSuggestion;
+  }, [dismissSuggestion]);
+
+  // Type → CSS decoration class
+  const TYPE_CLASS = {
+    grammar:   "ai-sugg-grammar",
+    syntax:    "ai-sugg-syntax",
+    structure: "ai-sugg-structure",
+    style:     "ai-sugg-style",
+  };
+
+  // Update Monaco decorations whenever suggestions change
+  useEffect(() => {
+    const editor = editorInstanceRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    if (!suggestions || suggestions.length === 0) {
+      aiDecorationsRef.current = editor.deltaDecorations(aiDecorationsRef.current, []);
+      aiSuggestionRangesRef.current = [];
+      return;
+    }
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const newDecorations = [];
+    const ranges = [];
+
+    suggestions.forEach((sugg, idx) => {
+      const matches = model.findMatches(sugg.original_text, false, false, false, null, true);
+      const matchPos = matches[0];
+      if (matchPos) {
+        ranges.push({ index: idx, range: matchPos.range });
+        const cssClass = TYPE_CLASS[sugg.type] || "ai-sugg-grammar";
+        newDecorations.push({
+          range: matchPos.range,
+          options: {
+            className: `monaco-ai-suggestion ${cssClass}`,
+            glyphMarginClassName: `ai-glyph-${sugg.type || "grammar"}`,
+            overviewRulerColor: "rgba(99,102,241,0.6)",
+            overviewRulerLane: monaco.editor.OverviewRulerLane.Right,
+            stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+          },
+        });
+      }
+    });
+
+    aiSuggestionRangesRef.current = ranges;
+    aiDecorationsRef.current = editor.deltaDecorations(aiDecorationsRef.current, newDecorations);
+  }, [suggestions]);
+
+  // Register a Hover Provider for rich tooltip on decorated ranges
+  useEffect(() => {
+    const monaco = monacoRef.current;
+    if (!monaco) return;
+
+    // Dispose old provider before registering a new one
+    if (hoverProviderRef.current) {
+      hoverProviderRef.current.dispose();
+    }
+
+    hoverProviderRef.current = monaco.languages.registerHoverProvider("latex", {
+      provideHover(model, position) {
+        const hit = aiSuggestionRangesRef.current.find(
+          (r) => r.range.containsPosition(position)
+        );
+        if (!hit) return null;
+        const sugg = suggestions[hit.index];
+        if (!sugg) return null;
+
+        const typeLabel = (sugg.type || "grammar").charAt(0).toUpperCase() + (sugg.type || "grammar").slice(1);
+        const md = [
+          `**🤖 AI Suggestion — ${typeLabel}**`,
+          ``,
+          `~~${sugg.original_text}~~ → **${sugg.suggestion}**`,
+          ``,
+          `> ${sugg.reasoning}`,
+          ``,
+          `*Right-click the highlighted text → **Accept AI Suggestion** or **Dismiss AI Suggestion***`,
+        ].join("\n");
+
+        return {
+          range: hit.range,
+          contents: [{ value: md, isTrusted: true }],
+        };
+      },
+    });
+
+    return () => {
+      if (hoverProviderRef.current) hoverProviderRef.current.dispose();
+    };
+  // Re-register when suggestions change so the closure captures the latest array
+  }, [suggestions]);
+
+  // Jump-to-line handler (called from AIReviewSidebar)
+  const handleJumpToLine = useCallback((lineNum) => {
+    const editor = editorInstanceRef.current;
+    if (!editor) return;
+    editor.revealLineInCenter(lineNum);
+    editor.setPosition({ lineNumber: lineNum, column: 1 });
+    editor.focus();
+  }, []);
+
+  // --- End AI Reviewer Integration ---
 
   // SyncTeX highlighting
   useEffect(() => {
@@ -275,6 +407,35 @@ const MonacoEditorPanel = ({
       });
     }
 
+    // AI suggestion context menu actions
+    editor.addAction({
+      id: "accept-ai-suggestion",
+      label: "Accept AI Suggestion",
+      contextMenuGroupId: "1_modification",
+      contextMenuOrder: 1.7,
+      run: (ed) => {
+        const pos = ed.getPosition();
+        const hit = aiSuggestionRangesRef.current.find(r => r.range.containsPosition(pos));
+        if (hit && acceptActionRef.current) {
+          acceptActionRef.current(hit.index);
+        }
+      }
+    });
+
+    editor.addAction({
+      id: "dismiss-ai-suggestion",
+      label: "Dismiss AI Suggestion",
+      contextMenuGroupId: "1_modification",
+      contextMenuOrder: 1.8,
+      run: (ed) => {
+        const pos = ed.getPosition();
+        const hit = aiSuggestionRangesRef.current.find(r => r.range.containsPosition(pos));
+        if (hit && dismissActionRef.current) {
+          dismissActionRef.current(hit.index);
+        }
+      }
+    });
+
     // Handle click on highlighted regions for editing
     editor.onMouseDown((e) => {
       // Clear SyncTeX highlight on any click
@@ -395,6 +556,22 @@ const MonacoEditorPanel = ({
     [updateEnvironmentHighlighting],
   );
 
+  const handleAcceptSuggestion = useCallback((index) => {
+    const sugg = suggestions[index];
+    const editor = editorInstanceRef.current;
+    if (!editor || !sugg) return;
+    const model = editor.getModel();
+    const matchPos = model.findMatches(sugg.original_text, false, false, false, null, true)[0];
+    if (matchPos) {
+      replaceRange(matchPos.range, sugg.suggestion);
+    }
+    acceptSuggestion(index);
+  }, [suggestions, replaceRange, acceptSuggestion]);
+
+  useEffect(() => {
+    acceptActionRef.current = handleAcceptSuggestion;
+  }, [handleAcceptSuggestion]);
+
   // Expose methods via ref
   useEffect(() => {
     if (monacoEditorRef.current) {
@@ -428,7 +605,7 @@ const MonacoEditorPanel = ({
   );
 
   return (
-    <div className="h-full w-full flex-1 flex flex-col">
+    <div className="h-full w-full flex-1 flex flex-col" style={{ position: "relative" }}>
       {/* Active Users Bar */}
       {users.length > 0 && (
         <div className="bg-gray-50 px-4 py-2 border-b flex items-center gap-3">
@@ -452,8 +629,52 @@ const MonacoEditorPanel = ({
         </div>
       )}
 
+      {/* AI Reviewer Top Bar */}
+      <div className="bg-white px-4 py-1.5 border-b flex justify-between items-center text-sm shadow-sm z-10 relative" style={{ minHeight: "38px" }}>
+        <div className="flex items-center gap-2">
+          <button
+            id="ai-review-run-btn"
+            onClick={triggerReview}
+            disabled={isReviewing}
+            className="px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded hover:bg-indigo-700 disabled:opacity-50 transition flex items-center gap-1"
+          >
+            {isReviewing ? (
+              <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                <span style={{ animation: "ai-spin 1s linear infinite", display: "inline-block" }}>⚙</span>
+                Analyzing…
+              </span>
+            ) : (
+              suggestions.length > 0 ? "Refresh Review" : "Run AI Review"
+            )}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {suggestions.length > 0 && (
+            <button
+              id="ai-review-open-sidebar-btn"
+              onClick={() => setSidebarOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition"
+              style={{ background: "#ede9fe", color: "#4f46e5", border: "1px solid #c4b5fd" }}
+            >
+              <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#4f46e5", display: "inline-block", boxShadow: "0 0 0 2px #c4b5fd" }} />
+              {suggestions.length} Suggestion{suggestions.length !== 1 ? "s" : ""}
+            </button>
+          )}
+          <button
+            id="ai-review-sidebar-toggle-btn"
+            title="Open Review Panel"
+            onClick={() => setSidebarOpen(v => !v)}
+            className="text-xs font-semibold px-2 py-1 rounded transition"
+            style={{ color: sidebarOpen ? "#4f46e5" : "#64748b", background: sidebarOpen ? "#ede9fe" : "transparent", border: "1px solid transparent" }}
+          >
+            Review ▸
+          </button>
+        </div>
+      </div>
+
       {/* Monaco Editor Container */}
-      <div className="flex-1 h-full">
+      <div className="flex-1 h-full" style={{ marginRight: sidebarOpen ? "320px" : 0, transition: "margin-right 0.2s" }}>
         <MonacoEditor
           height="100%"
           defaultLanguage="latex"
@@ -484,6 +705,23 @@ const MonacoEditorPanel = ({
           }}
         />
       </div>
+
+      {/* AI Review Sidebar */}
+      <AIReviewSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        suggestions={suggestions}
+        isReviewing={isReviewing}
+        autoReview={autoReview}
+        setAutoReview={setAutoReview}
+        reviewOptions={reviewOptions}
+        setReviewOptions={setReviewOptions}
+        triggerReview={triggerReview}
+        onAccept={handleAcceptSuggestion}
+        onDismiss={dismissSuggestion}
+        onJumpToLine={handleJumpToLine}
+        error={reviewError}
+      />
     </div>
   );
 };

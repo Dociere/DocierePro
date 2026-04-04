@@ -30,4 +30,54 @@
     border-radius: 1px;
     background: rgba(100, 100, 100, 0.4) !important;
   }
+
+  /* ── AI Reviewer decorations ── */
+  .monaco-ai-suggestion {
+    border-radius: 2px;
+    border-bottom: 2px solid;
+  }
+
+  /* Grammar: purple */
+  .ai-sugg-grammar {
+    background: rgba(124, 58, 237, 0.09);
+    border-bottom-color: #7c3aed;
+  }
+
+  /* Syntax: orange */
+  .ai-sugg-syntax {
+    background: rgba(234, 88, 12, 0.09);
+    border-bottom-color: #ea580c;
+  }
+
+  /* Structure: blue */
+  .ai-sugg-structure {
+    background: rgba(3, 105, 161, 0.09);
+    border-bottom-color: #0369a1;
+  }
+
+  /* Style: green */
+  .ai-sugg-style {
+    background: rgba(22, 128, 60, 0.09);
+    border-bottom-color: #16803c;
+  }
+
+  /* Glyph margin dots */
+  .ai-glyph-grammar::before,
+  .ai-glyph-syntax::before,
+  .ai-glyph-structure::before,
+  .ai-glyph-style::before {
+    content: "●";
+    font-size: 10px;
+    line-height: 18px;
+  }
+  .ai-glyph-grammar::before  { color: #7c3aed; }
+  .ai-glyph-syntax::before   { color: #ea580c; }
+  .ai-glyph-structure::before{ color: #0369a1; }
+  .ai-glyph-style::before    { color: #16803c; }
+}
+
+/* Spin animation for review loader */
+@keyframes ai-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
