@@ -156,7 +156,7 @@ const PdfViewer = ({
     const x = (event.clientX - bounds.left) / scale;
     const y = (event.clientY - bounds.top) / scale;
     try {
-      const response = await axios.post("http://localhost:5000/api/synctex", {
+      const response = await axios.post("http://localhost:50450/api/synctex", {
         pdfFile: fileName,
         page: pageIndex + 1,
         x,
@@ -481,7 +481,9 @@ const PdfViewer = ({
               >
                 {zoomLabel}
                 <svg
-                  className={`w-3 h-3 transition-transform ${zoomDropdownOpen ? "rotate-180" : ""}`}
+                  className={`w-3 h-3 transition-transform ${
+                    zoomDropdownOpen ? "rotate-180" : ""
+                  }`}
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -513,7 +515,9 @@ const PdfViewer = ({
                 >
                   <button
                     onClick={zoomToFit}
-                    className={`w-full flex items-center justify-between px-4 py-2 hover:bg-gray-100 text-left ${isFitMode ? "font-medium" : "font-light"}`}
+                    className={`w-full flex items-center justify-between px-4 py-2 hover:bg-gray-100 text-left ${
+                      isFitMode ? "font-medium" : "font-light"
+                    }`}
                   >
                     <span>Zoom to fit</span>
                     <span className="text-xs opacity-50">Ctrl+0</span>
@@ -549,7 +553,11 @@ const PdfViewer = ({
                     <button
                       key={pct}
                       onClick={() => setZoomPreset(pct)}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${!isFitMode && Math.round(scale * 100) === pct ? "font-medium" : "font-light"}`}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+                        !isFitMode && Math.round(scale * 100) === pct
+                          ? "font-medium"
+                          : "font-light"
+                      }`}
                     >
                       {pct}%
                     </button>

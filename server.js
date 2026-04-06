@@ -51,7 +51,7 @@ function decrypt(text) {
 
 const execAsync = util.promisify(exec);
 const app = express();
-const PORT = 5000;
+const PORT = 50450;
 
 // Middleware
 app.use(
@@ -722,9 +722,12 @@ app.post("/api/generate-equation", async (req, res) => {
 
     // Call Python AI Service
     const aiConfig = frontendConfig || (await getActiveAIConfig());
-    console.log("AI_SERVICE_URL", AI_SERVICE_URL);
+    const currentAiUrl = getServerUrl();
+    console.log(
+      `📤 Sending to AI Service (${currentAiUrl}/api/generate-equation)`,
+    );
     const response = await axios.post(
-      `https://${AI_SERVICE_URL}/api/generate-equation`,
+      `${currentAiUrl}/api/generate-equation`,
       {
         prompt,
         aiConfig,
@@ -3260,7 +3263,7 @@ async function startServer() {
   try {
     await initDirectories();
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, "127.0.0.1", () => {
       console.log("🚀 Unified LaTeX Server Started!");
       console.log("=".repeat(60));
       console.log(`📡 Server: http://localhost:${PORT}`);
@@ -3302,6 +3305,21 @@ async function startServer() {
         console.log("❌ WARNING: pdflatex not found in PATH");
         console.log("   Please install TeX Live or MiKTeX and add to PATH");
       });
+    });
+
+    server.on("error", (error) => {
+      if (error.code === "EADDRINUSE") {
+        console.error(
+          `💥 CRITICAL ERROR: Port ${PORT} is already in use by another application!`,
+        );
+        console.error(
+          `Please close the other application or restart your computer. Shutting down.`,
+        );
+        process.exit(1);
+      } else {
+        console.error("💥 Server error:", error);
+        process.exit(1);
+      }
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
