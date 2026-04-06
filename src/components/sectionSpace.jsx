@@ -244,7 +244,7 @@
 //         });
 //         try {
 //           const response = await axios.delete(
-//             `http://localhost:5000/api/projects/${currentProject.id}/files/${encodeURIComponent(fileName)}`,
+//             `http://localhost:50450/api/projects/${currentProject.id}/files/${encodeURIComponent(fileName)}`,
 //           );
 
 //           if (response.data.success) {
@@ -1531,7 +1531,7 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
         });
         try {
           const response = await axios.delete(
-            `http://localhost:5000/api/projects/${
+            `http://localhost:50450/api/projects/${
               currentProject.id
             }/files/${encodeURIComponent(fileName)}`,
           );
@@ -1616,7 +1616,7 @@ const SectionSpace = ({ width = 256, onDragStart }) => {
               `Deleting ${count} of ${selectedFiles.size} files...`,
             );
             await axios.delete(
-              `http://localhost:5000/api/projects/${
+              `http://localhost:50450/api/projects/${
                 currentProject.id
               }/files/${encodeURIComponent(fileName)}`,
             );

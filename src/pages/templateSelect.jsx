@@ -13,7 +13,7 @@ import {
 } from "../api/projectHandling.jsx";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:50450";
 
 // Built-in templates are now fetched dynamically
 

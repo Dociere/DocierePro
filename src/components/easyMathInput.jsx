@@ -26,7 +26,7 @@ import { useSettings } from "../context/useSettings";
 import ConfirmModal from "./confirmModal";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://localhost:50450";
 
 const EasyMathInput = ({ onClose, onInsert, projectId }) => {
   const { isAuthenticated, user, isServerConnected } = useAuth();
@@ -347,7 +347,9 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
   const handleDeleteEquation = async (fileName) => {
     try {
       const res = await fetch(
-        `${API_BASE_URL}/api/equations/${fileName}?projectId=${projectId || ""}`,
+        `${API_BASE_URL}/api/equations/${fileName}?projectId=${
+          projectId || ""
+        }`,
         {
           method: "DELETE",
         },
@@ -724,13 +726,21 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
             <div className="flex bg-gray-100 p-1 rounded-lg">
               <button
                 onClick={() => setActiveTab("editor")}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === "editor" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  activeTab === "editor"
+                    ? "bg-white text-black shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
               >
                 Editor
               </button>
               <button
                 onClick={() => setActiveTab("saved")}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === "saved" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  activeTab === "saved"
+                    ? "bg-white text-black shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
               >
                 Saved Library
               </button>
@@ -746,7 +756,9 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
 
         {/* --- MAIN CONTENT --- */}
         <div
-          className={`flex flex-1 overflow-hidden ${activeTab === "saved" ? "bg-gray-50" : ""}`}
+          className={`flex flex-1 overflow-hidden ${
+            activeTab === "saved" ? "bg-gray-50" : ""
+          }`}
         >
           {/* --- LEFT PANEL (Library) --- */}
           {activeTab === "editor" && (
@@ -796,7 +808,11 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
                         >
                           {cat.category}
                           <TbChevronDown
-                            className={`transition-transform duration-200 ${expandedCategories.has(cat.category) ? "rotate-180" : ""}`}
+                            className={`transition-transform duration-200 ${
+                              expandedCategories.has(cat.category)
+                                ? "rotate-180"
+                                : ""
+                            }`}
                           />
                         </button>
 
@@ -850,7 +866,11 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-3">
                     <span
-                      className={`text-sm font-bold px-3 py-1 rounded-full flex items-center gap-2 transition-colors ${isAiMode ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"}`}
+                      className={`text-sm font-bold px-3 py-1 rounded-full flex items-center gap-2 transition-colors ${
+                        isAiMode
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
                     >
                       {isAiMode ? (
                         <TbRobot className="text-purple-600" />
@@ -867,7 +887,9 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
                           setIsAiMode(!isAiMode);
                         }
                       }}
-                      className={`text-xs font-medium hover:underline ${isAiMode ? "text-purple-600" : "text-gray-500"}`}
+                      className={`text-xs font-medium hover:underline ${
+                        isAiMode ? "text-purple-600" : "text-gray-500"
+                      }`}
                     >
                       Switch to {isAiMode ? "Manual Builder" : "AI Assistant"}
                     </button>
@@ -930,7 +952,11 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
 
                 {/* Main Editor Input */}
                 <div
-                  className={`relative flex-grow rounded-xl border shadow-inner overflow-hidden focus-within:ring-2 focus-within:ring-opacity-50 transition-all ${isAiMode ? "border-purple-200 focus-within:ring-purple-500 bg-purple-50/20" : "border-gray-300 bg-gray-50 focus-within:ring-gray-400"}`}
+                  className={`relative flex-grow rounded-xl border shadow-inner overflow-hidden focus-within:ring-2 focus-within:ring-opacity-50 transition-all ${
+                    isAiMode
+                      ? "border-purple-200 focus-within:ring-purple-500 bg-purple-50/20"
+                      : "border-gray-300 bg-gray-50 focus-within:ring-gray-400"
+                  }`}
                 >
                   {isAiMode ? (
                     <>
@@ -1203,7 +1229,11 @@ const EasyMathInput = ({ onClose, onInsert, projectId }) => {
           </div>
         )}
         <div
-          className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl text-sm font-medium transition-all duration-300 pointer-events-none z-[70] flex items-center gap-2 ${toastMessage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl text-sm font-medium transition-all duration-300 pointer-events-none z-[70] flex items-center gap-2 ${
+            toastMessage
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-4"
+          }`}
         >
           {toastMessage}
         </div>

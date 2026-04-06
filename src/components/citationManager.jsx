@@ -17,7 +17,7 @@ import {
 } from "react-icons/tb";
 import ConfirmModal from "./confirmModal";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://localhost:50450";
 
 const citationFormats = ["IEEE", "APA", "MLA", "Chicago", "Harvard"];
 
@@ -241,7 +241,9 @@ const CitationManager = ({
     if (!citationToDelete) return;
     try {
       const res = await fetch(
-        `${API_BASE_URL}/api/citation/${citationToDelete}?projectId=${projectId || ""}`,
+        `${API_BASE_URL}/api/citation/${citationToDelete}?projectId=${
+          projectId || ""
+        }`,
         {
           method: "DELETE",
         },

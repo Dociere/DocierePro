@@ -78,7 +78,7 @@ import ComponentRenderer from "../components/templateBuilder/ComponentRenderer";
 import PropertyPanel from "../components/templateBuilder/PropertyPanel";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:50450";
 
 // ==========================================
 // ICON MAP — map string icon names to components

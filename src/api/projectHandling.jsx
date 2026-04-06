@@ -19,7 +19,7 @@
 import axios from "axios";
 import { useSettings } from "../context/useSettings";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:50450";
 
 export const api = axios.create({
   withCredentials: true,

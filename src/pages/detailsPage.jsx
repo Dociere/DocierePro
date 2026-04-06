@@ -79,7 +79,7 @@ const DetailsPage = () => {
       formData.append("file", file);
 
       const response = await axios.post(
-        "http://localhost:5000/api/extract-file-text",
+        "http://localhost:50450/api/extract-file-text",
         formData,
         { headers: { "Content-Type": "multipart/form-data" } },
       );

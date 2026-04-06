@@ -15,7 +15,7 @@ import { useToast } from "../hooks/useToast";
 import { useSettings } from "../context/useSettings";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:50450";
 
 const NavBar = ({ onStartTour }) => {
   const navigate = useNavigate();
@@ -1036,7 +1036,10 @@ const NavBar = ({ onStartTour }) => {
               background:
                 settings.appearance.customThemes[settings.appearance.theme]
                   .background,
-              border: `1px solid ${settings.appearance.customThemes[settings.appearance.theme].border}`,
+              border: `1px solid ${
+                settings.appearance.customThemes[settings.appearance.theme]
+                  .border
+              }`,
             }}
             onClick={(e) => e.stopPropagation()}
           >

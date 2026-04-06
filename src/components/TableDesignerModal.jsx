@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { TbX, TbPlus, TbMinus, TbTable, TbPlayerPlay, TbCopy, TbCheck, TbAlertTriangle } from "react-icons/tb";
+import {
+  TbX,
+  TbPlus,
+  TbMinus,
+  TbTable,
+  TbPlayerPlay,
+  TbCopy,
+  TbCheck,
+  TbAlertTriangle,
+} from "react-icons/tb";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://localhost:50450";
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -40,7 +49,7 @@ const parseLatexTable = (latex) => {
     }
 
     const bodyMatch = latex.match(
-      /\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/
+      /\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/,
     );
     if (!bodyMatch) return null;
 
@@ -62,23 +71,25 @@ const parseLatexTable = (latex) => {
 
         for (const rawCell of rawCells) {
           let content = rawCell.trim();
-          
+
           // Check for \multicolumn{n}{align}{content}
-          const multiMatch = content.match(/^\\multicolumn\{(\d+)\}\{[^}]*\}\{(.+)\}$/);
-          
+          const multiMatch = content.match(
+            /^\\multicolumn\{(\d+)\}\{[^}]*\}\{(.+)\}$/,
+          );
+
           if (multiMatch) {
             const span = parseInt(multiMatch[1], 10);
             let innerContent = multiMatch[2];
-            
+
             // Strip \textbf{} from content
             const textbfMatch = innerContent.match(/^\\textbf\{(.+)\}$/);
             if (textbfMatch) {
               innerContent = textbfMatch[1];
             }
-            
+
             // Add the merged cell content at the starting position
             parsedRow.push(innerContent);
-            
+
             // Add the merge info
             mergedCells.push({
               row: rowIndex,
@@ -86,12 +97,12 @@ const parseLatexTable = (latex) => {
               endCol: colIndex + span - 1,
               content: innerContent,
             });
-            
+
             // Add empty placeholders for the merged columns
             for (let i = 1; i < span; i++) {
               parsedRow.push("");
             }
-            
+
             colIndex += span;
           } else {
             // Regular cell - strip \textbf{} wrapper
@@ -112,12 +123,15 @@ const parseLatexTable = (latex) => {
         return parsedRow;
       });
 
-    const captionBeforeTabular = latex.indexOf("\\caption") < latex.indexOf("\\begin{tabular}");
+    const captionBeforeTabular =
+      latex.indexOf("\\caption") < latex.indexOf("\\begin{tabular}");
     const captionPosition = captionBeforeTabular ? "top" : "bottom";
 
     // Detect if first row had textbf (header styling)
-    const firstRowHasTextbf = latex.match(/\\begin\\{tabular\\}[\\s\\S]*?\\textbf\\{/);
-    
+    const firstRowHasTextbf = latex.match(
+      /\\begin\\{tabular\\}[\\s\\S]*?\\textbf\\{/,
+    );
+
     const centerTable = latex.includes("\\centering");
     const resizeToFit = latex.includes("\\resizebox");
 
@@ -156,50 +170,59 @@ const generateLatexTable = ({
   resizeToFit = false,
 }) => {
   let colDef = "";
-  const hasVerticalBorders = borderStyle === "all" || borderStyle === "vertical";
-  
+  const hasVerticalBorders =
+    borderStyle === "all" || borderStyle === "vertical";
+
   for (let i = 0; i < cols; i++) {
     if (hasVerticalBorders) colDef += "|";
     colDef += alignments[i] || "c";
   }
   if (hasVerticalBorders) colDef += "|";
 
-  const hasHorizontalBorders = borderStyle === "all" || borderStyle === "horizontal";
+  const hasHorizontalBorders =
+    borderStyle === "all" || borderStyle === "horizontal";
   let tableBody = "";
-  
+
   if (hasHorizontalBorders) tableBody += "\\hline\n";
-  
+
   rows.forEach((row, rowIndex) => {
     const cellOutputs = [];
     let colIndex = 0;
-    
+
     while (colIndex < cols) {
-      const merge = mergedCells.find(m => m.row === rowIndex && m.startCol === colIndex);
-      
+      const merge = mergedCells.find(
+        (m) => m.row === rowIndex && m.startCol === colIndex,
+      );
+
       if (merge) {
         const span = merge.endCol - merge.startCol + 1;
         const align = alignments[colIndex] || "c";
         let content = merge.content || "";
-        
+
         if (headerRow && rowIndex === 0) {
           content = `\\textbf{${content}}`;
         }
-        
+
         let multicolFormat = "";
         if (hasVerticalBorders && colIndex === 0) multicolFormat += "|";
         multicolFormat += align;
         if (hasVerticalBorders) multicolFormat += "|";
-        
-        cellOutputs.push(`\\multicolumn{${span}}{${multicolFormat}}{${content}}`);
+
+        cellOutputs.push(
+          `\\multicolumn{${span}}{${multicolFormat}}{${content}}`,
+        );
         colIndex = merge.endCol + 1;
       } else {
-        const hiddenByMerge = mergedCells.find(m => m.row === rowIndex && colIndex > m.startCol && colIndex <= m.endCol);
-        
+        const hiddenByMerge = mergedCells.find(
+          (m) =>
+            m.row === rowIndex && colIndex > m.startCol && colIndex <= m.endCol,
+        );
+
         if (hiddenByMerge) {
           colIndex++;
           continue;
         }
-        
+
         let content = row[colIndex] || "";
         if (headerRow && rowIndex === 0) {
           content = `\\textbf{${content}}`;
@@ -208,7 +231,7 @@ const generateLatexTable = ({
         colIndex++;
       }
     }
-    
+
     tableBody += cellOutputs.join(" & ") + " \\\\";
     if (hasHorizontalBorders) tableBody += " \\hline";
     tableBody += "\n";
@@ -219,25 +242,25 @@ const generateLatexTable = ({
 
   let result = `\\begin{table}[${positioning}]\n`;
   if (centerTable) result += `\\centering\n`;
-  
+
   if (captionPosition === "top") {
     result += captionStr + labelStr;
   }
-  
+
   if (resizeToFit) {
     result += `\\resizebox{\\linewidth}{!}{\n`;
   }
-  
+
   result += `\\begin{tabular}{${colDef}}\n${tableBody}\\end{tabular}\n`;
-  
+
   if (resizeToFit) {
     result += `}\n`;
   }
-  
+
   if (captionPosition === "bottom" || !captionPosition) {
     result += captionStr + labelStr;
   }
-  
+
   result += "\\end{table}";
 
   return result;
@@ -248,7 +271,7 @@ const generateLatexTable = ({
 // ==========================================
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
@@ -281,7 +304,7 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
 // ==========================================
 const Toast = ({ message, isVisible }) => {
   if (!isVisible) return null;
-  
+
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
       <TbCheck size={16} className="text-green-400" />
@@ -334,10 +357,16 @@ const TableDesignerModal = ({
       setLabel(existingData.label || "");
       setCaptionPosition(existingData.captionPosition || "bottom");
       setHeaderRow(existingData.headerRow || false);
-      setCenterTable(existingData.centerTable !== undefined ? existingData.centerTable : true);
+      setCenterTable(
+        existingData.centerTable !== undefined
+          ? existingData.centerTable
+          : true,
+      );
       setResizeToFit(existingData.resizeToFit || false);
     } else {
-      const newCells = Array(rows).fill(null).map(() => Array(cols).fill(""));
+      const newCells = Array(rows)
+        .fill(null)
+        .map(() => Array(cols).fill(""));
       setCells(newCells);
       setAlignments(Array(cols).fill("c"));
     }
@@ -347,12 +376,13 @@ const TableDesignerModal = ({
     if (isOpen) {
       setSelectedCells([]);
       setCompiledPreviewUrl(null);
-      
+
       if (initialData) {
-        const parsed = typeof initialData === "string" 
-          ? parseLatexTable(initialData) 
-          : initialData;
-        
+        const parsed =
+          typeof initialData === "string"
+            ? parseLatexTable(initialData)
+            : initialData;
+
         if (parsed) {
           setRowCount(parsed.rows.length);
           setColCount(parsed.cols);
@@ -373,7 +403,7 @@ const TableDesignerModal = ({
   const handleRowCountChange = (newCount) => {
     const count = Math.max(1, Math.min(20, newCount));
     setRowCount(count);
-    
+
     const newCells = [...cells];
     if (count > cells.length) {
       for (let i = cells.length; i < count; i++) {
@@ -388,7 +418,7 @@ const TableDesignerModal = ({
   const handleColCountChange = (newCount) => {
     const count = Math.max(1, Math.min(20, newCount));
     setColCount(count);
-    
+
     const newCells = cells.map((row) => {
       if (count > row.length) {
         return [...row, ...Array(count - row.length).fill("")];
@@ -396,7 +426,7 @@ const TableDesignerModal = ({
       return row.slice(0, count);
     });
     setCells(newCells);
-    
+
     const newAlignments = [...alignments];
     if (count > alignments.length) {
       for (let i = alignments.length; i < count; i++) {
@@ -412,7 +442,7 @@ const TableDesignerModal = ({
     const newCells = cells.map((row, rIdx) =>
       rIdx === rowIndex
         ? row.map((cell, cIdx) => (cIdx === colIndex ? value : cell))
-        : row
+        : row,
     );
     setCells(newCells);
   };
@@ -451,7 +481,7 @@ const TableDesignerModal = ({
     const latex = getLatex();
     setIsCompiling(true);
     setCompiledPreviewUrl(null);
-    
+
     try {
       const res = await axios.post(`${API_BASE_URL}/api/latex/compile`, {
         latex: latex,
@@ -460,9 +490,11 @@ const TableDesignerModal = ({
         format: "image",
         type: "table",
       });
-      
+
       if (res.data.success && res.data.pdfUrl) {
-        setCompiledPreviewUrl(`${API_BASE_URL}${res.data.pdfUrl}?t=${Date.now()}`);
+        setCompiledPreviewUrl(
+          `${API_BASE_URL}${res.data.pdfUrl}?t=${Date.now()}`,
+        );
       } else {
         showToast("Preview failed");
       }
@@ -475,9 +507,15 @@ const TableDesignerModal = ({
   };
 
   const toggleCellSelection = (rowIndex, colIndex) => {
-    const exists = selectedCells.find(c => c.row === rowIndex && c.col === colIndex);
+    const exists = selectedCells.find(
+      (c) => c.row === rowIndex && c.col === colIndex,
+    );
     if (exists) {
-      setSelectedCells(selectedCells.filter(c => !(c.row === rowIndex && c.col === colIndex)));
+      setSelectedCells(
+        selectedCells.filter(
+          (c) => !(c.row === rowIndex && c.col === colIndex),
+        ),
+      );
     } else {
       setSelectedCells([...selectedCells, { row: rowIndex, col: colIndex }]);
     }
@@ -485,37 +523,47 @@ const TableDesignerModal = ({
 
   const canMergeCells = () => {
     if (selectedCells.length < 2) return false;
-    const rows = [...new Set(selectedCells.map(c => c.row))];
+    const rows = [...new Set(selectedCells.map((c) => c.row))];
     if (rows.length !== 1) return false;
-    
-    const cols = selectedCells.map(c => c.col).sort((a, b) => a - b);
+
+    const cols = selectedCells.map((c) => c.col).sort((a, b) => a - b);
     for (let i = 1; i < cols.length; i++) {
-      if (cols[i] !== cols[i-1] + 1) return false;
+      if (cols[i] !== cols[i - 1] + 1) return false;
     }
     return true;
   };
 
   const mergeCells = () => {
     if (!canMergeCells()) return;
-    
+
     const rowIndex = selectedCells[0].row;
-    const cols = selectedCells.map(c => c.col).sort((a, b) => a - b);
+    const cols = selectedCells.map((c) => c.col).sort((a, b) => a - b);
     const startCol = cols[0];
     const endCol = cols[cols.length - 1];
     const content = cells[rowIndex][startCol];
-    
-    setMergedCells([...mergedCells, { row: rowIndex, startCol, endCol, content }]);
+
+    setMergedCells([
+      ...mergedCells,
+      { row: rowIndex, startCol, endCol, content },
+    ]);
     setSelectedCells([]);
     showToast("Cells merged");
   };
 
   const unmergeCells = (rowIndex, colIndex) => {
-    setMergedCells(mergedCells.filter(m => !(m.row === rowIndex && m.startCol === colIndex)));
+    setMergedCells(
+      mergedCells.filter(
+        (m) => !(m.row === rowIndex && m.startCol === colIndex),
+      ),
+    );
     showToast("Cells unmerged");
   };
 
   const getMergedCell = (rowIndex, colIndex) => {
-    return mergedCells.find(m => m.row === rowIndex && colIndex >= m.startCol && colIndex <= m.endCol);
+    return mergedCells.find(
+      (m) =>
+        m.row === rowIndex && colIndex >= m.startCol && colIndex <= m.endCol,
+    );
   };
 
   const isCellHidden = (rowIndex, colIndex) => {
@@ -524,7 +572,7 @@ const TableDesignerModal = ({
   };
 
   const isCellSelected = (rowIndex, colIndex) => {
-    return selectedCells.some(c => c.row === rowIndex && c.col === colIndex);
+    return selectedCells.some((c) => c.row === rowIndex && c.col === colIndex);
   };
 
   const copyToClipboard = () => {
@@ -537,7 +585,9 @@ const TableDesignerModal = ({
   return (
     <div
       className="fixed inset-0 z-[100000] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm font-sans"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="bg-white rounded-xl shadow-2xl border border-gray-300 w-[95vw] max-w-5xl h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
@@ -561,7 +611,9 @@ const TableDesignerModal = ({
             <div className="p-4 space-y-4">
               {/* Dimensions */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Dimensions</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                  Dimensions
+                </label>
                 <div className="flex gap-2">
                   <div className="flex-1">
                     <span className="text-xs text-gray-500">Rows</span>
@@ -576,7 +628,9 @@ const TableDesignerModal = ({
                       <input
                         type="number"
                         value={rowCount}
-                        onChange={(e) => handleRowCountChange(parseInt(e.target.value) || 1)}
+                        onChange={(e) =>
+                          handleRowCountChange(parseInt(e.target.value) || 1)
+                        }
                         className="w-10 text-center border-t border-b border-gray-300 py-1 text-sm"
                       />
                       <button
@@ -600,7 +654,9 @@ const TableDesignerModal = ({
                       <input
                         type="number"
                         value={colCount}
-                        onChange={(e) => handleColCountChange(parseInt(e.target.value) || 1)}
+                        onChange={(e) =>
+                          handleColCountChange(parseInt(e.target.value) || 1)
+                        }
                         className="w-10 text-center border-t border-b border-gray-300 py-1 text-sm"
                       />
                       <button
@@ -616,7 +672,9 @@ const TableDesignerModal = ({
 
               {/* Layout */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Layout</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                  Layout
+                </label>
                 <div className="space-y-2">
                   <div>
                     <span className="text-xs text-gray-500">Position</span>
@@ -650,7 +708,9 @@ const TableDesignerModal = ({
 
               {/* Caption & Label */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Caption</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                  Caption
+                </label>
                 <div className="space-y-2">
                   <input
                     type="text"
@@ -679,7 +739,9 @@ const TableDesignerModal = ({
 
               {/* Options */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Options</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                  Options
+                </label>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
                     <input
@@ -713,7 +775,9 @@ const TableDesignerModal = ({
 
               {/* Column Alignments */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Align</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                  Align
+                </label>
                 <div className="flex flex-wrap gap-1">
                   {alignments.slice(0, 6).map((align, idx) => (
                     <select
@@ -729,7 +793,9 @@ const TableDesignerModal = ({
                     </select>
                   ))}
                   {alignments.length > 6 && (
-                    <span className="text-xs text-gray-400">+{alignments.length - 6}</span>
+                    <span className="text-xs text-gray-400">
+                      +{alignments.length - 6}
+                    </span>
                   )}
                 </div>
               </div>
@@ -741,10 +807,14 @@ const TableDesignerModal = ({
             {/* Table Grid */}
             <div className="flex-1 p-4 overflow-auto">
               <div className="flex justify-between items-center mb-2">
-                <div className="text-xs text-gray-400">Ctrl+Click cells to select for merge</div>
+                <div className="text-xs text-gray-400">
+                  Ctrl+Click cells to select for merge
+                </div>
                 {selectedCells.length > 0 && (
                   <div className="flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
-                    <span className="text-xs font-bold text-gray-600">{selectedCells.length} cells selected</span>
+                    <span className="text-xs font-bold text-gray-600">
+                      {selectedCells.length} cells selected
+                    </span>
                     <button
                       onClick={mergeCells}
                       disabled={!canMergeCells()}
@@ -775,16 +845,20 @@ const TableDesignerModal = ({
                           const merged = getMergedCell(rowIndex, colIndex);
                           const isHidden = isCellHidden(rowIndex, colIndex);
                           const isSelected = isCellSelected(rowIndex, colIndex);
-                          
+
                           if (isHidden) return null;
-                          
-                          const colSpan = merged ? merged.endCol - merged.startCol + 1 : 1;
-                          
+
+                          const colSpan = merged
+                            ? merged.endCol - merged.startCol + 1
+                            : 1;
+
                           return (
-                            <td 
-                              key={colIndex} 
+                            <td
+                              key={colIndex}
                               className={`p-0 border border-gray-300 relative ${
-                                isSelected ? "bg-gray-200 ring-2 ring-black ring-inset" : ""
+                                isSelected
+                                  ? "bg-gray-200 ring-2 ring-black ring-inset"
+                                  : ""
                               } ${merged ? "bg-gray-100" : ""}`}
                               colSpan={colSpan}
                             >
@@ -793,14 +867,19 @@ const TableDesignerModal = ({
                                 value={merged ? merged.content : cell}
                                 onChange={(e) => {
                                   if (merged) {
-                                    const newMerged = mergedCells.map(m => 
-                                      m.row === rowIndex && m.startCol === colIndex 
-                                        ? {...m, content: e.target.value} 
-                                        : m
+                                    const newMerged = mergedCells.map((m) =>
+                                      m.row === rowIndex &&
+                                      m.startCol === colIndex
+                                        ? { ...m, content: e.target.value }
+                                        : m,
                                     );
                                     setMergedCells(newMerged);
                                   } else {
-                                    updateCell(rowIndex, colIndex, e.target.value);
+                                    updateCell(
+                                      rowIndex,
+                                      colIndex,
+                                      e.target.value,
+                                    );
                                   }
                                 }}
                                 onClick={(e) => {
@@ -811,12 +890,18 @@ const TableDesignerModal = ({
                                 }}
                                 className={`w-full px-2 py-1.5 text-sm outline-none min-w-[70px] ${
                                   isSelected ? "bg-gray-200" : ""
-                                } ${headerRow && rowIndex === 0 ? "font-bold bg-gray-100" : ""}`}
+                                } ${
+                                  headerRow && rowIndex === 0
+                                    ? "font-bold bg-gray-100"
+                                    : ""
+                                }`}
                                 placeholder={`${rowIndex + 1},${colIndex + 1}`}
                               />
                               {merged && (
                                 <button
-                                  onClick={() => unmergeCells(rowIndex, colIndex)}
+                                  onClick={() =>
+                                    unmergeCells(rowIndex, colIndex)
+                                  }
                                   className="absolute top-0 right-0 w-4 h-4 bg-gray-700 text-white text-xs rounded-bl hover:bg-black flex items-center justify-center"
                                   title="Unmerge"
                                 >
@@ -836,7 +921,9 @@ const TableDesignerModal = ({
             {/* Preview Section */}
             <div className="border-t border-gray-200 bg-gray-50 p-3 flex-shrink-0">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-bold text-gray-500 uppercase">Preview</span>
+                <span className="text-xs font-bold text-gray-500 uppercase">
+                  Preview
+                </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowPreview(!showPreview)}
@@ -861,7 +948,11 @@ const TableDesignerModal = ({
               )}
               {compiledPreviewUrl && (
                 <div className="bg-white border border-gray-200 rounded p-2 text-center overflow-auto max-h-[120px]">
-                  <img src={compiledPreviewUrl} alt="Table preview" className="max-h-[100px] mx-auto" />
+                  <img
+                    src={compiledPreviewUrl}
+                    alt="Table preview"
+                    className="max-h-[100px] mx-auto"
+                  />
                 </div>
               )}
             </div>
@@ -894,7 +985,7 @@ const TableDesignerModal = ({
           </div>
         </div>
       </div>
-      
+
       <Toast message={toast} isVisible={!!toast} />
     </div>
   );

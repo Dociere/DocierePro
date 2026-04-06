@@ -3,7 +3,7 @@
 // import { TbX, TbPhoto, TbCopy, TbCheck, TbPlayerPlay, TbAlertTriangle } from "react-icons/tb";
 // import { projectContext } from "../context/useProject";
 
-// const API_BASE_URL = "http://localhost:5000";
+// const API_BASE_URL = "http://localhost:50450";
 
 // // ==========================================
 // // HELPER FUNCTIONS
@@ -671,7 +671,7 @@ import { projectContext } from "../context/useProject";
 import { useAuth } from "../context/useAuth";
 import { saveProject } from "../api/projectHandling";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://localhost:50450";
 
 // ==========================================
 // HELPER FUNCTIONS
