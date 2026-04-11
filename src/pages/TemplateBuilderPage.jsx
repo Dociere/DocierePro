@@ -25,13 +25,39 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  TbArrowLeft, TbSearch, TbCode, TbDownload, TbDeviceFloppy,
-  TbChevronDown, TbChevronRight, TbGripVertical, TbPlus,
-  TbCopy, TbCheck, TbTrash, TbLayoutList, TbFileText,
-  TbPhoto, TbColumns, TbList, TbSettings, TbH1, TbAlignLeft,
-  TbMinus, TbAlignJustified, TbMath, TbQuote,
-  TbTable, TbArrowAutofitHeight, TbListNumbers, TbFileDescription,
-  TbNotes, TbListTree, TbBook2, TbTerminal, TbX,
+  TbArrowLeft,
+  TbSearch,
+  TbCode,
+  TbDownload,
+  TbDeviceFloppy,
+  TbChevronDown,
+  TbChevronRight,
+  TbGripVertical,
+  TbPlus,
+  TbCopy,
+  TbCheck,
+  TbTrash,
+  TbLayoutList,
+  TbFileText,
+  TbPhoto,
+  TbColumns,
+  TbList,
+  TbSettings,
+  TbH1,
+  TbAlignLeft,
+  TbMinus,
+  TbAlignJustified,
+  TbMath,
+  TbQuote,
+  TbTable,
+  TbArrowAutofitHeight,
+  TbListNumbers,
+  TbFileDescription,
+  TbNotes,
+  TbListTree,
+  TbBook2,
+  TbTerminal,
+  TbX,
 } from "react-icons/tb";
 import {
   createLayoutSchema,
@@ -43,21 +69,43 @@ import {
   updateTemplateSettings,
   findComponent,
 } from "../utils/layoutSchema";
-import { getComponentsByCategory, getComponentDef } from "../utils/componentRegistry";
+import {
+  getComponentsByCategory,
+  getComponentDef,
+} from "../utils/componentRegistry";
 import { generateFullDocument } from "../utils/latexGenerator";
 import ComponentRenderer from "../components/templateBuilder/ComponentRenderer";
 import PropertyPanel from "../components/templateBuilder/PropertyPanel";
+import axios from "axios";
+
+const API_URL = "http://localhost:50450";
 
 // ==========================================
 // ICON MAP — map string icon names to components
 // ==========================================
 const ICON_MAP = {
-  TbLayoutList, TbFileText, TbPhoto, TbColumns, TbList, TbSettings,
-  TbH1, TbAlignLeft, TbMinus, TbAlignJustified, TbMath,
-  TbCode, TbQuote, TbTable, TbArrowAutofitHeight, TbListNumbers,
-  TbFileDescription, TbNotes, TbListTree, TbBook2, TbTerminal,
+  TbLayoutList,
+  TbFileText,
+  TbPhoto,
+  TbColumns,
+  TbList,
+  TbSettings,
+  TbH1,
+  TbAlignLeft,
+  TbMinus,
+  TbAlignJustified,
+  TbMath,
+  TbCode,
+  TbQuote,
+  TbTable,
+  TbArrowAutofitHeight,
+  TbListNumbers,
+  TbFileDescription,
+  TbNotes,
+  TbListTree,
+  TbBook2,
+  TbTerminal,
 };
-
 
 const getIcon = (iconName, size = 16) => {
   const Icon = ICON_MAP[iconName];
@@ -68,10 +116,11 @@ const getIcon = (iconName, size = 16) => {
 // DRAGGABLE COMPONENT ITEM (from library)
 // ==========================================
 const DraggableLibraryItem = ({ compDef }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
-    id: `library-${compDef.type}`,
-    data: { type: "library-item", compDef },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useSortable({
+      id: `library-${compDef.type}`,
+      data: { type: "library-item", compDef },
+    });
 
   return (
     <div
@@ -91,8 +140,12 @@ const DraggableLibraryItem = ({ compDef }) => {
         {getIcon(compDef.icon, 14)}
       </div>
       <div className="min-w-0">
-        <div className="text-xs font-semibold text-gray-800 truncate">{compDef.label}</div>
-        <div className="text-[10px] text-gray-400 truncate">{compDef.description}</div>
+        <div className="text-xs font-semibold text-gray-800 truncate">
+          {compDef.label}
+        </div>
+        <div className="text-[10px] text-gray-400 truncate">
+          {compDef.description}
+        </div>
       </div>
     </div>
   );
@@ -102,7 +155,14 @@ const DraggableLibraryItem = ({ compDef }) => {
 // SORTABLE CANVAS ITEM
 // ==========================================
 const SortableCanvasItem = ({ component, isSelected, onSelect }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: component.id,
     data: { type: "canvas-item", component },
   });
@@ -195,7 +255,7 @@ const TemplateBuilderPage = () => {
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedCategories, setExpandedCategories] = useState(
-    new Set(["structure", "content", "media", "layout", "lists", "advanced"])
+    new Set(["structure", "content", "media", "layout", "lists", "advanced"]),
   );
   const [showLatexPreview, setShowLatexPreview] = useState(false);
   const [toast, setToast] = useState(null);
@@ -204,7 +264,7 @@ const TemplateBuilderPage = () => {
   // Sensors for dnd-kit
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor)
+    useSensor(KeyboardSensor),
   );
 
   // Component library data
@@ -218,7 +278,7 @@ const TemplateBuilderPage = () => {
       const comps = cat.components.filter(
         (c) =>
           c.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          c.description.toLowerCase().includes(searchTerm.toLowerCase())
+          c.description.toLowerCase().includes(searchTerm.toLowerCase()),
       );
       if (comps.length > 0) {
         filtered[key] = { ...cat, components: comps };
@@ -228,7 +288,9 @@ const TemplateBuilderPage = () => {
   }, [componentLibrary, searchTerm]);
 
   // Selected component from schema
-  const selectedComponent = selectedId ? findComponent(schema, selectedId) : null;
+  const selectedComponent = selectedId
+    ? findComponent(schema, selectedId)
+    : null;
 
   // ── Handlers ──
 
@@ -239,11 +301,15 @@ const TemplateBuilderPage = () => {
 
   const handleAddComponent = useCallback(
     (compDef, index = -1) => {
-      const { schema: newSchema, newComponentId } = addComponent(schema, compDef, index);
+      const { schema: newSchema, newComponentId } = addComponent(
+        schema,
+        compDef,
+        index,
+      );
       setSchema(newSchema);
       setSelectedId(newComponentId);
     },
-    [schema]
+    [schema],
   );
 
   const handleDeleteComponent = useCallback(
@@ -251,21 +317,21 @@ const TemplateBuilderPage = () => {
       setSchema(removeComponent(schema, nodeId));
       if (selectedId === nodeId) setSelectedId(null);
     },
-    [schema, selectedId]
+    [schema, selectedId],
   );
 
   const handleUpdateProps = useCallback(
     (nodeId, newProps) => {
       setSchema(updateComponentProps(schema, nodeId, newProps));
     },
-    [schema]
+    [schema],
   );
 
   const handleUpdateSettings = useCallback(
     (settings) => {
       setSchema(updateTemplateSettings(schema, settings));
     },
-    [schema]
+    [schema],
   );
 
   const handleExport = () => {
@@ -278,6 +344,29 @@ const TemplateBuilderPage = () => {
     a.click();
     URL.revokeObjectURL(url);
     showToast("Template exported!");
+  };
+
+  const handleSaveAsTemplate = async () => {
+    const name = schema.templateName?.trim();
+    if (!name) {
+      showToast("Template name is required");
+      return;
+    }
+    try {
+      const latex = generateFullDocument(schema);
+      const res = await axios.post(`${API_URL}/api/templates/save`, {
+        name,
+        files: { "main.tex": { content: latex } },
+      });
+      if (res.data.success) {
+        showToast(`Template "${name}" saved!`);
+      } else {
+        showToast(res.data.error || "Failed to save template");
+      }
+    } catch (error) {
+      const msg = error.response?.data?.error || "Failed to save template";
+      showToast(msg);
+    }
   };
 
   // ── Drag and Drop ──
@@ -363,9 +452,19 @@ const TemplateBuilderPage = () => {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className={`h-screen flex flex-col ml-10 mt-5 ${isDark ? "bg-[#1a1a1a] text-white" : "bg-[#f5f5f4] text-gray-900"}`}>
+      <div
+        className={`h-screen flex flex-col ml-10 mt-5 ${
+          isDark ? "bg-[#1a1a1a] text-white" : "bg-[#f5f5f4] text-gray-900"
+        }`}
+      >
         {/* ── TOP TOOLBAR ── */}
-        <div className={`flex items-center justify-between px-5 py-3 border-b flex-shrink-0 ${isDark ? "bg-[#222] border-[#333]" : "bg-white border-gray-200 shadow-sm"}`}>
+        <div
+          className={`flex items-center justify-between px-5 py-3 border-b flex-shrink-0 ${
+            isDark
+              ? "bg-[#222] border-[#333]"
+              : "bg-white border-gray-200 shadow-sm"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <Link
               to="/template"
@@ -378,16 +477,27 @@ const TemplateBuilderPage = () => {
             <div>
               <h1 className="text-sm font-bold">{schema.templateName}</h1>
               <p className="text-[10px] text-gray-400 capitalize">
-                {schema.templateType} · {schema.layoutMode} mode · {schema.pageSize?.label || "Custom"}
+                {schema.templateType} · {schema.layoutMode} mode ·{" "}
+                {schema.pageSize?.label || "Custom"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowLatexPreview(true)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${isDark ? "bg-[#333] text-gray-300 hover:bg-[#444]" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                isDark
+                  ? "bg-[#333] text-gray-300 hover:bg-[#444]"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               <TbCode size={14} /> Preview LaTeX
+            </button>
+            <button
+              onClick={handleSaveAsTemplate}
+              className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-gray-700 shadow-sm transition-all active:scale-[0.98]"
+            >
+              <TbDeviceFloppy size={14} /> Save as Template
             </button>
             <button
               onClick={handleExport}
@@ -401,15 +511,26 @@ const TemplateBuilderPage = () => {
         {/* ── MAIN THREE-PANEL LAYOUT ── */}
         <div className="flex flex-1 overflow-hidden">
           {/* ── LEFT SIDEBAR: Component Library ── */}
-          <div className={`w-[260px] flex-shrink-0 border-r flex flex-col ${isDark ? "bg-[#222] border-[#333]" : "bg-gray-50 border-gray-200"}`}>
+          <div
+            className={`w-[260px] flex-shrink-0 border-r flex flex-col ${
+              isDark ? "bg-[#222] border-[#333]" : "bg-gray-50 border-gray-200"
+            }`}
+          >
             <div className="p-3 border-b border-gray-200">
               <div className="relative">
-                <TbSearch className="absolute left-3 top-2.5 text-gray-400" size={14} />
+                <TbSearch
+                  className="absolute left-3 top-2.5 text-gray-400"
+                  size={14}
+                />
                 <input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search components..."
-                  className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-black/10 ${isDark ? "bg-[#333] border-[#444] text-white" : "bg-white border-gray-200"}`}
+                  className={`w-full pl-8 pr-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-black/10 ${
+                    isDark
+                      ? "bg-[#333] border-[#444] text-white"
+                      : "bg-white border-gray-200"
+                  }`}
                 />
               </div>
             </div>
@@ -419,7 +540,11 @@ const TemplateBuilderPage = () => {
                 <div key={key}>
                   <button
                     onClick={() => toggleCategory(key)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${isDark ? "text-gray-400 hover:bg-[#333]" : "text-gray-500 hover:bg-gray-100"}`}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                      isDark
+                        ? "text-gray-400 hover:bg-[#333]"
+                        : "text-gray-500 hover:bg-gray-100"
+                    }`}
                   >
                     <span className="flex items-center gap-2">
                       {getIcon(cat.icon, 14)}
@@ -439,20 +564,37 @@ const TemplateBuilderPage = () => {
                           {/* Click to add (simpler than drag) */}
                           <button
                             onClick={() => handleAddComponent(compDef)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all ${isDark ? "hover:bg-[#333] bg-[#2a2a2a] border border-[#333]" : "hover:bg-gray-100 hover:shadow-sm bg-white border border-gray-100"}`}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all ${
+                              isDark
+                                ? "hover:bg-[#333] bg-[#2a2a2a] border border-[#333]"
+                                : "hover:bg-gray-100 hover:shadow-sm bg-white border border-gray-100"
+                            }`}
                           >
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? "bg-[#333] text-gray-400" : "bg-gray-100 text-gray-600"}`}>
+                            <div
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                isDark
+                                  ? "bg-[#333] text-gray-400"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
                               {getIcon(compDef.icon, 14)}
                             </div>
                             <div className="min-w-0">
-                              <div className={`text-xs font-semibold truncate ${isDark ? "text-gray-200" : "text-gray-800"}`}>
+                              <div
+                                className={`text-xs font-semibold truncate ${
+                                  isDark ? "text-gray-200" : "text-gray-800"
+                                }`}
+                              >
                                 {compDef.label}
                               </div>
                               <div className="text-[10px] text-gray-400 truncate">
                                 {compDef.description}
                               </div>
                             </div>
-                            <TbPlus size={14} className="text-gray-400 flex-shrink-0 ml-auto" />
+                            <TbPlus
+                              size={14}
+                              className="text-gray-400 flex-shrink-0 ml-auto"
+                            />
                           </button>
                         </div>
                       ))}
@@ -464,14 +606,28 @@ const TemplateBuilderPage = () => {
           </div>
 
           {/* ── CENTER CANVAS ── */}
-          <div className="flex-1 overflow-auto flex justify-center py-8 px-6" onClick={() => setSelectedId(null)}>
+          <div
+            className="flex-1 overflow-auto flex justify-center py-8 px-6"
+            onClick={() => setSelectedId(null)}
+          >
             <div
               style={getCanvasStyle()}
-              className={`relative rounded-lg shadow-xl flex-shrink-0 ${isDark ? "bg-[#2a2a2a] border border-[#444]" : "bg-white border border-gray-200"}`}
+              className={`relative rounded-lg shadow-xl flex-shrink-0 ${
+                isDark
+                  ? "bg-[#2a2a2a] border border-[#444]"
+                  : "bg-white border border-gray-200"
+              }`}
             >
               {/* Page header */}
-              <div className={`px-4 py-2 text-[10px] text-center border-b ${isDark ? "text-gray-500 border-[#333]" : "text-gray-300 border-gray-100"}`}>
-                {schema.pageSize?.label || "Custom"} · {schema.pageSize?.width} × {schema.pageSize?.height}
+              <div
+                className={`px-4 py-2 text-[10px] text-center border-b ${
+                  isDark
+                    ? "text-gray-500 border-[#333]"
+                    : "text-gray-300 border-gray-100"
+                }`}
+              >
+                {schema.pageSize?.label || "Custom"} · {schema.pageSize?.width}{" "}
+                × {schema.pageSize?.height}
               </div>
 
               {/* Canvas content area with margin simulation */}
@@ -479,23 +635,44 @@ const TemplateBuilderPage = () => {
                 className="p-8 min-h-[200px]"
                 id="canvas-drop-area"
                 style={{
-                  paddingTop: `${Math.max(24, parseFloat(schema.margins?.top) * 1.5)}px`,
-                  paddingBottom: `${Math.max(24, parseFloat(schema.margins?.bottom) * 1.5)}px`,
-                  paddingLeft: `${Math.max(24, parseFloat(schema.margins?.left) * 1.5)}px`,
-                  paddingRight: `${Math.max(24, parseFloat(schema.margins?.right) * 1.5)}px`,
+                  paddingTop: `${Math.max(
+                    24,
+                    parseFloat(schema.margins?.top) * 1.5,
+                  )}px`,
+                  paddingBottom: `${Math.max(
+                    24,
+                    parseFloat(schema.margins?.bottom) * 1.5,
+                  )}px`,
+                  paddingLeft: `${Math.max(
+                    24,
+                    parseFloat(schema.margins?.left) * 1.5,
+                  )}px`,
+                  paddingRight: `${Math.max(
+                    24,
+                    parseFloat(schema.margins?.right) * 1.5,
+                  )}px`,
                 }}
               >
                 {schema.components.length === 0 ? (
                   /* Empty state */
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? "bg-[#333]" : "bg-gray-100"}`}>
+                    <div
+                      className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
+                        isDark ? "bg-[#333]" : "bg-gray-100"
+                      }`}
+                    >
                       <TbPlus size={24} className="text-gray-400" />
                     </div>
-                    <p className={`text-sm font-medium mb-1 ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                    <p
+                      className={`text-sm font-medium mb-1 ${
+                        isDark ? "text-gray-300" : "text-gray-600"
+                      }`}
+                    >
                       Start building your template
                     </p>
                     <p className="text-xs text-gray-400 max-w-[280px]">
-                      Click components in the left sidebar to add them to your document canvas.
+                      Click components in the left sidebar to add them to your
+                      document canvas.
                     </p>
                   </div>
                 ) : (
@@ -521,7 +698,11 @@ const TemplateBuilderPage = () => {
           </div>
 
           {/* ── RIGHT SIDEBAR: Property Panel ── */}
-          <div className={`w-[280px] flex-shrink-0 border-l ${isDark ? "bg-[#222] border-[#333]" : "bg-white border-gray-200"}`}>
+          <div
+            className={`w-[280px] flex-shrink-0 border-l ${
+              isDark ? "bg-[#222] border-[#333]" : "bg-white border-gray-200"
+            }`}
+          >
             <PropertyPanel
               selectedComponent={selectedComponent}
               schema={schema}

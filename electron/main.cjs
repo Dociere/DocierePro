@@ -319,6 +319,10 @@ ipcMain.on("window-maximize", () =>
   mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize(),
 );
 ipcMain.on("window-close", () => mainWindow.close());
+ipcMain.on("splash-minimize", () => {
+  if (splashWindow && !splashWindow.isDestroyed()) splashWindow.minimize();
+});
+ipcMain.on("app-quit", () => app.quit());
 
 ipcMain.handle("save-pdf", async (event, { arrayBuffer, defaultName }) => {
   const { dialog } = require("electron");

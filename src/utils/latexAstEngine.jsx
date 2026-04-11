@@ -674,14 +674,18 @@ export const astToSlate = (astInput) => {
           });
         } else if (["quote", "quotation"].includes(envName)) {
           const innerBlocks = parseNodes(node.content);
-          const leaves = innerBlocks.flatMap((b) => b.children || [{ text: "" }]);
+          const leaves = innerBlocks.flatMap(
+            (b) => b.children || [{ text: "" }],
+          );
           slateBlocks.push({
             type: "blockquote",
             children: leaves.length > 0 ? leaves : [{ text: "" }],
           });
         } else if (["verbatim", "lstlisting", "minted"].includes(envName)) {
           const innerBlocks = parseNodes(node.content);
-          const leaves = innerBlocks.flatMap((b) => b.children || [{ text: "" }]);
+          const leaves = innerBlocks.flatMap(
+            (b) => b.children || [{ text: "" }],
+          );
           slateBlocks.push({
             type: "code-block",
             children: leaves.length > 0 ? leaves : [{ text: "" }],
@@ -803,10 +807,30 @@ export const astToSlate = (astInput) => {
   };
 
   const rawBlocks = parseNodes(astNodes);
-  const finalBlocks =
-    rawBlocks.length > 0
-      ? rawBlocks
-      : [{ type: "paragraph", children: [{ text: "" }] }];
+
+  // Post-process: ensure editable paragraphs exist between/after non-editable
+  // blocks (headings, latex-blocks) so the cursor can always be placed there.
+  // This fixes the bug where an empty \section{...} leaves no place to type.
+  const NEEDS_TRAILING_PARA = new Set(["heading", "latex-block"]);
+  const emptyPara = () => ({ type: "paragraph", children: [{ text: "" }] });
+
+  const processed = [];
+  for (let i = 0; i < rawBlocks.length; i++) {
+    processed.push(rawBlocks[i]);
+
+    const cur = rawBlocks[i];
+    const next = rawBlocks[i + 1];
+
+    // Insert an empty paragraph after a heading/void if the next block is also
+    // non-editable (or there is no next block — i.e. it's the last element).
+    if (NEEDS_TRAILING_PARA.has(cur.type)) {
+      if (!next || NEEDS_TRAILING_PARA.has(next.type)) {
+        processed.push(emptyPara());
+      }
+    }
+  }
+
+  const finalBlocks = processed.length > 0 ? processed : [emptyPara()];
 
   return sanitizeForSlate(finalBlocks);
 };
@@ -1007,7 +1031,8 @@ export const slateToAst = (slateNodes) => {
       }
 
       case "blockquote": {
-        const isLeafChildren = block.children.length > 0 && block.children[0].text !== undefined;
+        const isLeafChildren =
+          block.children.length > 0 && block.children[0].text !== undefined;
         let contentAst;
         if (isLeafChildren) {
           const latexStr = leavesToLatexString(block.children);
@@ -1028,10 +1053,11 @@ export const slateToAst = (slateNodes) => {
       }
 
       case "code-block": {
-        const isLeafChildren = block.children.length > 0 && block.children[0].text !== undefined;
+        const isLeafChildren =
+          block.children.length > 0 && block.children[0].text !== undefined;
         let contentAst;
         if (isLeafChildren) {
-          const plainText = block.children.map(c => c.text || "").join("");
+          const plainText = block.children.map((c) => c.text || "").join("");
           contentAst = [{ type: "string", content: plainText }];
         } else {
           contentAst = slateToAst(block.children);

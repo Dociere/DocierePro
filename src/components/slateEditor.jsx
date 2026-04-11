@@ -30,6 +30,38 @@ const withLatexBlocks = (editor) => {
   return editor;
 };
 
+// Ensures headings & void blocks always have an editable paragraph after them
+const NEEDS_PARA_AFTER = new Set(["heading", "latex-block"]);
+
+const withTrailingParagraph = (editor) => {
+  const { normalizeNode } = editor;
+  editor.normalizeNode = ([node, path]) => {
+    // Only act on the root editor node
+    if (path.length === 0 && Editor.isEditor(node)) {
+      const children = node.children;
+      for (let i = children.length - 1; i >= 0; i--) {
+        const child = children[i];
+        const next = children[i + 1];
+        if (
+          SlateElement.isElement(child) &&
+          NEEDS_PARA_AFTER.has(child.type) &&
+          (!next ||
+            (SlateElement.isElement(next) && NEEDS_PARA_AFTER.has(next.type)))
+        ) {
+          Transforms.insertNodes(
+            editor,
+            { type: "paragraph", children: [{ text: "" }] },
+            { at: [i + 1] },
+          );
+          return; // normalizeNode runs iteratively, return after one fix
+        }
+      }
+    }
+    normalizeNode([node, path]);
+  };
+  return editor;
+};
+
 // ==========================================
 // 2. PREMIUM UI RENDERERS
 // ==========================================
@@ -329,7 +361,10 @@ const MarkButton = ({ format, icon }) => {
 
 const SlateEditorPanel = ({ globalAst, onAstChange }) => {
   const editor = useMemo(
-    () => withLatexBlocks(withHistory(withReact(createEditor()))),
+    () =>
+      withTrailingParagraph(
+        withLatexBlocks(withHistory(withReact(createEditor()))),
+      ),
     [],
   );
   const isInternalChange = useRef(false);

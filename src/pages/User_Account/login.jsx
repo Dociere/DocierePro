@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link, useOutletContext } from "react-router-dom";
 import { api } from "../../api/projectHandling";
+import { useSettings } from "../../context/useSettings";
 
 function Login() {
   const navigate = useNavigate();
@@ -11,10 +12,25 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { settings } = useSettings();
+
+  const getServerUrl = () => {
+    const mode = settings.server?.mode;
+    return settings.server?.methods?.[mode]?.backendServer || "";
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+
+    // Check if server is configured
+    if (!getServerUrl().trim()) {
+      setError(
+        "* Server not configured. Go to Settings → Configuration and set up either Self-Hosting or Cloud-Based hosting.",
+      );
+      return;
+    }
+
     setLoading(true);
 
     const userData = {
@@ -58,6 +74,25 @@ function Login() {
               <div className="bg-white px-6 py-6 text-center relative overflow-hidden">
                 <div className="absolute inset-0"></div>
                 <div className="relative">
+                  <button
+                    onClick={() => navigate("/")}
+                    className="absolute top-0 left-0 text-xs font-medium text-gray-500 hover:text-[#0C2340] transition-colors flex items-center gap-1 -webkit-app-region-no-drag"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                      />
+                    </svg>
+                    Home
+                  </button>
                   <div className="w-14 h-14 border-[#0C2340] border-[1.5px] rounded-full mx-auto mb-3 flex items-center justify-center shadow-lg">
                     <svg
                       className="w-7 h-7 text-[#0C2340]"
